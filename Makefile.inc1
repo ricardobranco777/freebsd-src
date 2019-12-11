@@ -458,8 +458,7 @@ SUBDIR+=etc
 .endif	# !empty(SUBDIR_OVERRIDE)
 
 .if defined(NOCLEAN)
-.warning NOCLEAN option is deprecated. Use NO_CLEAN instead.
-NO_CLEAN=	${NOCLEAN}
+.error NOCLEAN option is deprecated. Use NO_CLEAN instead.
 .endif
 .if defined(NO_CLEANDIR)
 CLEANDIR=	clean cleandepend
@@ -1511,6 +1510,7 @@ _sysent_dirs+=	sys/compat/cloudabi32	\
 		sys/compat/cloudabi64
 _sysent_dirs+=	sys/amd64/linux		\
 		sys/amd64/linux32	\
+		sys/arm/linux		\
 		sys/arm64/linux		\
 		sys/i386/linux
 sysent: .PHONY
