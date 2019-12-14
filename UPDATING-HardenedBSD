@@ -1,5 +1,5 @@
 [20191214] Jail parameter: {no}allow.extattr
-__HardenedBSD_version = 1300059
+__HardenedBSD_version = 1300060
 
 	Provide a new jail configuration parameter: allow.extattr (and
 	noallow.extattr). Default: allow.
