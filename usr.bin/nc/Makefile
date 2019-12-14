@@ -10,14 +10,12 @@ SRCS=	netcat.c atomicio.c socks.c
 CFLAGS+=-DIPSEC
 LIBADD=	ipsec
 
-<<<<<<< HEAD
 CFI_OVERRIDE=-fno-sanitize=cfi-icall
-=======
+
 .if ${MK_STATS} != "no" && !defined(RESCUE)
 LIBADD+=	sbuf stats
 CFLAGS+=	-DWITH_STATS
 .endif
->>>>>>> origin/freebsd/current/master
 
 WARNS?=	2
 
