@@ -3550,7 +3550,7 @@ _pmap_unwire_ptp(pmap_t pmap, vm_offset_t va, vm_page_t m, struct spglist *free)
 	/*
 	 * unmap the page table page
 	 */
-	if (m->pindex >= (NUPDE + NUPDPE)) {
+	if (m->pindex >= NUPDE + NUPDPE) {
 		/* PDP page */
 		pml4_entry_t *pml4;
 		pml4 = pmap_pml4e(pmap, va);
@@ -3577,8 +3577,7 @@ _pmap_unwire_ptp(pmap_t pmap, vm_offset_t va, vm_page_t m, struct spglist *free)
 
 		pdpg = PHYS_TO_VM_PAGE(*pmap_pdpe(pmap, va) & PG_FRAME);
 		pmap_unwire_ptp(pmap, va, pdpg, free);
-	}
-	if (m->pindex >= NUPDE && m->pindex < (NUPDE + NUPDPE)) {
+	} else if (m->pindex < NUPDE + NUPDPE) {
 		/* We just released a PD, unhold the matching PDP */
 		vm_page_t pdppg;
 
