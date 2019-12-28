@@ -41,6 +41,8 @@
 #include <sys/fcntl.h>
 #include <sys/sysent.h>
 #include <sys/imgact_elf.h>
+#include <sys/jail.h>
+#include <sys/smp.h>
 #include <sys/syscall.h>
 #include <sys/signalvar.h>
 #include <sys/vnode.h>
@@ -54,6 +56,8 @@
 #include <machine/fpu.h>
 #include <machine/elf.h>
 #include <machine/md_var.h>
+
+#include <powerpc/powerpc/elf_common.c>
 
 static void exec_setregs_funcdesc(struct thread *td, struct image_params *imgp,
     uintptr_t stack);
@@ -77,7 +81,7 @@ struct sysentvec elf64_freebsd_sysvec_v1 = {
 	.sv_usrstack	= USRSTACK,
 	.sv_psstrings	= PS_STRINGS,
 	.sv_stackprot	= VM_PROT_ALL,
-	.sv_copyout_auxargs = __elfN(freebsd_copyout_auxargs),
+	.sv_copyout_auxargs = __elfN(powerpc_copyout_auxargs),
 	.sv_copyout_strings = exec_copyout_strings,
 	.sv_setregs	= exec_setregs_funcdesc,
 	.sv_fixlimit	= NULL,
@@ -115,7 +119,7 @@ struct sysentvec elf64_freebsd_sysvec_v2 = {
 	.sv_usrstack	= USRSTACK,
 	.sv_psstrings	= PS_STRINGS,
 	.sv_stackprot	= VM_PROT_ALL,
-	.sv_copyout_auxargs = __elfN(freebsd_copyout_auxargs),
+	.sv_copyout_auxargs = __elfN(powerpc_copyout_auxargs),
 	.sv_copyout_strings = exec_copyout_strings,
 	.sv_setregs	= exec_setregs,
 	.sv_fixlimit	= NULL,
