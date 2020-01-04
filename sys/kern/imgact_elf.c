@@ -1268,9 +1268,6 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	imgp->entry_addr = entry;
 
 	if (interp != NULL) {
-<<<<<<< HEAD
-		VOP_UNLOCK(imgp->vp, 0);
-=======
 		VOP_UNLOCK(imgp->vp);
 		if ((map->flags & MAP_ASLR) != 0) {
 			/* Assume that interpeter fits into 1/4 of AS */
@@ -1279,7 +1276,6 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 			addr = __CONCAT(rnd_, __elfN(base))(map, addr,
 			    maxv1, PAGE_SIZE);
 		}
->>>>>>> origin/freebsd/current/master
 		error = __elfN(load_interp)(imgp, brand_info, interp, &addr,
 		    &imgp->entry_addr);
 		vn_lock(imgp->vp, LK_SHARED | LK_RETRY);
