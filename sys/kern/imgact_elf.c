@@ -534,7 +534,7 @@ __elfN(map_insert)(struct image_params *imgp, vm_map_t map, vm_object_t object,
 		    (object != NULL ? MAP_VN_EXEC : 0));
 		if (rv != KERN_SUCCESS) {
 			locked = VOP_ISLOCKED(imgp->vp);
-			VOP_UNLOCK(imgp->vp, 0);
+			VOP_UNLOCK(imgp->vp);
 			vm_object_deallocate(object);
 			vn_lock(imgp->vp, locked | LK_RETRY);
 			return (rv);
@@ -957,7 +957,7 @@ __elfN(get_interp)(struct image_params *imgp, const Elf_Phdr *phdr,
 		 */
 		interp = malloc(interp_name_len + 1, M_TEMP, M_NOWAIT);
 		if (interp == NULL) {
-			VOP_UNLOCK(imgp->vp, 0);
+			VOP_UNLOCK(imgp->vp);
 			interp = malloc(interp_name_len + 1, M_TEMP, M_WAITOK);
 			vn_lock(imgp->vp, LK_SHARED | LK_RETRY);
 		}
@@ -1172,7 +1172,7 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	 * The VV_TEXT flag prevents modifications to the executable while
 	 * the vnode is unlocked.
 	 */
-	VOP_UNLOCK(imgp->vp, 0);
+	VOP_UNLOCK(imgp->vp);
 
 	/*
 	 * Decide whether to enable randomization of user mappings.
@@ -1268,7 +1268,18 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	imgp->entry_addr = entry;
 
 	if (interp != NULL) {
+<<<<<<< HEAD
 		VOP_UNLOCK(imgp->vp, 0);
+=======
+		VOP_UNLOCK(imgp->vp);
+		if ((map->flags & MAP_ASLR) != 0) {
+			/* Assume that interpeter fits into 1/4 of AS */
+			maxv1 = maxv / 2 + addr / 2;
+			MPASS(maxv1 >= addr);	/* No overflow */
+			addr = __CONCAT(rnd_, __elfN(base))(map, addr,
+			    maxv1, PAGE_SIZE);
+		}
+>>>>>>> origin/freebsd/current/master
 		error = __elfN(load_interp)(imgp, brand_info, interp, &addr,
 		    &imgp->entry_addr);
 		vn_lock(imgp->vp, LK_SHARED | LK_RETRY);
@@ -1282,7 +1293,7 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	 */
 	elf_auxargs = malloc(sizeof(Elf_Auxargs), M_TEMP, M_NOWAIT);
 	if (elf_auxargs == NULL) {
-		VOP_UNLOCK(imgp->vp, 0);
+		VOP_UNLOCK(imgp->vp);
 		elf_auxargs = malloc(sizeof(Elf_Auxargs), M_TEMP, M_WAITOK);
 		vn_lock(imgp->vp, LK_SHARED | LK_RETRY);
 	}
@@ -2557,7 +2568,7 @@ __elfN(parse_notes)(struct image_params *imgp, Elf_Note *checknote,
 	    pnote->p_filesz > PAGE_SIZE - pnote->p_offset) {
 		buf = malloc(pnote->p_filesz, M_TEMP, M_NOWAIT);
 		if (buf == NULL) {
-			VOP_UNLOCK(imgp->vp, 0);
+			VOP_UNLOCK(imgp->vp);
 			buf = malloc(pnote->p_filesz, M_TEMP, M_WAITOK);
 			vn_lock(imgp->vp, LK_SHARED | LK_RETRY);
 		}
