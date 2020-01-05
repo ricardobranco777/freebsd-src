@@ -202,13 +202,10 @@ __DEFAULT_NO_OPTIONS = \
     DEVD_PIE \
     DTRACE_TESTS \
     EXPERIMENTAL \
-<<<<<<< HEAD
     FREEBSD_UPDATE \
-=======
     GCC \
     GCC_BOOTSTRAP \
     GNUCXX \
->>>>>>> origin/freebsd/current/master
     GNU_GREP_COMPAT \
     GPL_DTC \
     HESIOD \
