@@ -504,6 +504,7 @@ MK_CTF:=	no
 MK_OPENSSL:=	no
 MK_OPENSSH:=	no
 MK_KERBEROS:=	no
+MK_KERBEROS_SUPPORT:=	no
 .endif
 
 .if ${MK_CXX} == "no"
@@ -543,6 +544,7 @@ MK_NLS_CATALOGS:= no
 .if ${MK_OPENSSL} == "no"
 MK_OPENSSH:=	no
 MK_KERBEROS:=	no
+MK_KERBEROS_SUPPORT:=	no
 MK_LDNS:=	no
 .endif
 
