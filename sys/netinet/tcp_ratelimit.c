@@ -49,9 +49,11 @@ __FBSDID("$FreeBSD$");
 #include <sys/eventhandler.h>
 #include <sys/mutex.h>
 #include <sys/ck.h>
-#define TCPSTATES		/* for logging */
+#include <net/if.h>
+#include <net/if_var.h>
 #include <netinet/in.h>
 #include <netinet/in_pcb.h>
+#define TCPSTATES		/* for logging */
 #include <netinet/tcp_var.h>
 #ifdef INET6
 #include <netinet6/tcp6_var.h>
@@ -284,7 +286,7 @@ rs_defer_destroy(struct tcp_rate_set *rs)
 
 	/* Set flag to only defer once. */
 	rs->rs_flags |= RS_FUNERAL_SCHD;
-	epoch_call(net_epoch, &rs->rs_epoch_ctx, rs_destroy);
+	epoch_call(net_epoch_preempt, &rs->rs_epoch_ctx, rs_destroy);
 }
 
 #ifdef INET
