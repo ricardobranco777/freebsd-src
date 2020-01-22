@@ -534,13 +534,7 @@ PICFLAG+=	-DOPENSSL_PIC
 	${LCRYPTO_SRC}/crypto/whrlpool \
 	${LCRYPTO_SRC}/crypto/x509 \
 	${LCRYPTO_SRC}/crypto/x509v3 \
-<<<<<<< HEAD
-	${LCRYPTO_SRC}/include/openssl \
-	${.CURDIR}/man
-
+	${LCRYPTO_SRC}/include/openssl
 .else
 .include "Makefile.libressl"
 .endif # ${MK_LIBRESSL} != "no"
-=======
-	${LCRYPTO_SRC}/include/openssl
->>>>>>> origin/freebsd/current/master

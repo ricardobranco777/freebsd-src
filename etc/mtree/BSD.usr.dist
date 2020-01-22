@@ -1180,11 +1180,9 @@
                 ..
                 man5
                 ..
-<<<<<<< HEAD
-                man8
-=======
                 man7
->>>>>>> origin/freebsd/current/master
+		..
+                man8
                 ..
             ..
         ..
