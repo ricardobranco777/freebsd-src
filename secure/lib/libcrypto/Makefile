@@ -17,9 +17,7 @@ VERSION_MAP=	${.CURDIR}/Version.map
 
 NO_LINT=
 
-.if exists(Makefile.man)
 .include "Makefile.man"
-.endif
 .include "Makefile.inc"
 
 SRCS=	cpt_err.c cryptlib.c ctype.c cversion.c ex_data.c getenv.c init.c
@@ -536,9 +534,13 @@ PICFLAG+=	-DOPENSSL_PIC
 	${LCRYPTO_SRC}/crypto/whrlpool \
 	${LCRYPTO_SRC}/crypto/x509 \
 	${LCRYPTO_SRC}/crypto/x509v3 \
+<<<<<<< HEAD
 	${LCRYPTO_SRC}/include/openssl \
 	${.CURDIR}/man
 
 .else
 .include "Makefile.libressl"
 .endif # ${MK_LIBRESSL} != "no"
+=======
+	${LCRYPTO_SRC}/include/openssl
+>>>>>>> origin/freebsd/current/master
