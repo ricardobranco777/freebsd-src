@@ -69,7 +69,6 @@ main(int argc, char *argv[])
 	long pid;
 	char *end, *s;
 	double timeout;
-	pid_t me;
 
 	oflag = 0;
 	tflag = 0;
@@ -125,8 +124,6 @@ main(int argc, char *argv[])
 		usage();
 	}
 
-	me = getpid();
-
 	kq = kqueue();
 	if (kq == -1) {
 		err(EX_OSERR, "kqueue");
@@ -149,23 +146,6 @@ main(int argc, char *argv[])
 			warnx("%s: bad process id", s);
 			continue;
 		}
-<<<<<<< HEAD
-		if (pid == me) {
-			warnx("%s: ignoring own process id", s);
-			continue;
-		}
-		duplicate = 0;
-		for (i = 0; i < nleft; i++)
-			if (e[i].ident == (uintptr_t)pid)
-				duplicate = 1;
-		if (!duplicate) {
-			EV_SET(e + nleft, pid, EVFILT_PROC, EV_ADD, NOTE_EXIT,
-			    0, NULL);
-			if (kevent(kq, e + nleft, 1, NULL, 0, NULL) == -1)
-				warn("%ld", pid);
-			else
-				nleft++;
-=======
 		for (i = 0; i < nleft; i++) {
 			if (e[i].ident == (uintptr_t)pid) {
 				break;
@@ -183,7 +163,6 @@ main(int argc, char *argv[])
 			}
 		} else {
 			nleft++;
->>>>>>> origin/freebsd/current/master
 		}
 	}
 
