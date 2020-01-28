@@ -934,7 +934,7 @@ printcpuinfo(void)
 				"\034PTSC"	/* Performance TSC */
 				"\035PL2I"	/* L2I perf count */
 				"\036MWAITX"	/* MONITORX/MWAITX instructions */
-				"\037<b30>"
+				"\037ADMSKX"	/* Address mask extension */
 				"\040<b31>"
 				);
 			}
@@ -1025,10 +1025,12 @@ printcpuinfo(void)
 				       "\020"
 				       "\003AVX512_4VNNIW"
 				       "\004AVX512_4FMAPS"
+				       "\005FSRM"
 				       "\011AVX512VP2INTERSECT"
 				       "\013MD_CLEAR"
 				       "\016TSXFA"
 				       "\023PCONFIG"
+				       "\025IBT"
 				       "\033IBPB"
 				       "\034STIBP"
 				       "\035L1DFL"
