@@ -883,7 +883,6 @@ kern_ptrace(struct thread *td, int req, pid_t pid, void *addr, int data)
 			}
 		}
 
-
 		/* OK */
 		break;
 
