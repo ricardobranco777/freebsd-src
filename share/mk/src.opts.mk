@@ -209,11 +209,8 @@ __DEFAULT_NO_OPTIONS = \
     GNU_GREP_COMPAT \
     GPL_DTC \
     HESIOD \
-<<<<<<< HEAD
     LIB32 \
     LIBRESSL \
-=======
->>>>>>> origin/freebsd/current/master
     LIBSOFT \
     HTTPD \
     LOADER_FIREWIRE \
