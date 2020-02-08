@@ -105,9 +105,6 @@ struct ctlname {
 #define	CTLFLAG_STATS	0x00002000	/* Statistics, not a tuneable */
 #define	CTLFLAG_NOFETCH	0x00001000	/* Don't fetch tunable from getenv() */
 #define	CTLFLAG_CAPRW	(CTLFLAG_CAPRD|CTLFLAG_CAPWR)
-<<<<<<< HEAD
-#define	CTLFLAG_ROOTONLY	0x00000800	/* Only available to root */
-=======
 /*
  * This is transient flag to be used until all sysctl handlers are converted
  * to not lock Giant.
@@ -115,7 +112,8 @@ struct ctlname {
  * for SYSCTL_PROC and SYSCTL_NODE.
  */
 #define	CTLFLAG_NEEDGIANT 0x00000800	/* Handler require Giant */
->>>>>>> origin/freebsd/current/master
+
+#define	CTLFLAG_ROOTONLY	0x00000010	/* Only available to root */
 
 /*
  * Secure level.   Note that CTLFLAG_SECURE == CTLFLAG_SECURE1.
