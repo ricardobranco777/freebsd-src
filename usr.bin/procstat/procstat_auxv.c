@@ -197,10 +197,17 @@ procstat_auxv(struct procstat *procstat, struct kinfo_proc *kipp)
 			    prefix, "AT_HWCAP2", (u_long)auxv[i].a_un.a_val);
 			break;
 #endif
+<<<<<<< HEAD
 #ifdef AT_PAXFLAGS
 		case AT_PAXFLAGS:
 			xo_emit("{dw:/%s}{Lw:/%-16s/%s}{:AT_PAXFLAGS/%#lx}\n",
 			    prefix, "AT_PAXFLAGS", (u_long)auxv[i].a_un.a_val);
+=======
+#ifdef AT_BSDFLAGS
+		case AT_BSDFLAGS:
+			xo_emit("{dw:/%s}{Lw:/%-16s/%s}{:AT_BSDFLAGS/%#lx}\n",
+			    prefix, "AT_BSDFLAGS", (u_long)auxv[i].a_un.a_val);
+>>>>>>> origin/freebsd/current/master
 			break;
 #endif
 		default:
