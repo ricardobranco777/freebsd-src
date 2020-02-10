@@ -954,13 +954,10 @@ typedef struct {
 #define	AT_EHDRFLAGS	24	/* e_flags field from elf hdr */
 #define	AT_HWCAP	25	/* CPU feature flags. */
 #define	AT_HWCAP2	26	/* CPU feature flags 2. */
-<<<<<<< HEAD
 #define	AT_PAXFLAGS 	27
-=======
-#define	AT_BSDFLAGS	27	/* ELF BSD Flags. */
->>>>>>> origin/freebsd/current/master
+#define	AT_BSDFLAGS	28	/* ELF BSD Flags. */
 
-#define	AT_COUNT	28	/* Count of defined aux entry types. */
+#define	AT_COUNT	29	/* Count of defined aux entry types. */
 
 /*
  * Relocation types.
