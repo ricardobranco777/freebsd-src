@@ -51,8 +51,12 @@ _libc_other_objects= sigsetjmp lstat stat fstat fstatat fstatfs syscall \
     sysarch __sysctl issetugid __getcwd utrace \
     thr_self thr_kill pread mmap lseek _exit _fstat _fstatat _fstatfs \
     getdirentries _getdirentries _close _fcntl _open _openat _read \
+<<<<<<< HEAD
     _sigprocmask _write readlink _setjmp setjmp setjmperr \
     __sysctlbyname
+=======
+    _sigprocmask _write readlink __realpathat _setjmp setjmp setjmperr
+>>>>>>> tor/freebsd/current/master
 
 
 # Finally add additional architecture-dependent libc dependencies
