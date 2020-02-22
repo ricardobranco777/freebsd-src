@@ -136,10 +136,6 @@ LDFLAGS+=	-Wl,-z,now
 CFLAGS+=	-mspeculative-load-hardening
 .endif
 
-.if defined(MK_LIBRESSL) && ${MK_LIBRESSL} != "no"
-CFLAGS+=	-DHAVE_LIBRESSL
-.endif
-
 PO_FLAG=-pg
 
 .c.po:

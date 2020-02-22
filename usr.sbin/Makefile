@@ -186,7 +186,6 @@ SUBDIR.${MK_NIS}+=	yppush
 SUBDIR.${MK_NIS}+=	ypserv
 SUBDIR.${MK_NIS}+=	ypset
 SUBDIR.${MK_NTP}+=	ntp
-SUBDIR.${MK_OPENNTPD}+=	ntp
 SUBDIR.${MK_OPENSSL}+=	keyserv
 SUBDIR.${MK_PF}+=	ftp-proxy
 SUBDIR.${MK_PKGBOOTSTRAP}+=	pkg

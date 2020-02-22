@@ -210,7 +210,6 @@ __DEFAULT_NO_OPTIONS = \
     GPL_DTC \
     HESIOD \
     LIB32 \
-    LIBRESSL \
     LIBSOFT \
     HTTPD \
     LOADER_FIREWIRE \
@@ -220,7 +219,6 @@ __DEFAULT_NO_OPTIONS = \
     OFED \
     OFED_EXTRA \
     OPENLDAP \
-    OPENNTPD \
     PORTSNAP \
     REPRODUCIBLE_BUILD \
     RPCBIND_WARMSTART_SUPPORT \
@@ -614,18 +612,6 @@ MK_SAFESTACK:=	no
 .if ${MK_LLD_IS_LD} == "no" || ${MK_LLD_BOOTSTRAP} == "no"
 MK_CFI:=	no
 MK_RETPOLINE:=	no
-.endif
-
-.if ${MK_LIBRESSL} == "no"
-MK_OPENNTPD:=	no
-.endif
-
-.if ${MK_OPENNTPD} != "no"
-MK_NTP:=	no
-.endif
-
-.if ${MK_NTP} != "no"
-MK_OPENNTPD:=	no
 .endif
 
 .if ${MK_LOADER_VERIEXEC} == "no"
