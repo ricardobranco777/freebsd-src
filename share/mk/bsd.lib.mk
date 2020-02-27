@@ -96,12 +96,7 @@ CFLAGS += -mno-relax
 .SUFFIXES: .out .o .bc .ll .po .pico .nossppico .S .asm .s .c .cc .cpp .cxx .C .f .y .l .ln
 
 .if !defined(PICFLAG)
-<<<<<<< HEAD
 PICFLAG=-fPIC
-.else
-=======
->>>>>>> tor/freebsd/current/master
-PICFLAG=-fpic
 .endif
 
 .if defined(MK_RETPOLINE) && ${MK_RETPOLINE} != "no"

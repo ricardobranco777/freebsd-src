@@ -90,14 +90,10 @@ static keyboard_t	**keyboard = &kbd_ini;
 static int keymap_restrict_change = 4;
 #else
 static int keymap_restrict_change;
-<<<<<<< HEAD
 #endif
 
-static SYSCTL_NODE(_hw, OID_AUTO, kbd, CTLFLAG_RD, 0, "kbd");
-=======
 static SYSCTL_NODE(_hw, OID_AUTO, kbd, CTLFLAG_RD | CTLFLAG_MPSAFE, 0,
     "kbd");
->>>>>>> tor/freebsd/current/master
 SYSCTL_INT(_hw_kbd, OID_AUTO, keymap_restrict_change, CTLFLAG_RW,
     &keymap_restrict_change, 0, "restrict ability to change keymap");
 
