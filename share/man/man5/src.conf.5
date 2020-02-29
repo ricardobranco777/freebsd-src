@@ -765,9 +765,6 @@ amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, i386/i386, powerpc/powerpc, po
 Set to not build
 .Xr gpioctl 8
 as part of the base system.
-.It Va WITH_GPL_DTC
-Set to build the GPL'd version of the device tree compiler from elinux.org,
-instead of the BSD licensed one.
 .It Va WITHOUT_GSSAPI
 Set to not build libgssapi.
 .It Va WITHOUT_HAST
@@ -1023,8 +1020,6 @@ amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, i386/i386, powerpc/powerpc64, 
 Set to not build the
 .Xr llvm-cov 1
 tool.
-.It Va WITHOUT_LLVM_LIBUNWIND
-Set to use GCC's stack unwinder (instead of LLVM's libunwind).
 .It Va WITHOUT_LLVM_TARGET_AARCH64
 Set to not build LLVM target support for AArch64.
 The
