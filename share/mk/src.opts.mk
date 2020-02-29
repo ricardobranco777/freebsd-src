@@ -79,11 +79,8 @@ __DEFAULT_YES_OPTIONS = \
     CASPER \
     CCD \
     CDDL \
-<<<<<<< HEAD
-    CLANG_EXTRAS \
-=======
     CLANG \
->>>>>>> tor/freebsd/current/master
+    CLANG_EXTRAS \
     CPP \
     CROSS_COMPILER \
     CRYPT \
