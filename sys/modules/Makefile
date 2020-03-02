@@ -66,7 +66,6 @@ SUBDIR=	\
 	bhnd \
 	${_bxe} \
 	${_bios} \
-	${_bktr} \
 	${_blake2} \
 	bnxt \
 	bridgestp \
@@ -581,7 +580,6 @@ _rockchip=	rockchip
 _agp=		agp
 _an=		an
 _bios=		bios
-_bktr=		bktr
 .if ${MK_SOURCELESS_UCODE} != "no"
 _bxe=		bxe
 .endif
