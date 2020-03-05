@@ -222,21 +222,15 @@ kern_mmap_req(struct thread *td, const struct mmap_req *mrp)
 	struct proc *p;
 	off_t pos;
 	vm_offset_t addr;
-<<<<<<< HEAD
-	vm_size_t pageoff, size;
-	vm_prot_t cap_maxprot, max_prot;
-	int align, error;
-	cap_rights_t rights;
-#ifdef PAX_ASLR
-	vm_offset_t orig_addr;
-	int pax_aslr_done;
-#endif
-=======
 	vm_size_t len, pageoff, size;
 	vm_prot_t cap_maxprot;
 	int align, error, fd, flags, max_prot, prot;
 	cap_rights_t rights;
 	mmap_check_fp_fn check_fp_fn;
+#ifdef PAX_ASLR
+	vm_offset_t orig_addr;
+	int pax_aslr_done;
+#endif
 
 	addr  = mrp->mr_hint;
 	len = mrp->mr_len;
@@ -245,7 +239,6 @@ kern_mmap_req(struct thread *td, const struct mmap_req *mrp)
 	fd = mrp->mr_fd;
 	pos = mrp->mr_pos;
 	check_fp_fn = mrp->mr_check_fp_fn;
->>>>>>> tor/freebsd/current/master
 
 	if ((prot & ~(_PROT_ALL | PROT_MAX(_PROT_ALL))) != 0)
 		return (EINVAL);
@@ -428,10 +421,10 @@ kern_mmap_req(struct thread *td, const struct mmap_req *mrp)
 #ifdef PAX_NOEXEC
 		cap_maxprot = VM_PROT_ALL;
 
-		pax_pageexec(td->td_proc, (vm_prot_t *)&prot, &cap_maxprot);
-		pax_mprotect(td->td_proc, (vm_prot_t *)&prot, &cap_maxprot);
-		pax_pageexec(td->td_proc, (vm_prot_t *)&prot, &max_prot);
-		pax_mprotect(td->td_proc, (vm_prot_t *)&prot, &max_prot);
+		pax_pageexec(td->td_proc, (vm_prot_t *)&prot, (vm_prot_t *)&cap_maxprot);
+		pax_mprotect(td->td_proc, (vm_prot_t *)&prot, (vm_prot_t *)&cap_maxprot);
+		pax_pageexec(td->td_proc, (vm_prot_t *)&prot, (vm_prot_t *)&max_prot);
+		pax_mprotect(td->td_proc, (vm_prot_t *)&prot, (vm_prot_t *)&max_prot);
 
 		error = vm_mmap_object(&vms->vm_map, &addr, size, prot,
 		    cap_maxprot, flags, NULL, pos, FALSE, td);
@@ -465,10 +458,10 @@ kern_mmap_req(struct thread *td, const struct mmap_req *mrp)
 		}
 
 #ifdef PAX_NOEXEC
-		pax_pageexec(td->td_proc, (vm_prot_t *)&prot, &cap_maxprot);
-		pax_mprotect(td->td_proc, (vm_prot_t *)&prot, &cap_maxprot);
-		pax_pageexec(td->td_proc, (vm_prot_t *)&prot, &max_prot);
-		pax_mprotect(td->td_proc, (vm_prot_t *)&prot, &max_prot);
+		pax_pageexec(td->td_proc, (vm_prot_t *)&prot, (vm_prot_t *)&cap_maxprot);
+		pax_mprotect(td->td_proc, (vm_prot_t *)&prot, (vm_prot_t *)&cap_maxprot);
+		pax_pageexec(td->td_proc, (vm_prot_t *)&prot, (vm_prot_t *)&max_prot);
+		pax_mprotect(td->td_proc, (vm_prot_t *)&prot, (vm_prot_t *)&max_prot);
 #endif
 #ifdef PAX_ASLR
 		KASSERT((flags & MAP_FIXED) == MAP_FIXED || pax_aslr_done == 1,
