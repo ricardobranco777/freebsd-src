@@ -110,13 +110,5 @@ CXXSTD?=	c++14
 CXXFLAGS+=	-fno-exceptions
 CXXFLAGS+=	-fno-rtti
 CXXFLAGS.clang+= -stdlib=libc++
-<<<<<<< HEAD
-
-.if ${MACHINE_CPUARCH} == "arm"
-STATIC_CFLAGS+= -mlong-calls
-STATIC_CXXFLAGS+= -mlong-calls
-.endif
 
 NOCFI=		yes
-=======
->>>>>>> tor/freebsd/current/master
