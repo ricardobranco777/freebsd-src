@@ -104,11 +104,7 @@ main(int argc, char *argv[])
 	time_t now;
 	int ch, logflags, pri;
 	char *tag, *host, buf[1024], *timestamp, tbuf[26],
-<<<<<<< HEAD
-	    *hostname, hbuf[MAXHOSTNAMELEN+1], *dotp;
-=======
-	    *hostname, hbuf[MAXHOSTNAMELEN], *pristr;
->>>>>>> tor/freebsd/current/master
+	    *hostname, hbuf[MAXHOSTNAMELEN+1], *dotp, *pristr;
 	const char *svcname, *src;
 
 	tag = NULL;
