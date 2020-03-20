@@ -328,12 +328,6 @@ __DEFAULT_YES_OPTIONS+=LLDB
 .else
 __DEFAULT_NO_OPTIONS+=LLDB
 .endif
-# LIB32 is supported on amd64, mips64, and powerpc64
-.if (${__T} == "amd64" || ${__T:Mmips64*} || ${__T} == "powerpc64")
-__DEFAULT_YES_OPTIONS+=LIB32
-.else
-BROKEN_OPTIONS+=LIB32
-.endif
 # Only doing soft float API stuff on armv6 and armv7
 .if ${__T} != "armv6" && ${__T} != "armv7"
 BROKEN_OPTIONS+=LIBSOFT
