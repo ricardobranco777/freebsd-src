@@ -80,12 +80,8 @@ __DEFAULT_YES_OPTIONS = \
     CCD \
     CDDL \
     CLANG \
-<<<<<<< HEAD
-    CLANG_EXTRAS \
-=======
     CLANG_BOOTSTRAP \
     CLANG_IS_CC \
->>>>>>> origin/freebsd/current/master
     CPP \
     CROSS_COMPILER \
     CRYPT \
