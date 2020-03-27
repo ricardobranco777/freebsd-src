@@ -213,6 +213,8 @@
             ..
             atf
             ..
+            kyua
+            ..
             legal
             ..
             llvm
