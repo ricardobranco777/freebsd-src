@@ -52,11 +52,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/mount.h>
 #include <sys/mutex.h>
 #include <sys/namei.h>
-<<<<<<< HEAD
 #include <sys/pax.h>
-#include <sys/pioctl.h>
-=======
->>>>>>> upstream/master
 #include <sys/priv.h>
 #include <sys/proc.h>
 #include <sys/ptrace.h>
