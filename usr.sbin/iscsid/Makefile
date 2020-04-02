@@ -11,7 +11,10 @@ MAN=		iscsid.8
 
 LIBADD=		md util
 
+<<<<<<< HEAD
 
 WARNS=		6
 
+=======
+>>>>>>> origin/freebsd/current/master
 .include <bsd.prog.mk>
