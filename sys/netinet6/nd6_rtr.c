@@ -608,14 +608,6 @@ nd6_ra_input(struct mbuf *m, int off, int icmp6len)
 	m_freem(m);
 }
 
-/* tell the change to user processes watching the routing socket. */
-static void
-nd6_rtmsg(int cmd, struct rtentry *rt)
-{
-
-	rt_routemsg(cmd, rt, rt->rt_ifp, 0, rt->rt_fibnum);
-}
-
 /* PFXRTR */
 static struct nd_pfxrouter *
 pfxrtr_lookup(struct nd_prefix *pr, struct nd_defrouter *dr)
@@ -686,6 +678,7 @@ defrouter_addreq(struct nd_defrouter *new)
 {
 	struct sockaddr_in6 def, mask, gate;
 	struct rtentry *newrt = NULL;
+	unsigned int fibnum;
 	int error;
 
 	bzero(&def, sizeof(def));
@@ -696,13 +689,14 @@ defrouter_addreq(struct nd_defrouter *new)
 	    sizeof(struct sockaddr_in6);
 	def.sin6_family = gate.sin6_family = AF_INET6;
 	gate.sin6_addr = new->rtaddr;
+	fibnum = new->ifp->if_fib;
 
 	error = in6_rtrequest(RTM_ADD, (struct sockaddr *)&def,
 	    (struct sockaddr *)&gate, (struct sockaddr *)&mask,
-	    RTF_GATEWAY, &newrt, new->ifp->if_fib);
+	    RTF_GATEWAY, &newrt, fibnum);
 	if (newrt) {
-		nd6_rtmsg(RTM_ADD, newrt); /* tell user process */
-		RTFREE(newrt);
+		rt_routemsg(RTM_ADD, newrt, new->ifp, 0, fibnum);
+		RTFREE_FUNC(newrt);
 	}
 	if (error == 0)
 		new->installed = 1;
@@ -718,6 +712,7 @@ defrouter_delreq(struct nd_defrouter *dr)
 {
 	struct sockaddr_in6 def, mask, gate;
 	struct rtentry *oldrt = NULL;
+	unsigned int fibnum;
 
 	bzero(&def, sizeof(def));
 	bzero(&mask, sizeof(mask));
@@ -727,13 +722,14 @@ defrouter_delreq(struct nd_defrouter *dr)
 	    sizeof(struct sockaddr_in6);
 	def.sin6_family = gate.sin6_family = AF_INET6;
 	gate.sin6_addr = dr->rtaddr;
+	fibnum = dr->ifp->if_fib;
 
 	in6_rtrequest(RTM_DELETE, (struct sockaddr *)&def,
 	    (struct sockaddr *)&gate,
-	    (struct sockaddr *)&mask, RTF_GATEWAY, &oldrt, dr->ifp->if_fib);
+	    (struct sockaddr *)&mask, RTF_GATEWAY, &oldrt, fibnum);
 	if (oldrt) {
-		nd6_rtmsg(RTM_DELETE, oldrt);
-		RTFREE(oldrt);
+		rt_routemsg(RTM_DELETE, oldrt, dr->ifp, 0, fibnum);
+		RTFREE_FUNC(oldrt);
 	}
 
 	dr->installed = 0;
@@ -2049,15 +2045,7 @@ nd6_prefix_onlink_rtrequest(struct nd_prefix *pr, struct ifaddr *ifa)
 		error = in6_rtrequest(RTM_ADD,
 		    (struct sockaddr *)&pr->ndpr_prefix, (struct sockaddr *)&sdl,
 		    (struct sockaddr *)&mask6, rtflags, &rt, fibnum);
-		if (error == 0) {
-			KASSERT(rt != NULL, ("%s: in6_rtrequest return no "
-			    "error(%d) but rt is NULL, pr=%p, ifa=%p", __func__,
-			    error, pr, ifa));
-			RT_LOCK(rt);
-			nd6_rtmsg(RTM_ADD, rt);
-			RT_UNLOCK(rt);
-			pr->ndpr_stateflags |= NDPRF_ONLINK;
-		} else {
+		if (error != 0) {
 			char ip6buf[INET6_ADDRSTRLEN];
 			char ip6bufg[INET6_ADDRSTRLEN];
 			char ip6bufm[INET6_ADDRSTRLEN];
@@ -2075,13 +2063,12 @@ nd6_prefix_onlink_rtrequest(struct nd_prefix *pr, struct ifaddr *ifa)
 
 			/* Save last error to return, see rtinit(). */
 			a_failure = error;
+			continue;
 		}
 
-		if (rt != NULL) {
-			RT_LOCK(rt);
-			RT_REMREF(rt);
-			RT_UNLOCK(rt);
-		}
+		pr->ndpr_stateflags |= NDPRF_ONLINK;
+		rt_routemsg(RTM_ADD, rt, pr->ndpr_ifp, 0, fibnum);
+		RTFREE_FUNC(rt);
 	}
 
 	/* Return the last error we got. */
@@ -2214,17 +2201,15 @@ nd6_prefix_offlink(struct nd_prefix *pr)
 		rt = NULL;
 		error = in6_rtrequest(RTM_DELETE, (struct sockaddr *)&sa6, NULL,
 		    (struct sockaddr *)&mask6, 0, &rt, fibnum);
-		if (error == 0) {
-			/* report the route deletion to the routing socket. */
-			if (rt != NULL)
-				nd6_rtmsg(RTM_DELETE, rt);
-		} else {
+		if (error != 0) {
 			/* Save last error to return, see rtinit(). */
 			a_failure = error;
+			continue;
 		}
-		if (rt != NULL) {
-			RTFREE(rt);
-		}
+
+		/* report route deletion to the routing socket. */
+		rt_routemsg(RTM_DELETE, rt, ifp, 0, fibnum);
+		RTFREE_FUNC(rt);
 	}
 	error = a_failure;
 	a_failure = 1;
