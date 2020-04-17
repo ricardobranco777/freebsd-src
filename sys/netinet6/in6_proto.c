@@ -173,11 +173,11 @@ struct protosw inet6sw[] = {
 	.pr_input =		tcp6_input,
 	.pr_ctlinput =		tcp6_ctlinput,
 	.pr_ctloutput =		tcp_ctloutput,
-#ifndef INET	/* don't call initialization and timeout routines twice */
+#ifndef INET	/* don't call initialization, timeout, and drain routines twice */
 	.pr_init =		tcp_init,
 	.pr_slowtimo =		tcp_slowtimo,
-#endif
 	.pr_drain =		tcp_drain,
+#endif
 	.pr_usrreqs =		&tcp6_usrreqs,
 },
 #ifdef SCTP
@@ -189,8 +189,8 @@ struct protosw inet6sw[] = {
 	.pr_input =		sctp6_input,
 	.pr_ctlinput =		sctp6_ctlinput,
 	.pr_ctloutput =	sctp_ctloutput,
+#ifndef INET	/* Do not call initialization and drain routines twice. */
 	.pr_drain =		sctp_drain,
-#ifndef INET	/* Do not call initialization twice. */
 	.pr_init =		sctp_init,
 #endif
 	.pr_usrreqs =		&sctp6_usrreqs
@@ -203,7 +203,7 @@ struct protosw inet6sw[] = {
 	.pr_input =		sctp6_input,
 	.pr_ctlinput =		sctp6_ctlinput,
 	.pr_ctloutput =		sctp_ctloutput,
-	.pr_drain =		sctp_drain,
+	.pr_drain =		NULL, /* Covered by the SOCK_SEQPACKET entry. */
 	.pr_usrreqs =		&sctp6_usrreqs
 },
 #endif /* SCTP */
