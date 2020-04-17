@@ -3126,22 +3126,15 @@ freebsd32_copyout_strings(struct image_params *imgp, uintptr_t *stack_base)
 		execpath_len = strlen(imgp->execpath) + 1;
 	else
 		execpath_len = 0;
-<<<<<<< HEAD
 	arginfo = (struct freebsd32_ps_strings *)curproc->p_psstrings;
-	imgp->proc->p_sigcode_base = imgp->proc->p_sysent->sv_sigcode_base;
-	if (imgp->proc->p_sigcode_base == 0)
-=======
-	arginfo = (struct freebsd32_ps_strings *)curproc->p_sysent->
-	    sv_psstrings;
 	imgp->ps_strings = arginfo;
-	if (imgp->proc->p_sysent->sv_sigcode_base == 0)
->>>>>>> tor/freebsd/current/master
+	if (imgp->proc->p_sigcode_base == 0)
 		szsigcode = *(imgp->proc->p_sysent->sv_szsigcode);
-	else {
-		szsigcode = 0;
 #ifdef PAX_ASLR
 		pax_aslr_vdso(imgp->proc, &(imgp->proc->p_sigcode_base));
 #endif
+	else {
+		szsigcode = 0;
 	}
 	destp =	(uintptr_t)arginfo;
 

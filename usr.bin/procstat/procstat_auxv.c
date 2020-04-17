@@ -203,12 +203,11 @@ procstat_auxv(struct procstat *procstat, struct kinfo_proc *kipp)
 			    prefix, "AT_BSDFLAGS", (u_long)auxv[i].a_un.a_val);
 			break;
 #endif
-<<<<<<< HEAD
 #ifdef AT_PAXFLAGS
 		case AT_PAXFLAGS:
 			xo_emit("{dw:/%s}{Lw:/%-16s/%s}{:AT_PAXFLAGS/%#lx}\n",
 			    prefix, "AT_PAXFLAGS", (u_long)auxv[i].a_un.a_val);
-=======
+#endif
 #ifdef AT_ARGC
 		case AT_ARGC:
 			xo_emit("{dw:/%s}{Lw:/%-16s/%s}{:AT_ARGC/%ld}\n",
@@ -238,7 +237,6 @@ procstat_auxv(struct procstat *procstat, struct kinfo_proc *kipp)
 			xo_emit("{dw:/%s}{Lw:/%-16s/%s}{:AT_PS_STRINGS/%p}\n",
 			    prefix, "AT_PS_STRINGS", auxv[i].a_un.a_ptr);
 			break;
->>>>>>> tor/freebsd/current/master
 #endif
 		default:
 			xo_emit("{dw:/%s}{Lw:/%16ld/%ld}{:UNKNOWN/%#lx}\n",

@@ -1614,15 +1614,10 @@ exec_copyout_strings(struct image_params *imgp, uintptr_t *stack_base)
 		execpath_len = 0;
 	p = imgp->proc;
 	szsigcode = 0;
-<<<<<<< HEAD
-	p->p_sigcode_base = p->p_sysent->sv_sigcode_base;
 	arginfo = (struct ps_strings *)p->p_psstrings;
-	if (p->p_sigcode_base == 0) {
-=======
-	arginfo = (struct ps_strings *)p->p_sysent->sv_psstrings;
+	p->p_sigcode_base = p->p_sysent->sv_sigcode_base;
 	imgp->ps_strings = arginfo;
-	if (p->p_sysent->sv_sigcode_base == 0) {
->>>>>>> tor/freebsd/current/master
+	if (p->p_sigcode_base == 0) {
 		if (p->p_sysent->sv_szsigcode != NULL)
 			szsigcode = *(p->p_sysent->sv_szsigcode);
 #ifdef PAX_ASLR
