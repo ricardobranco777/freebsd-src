@@ -1175,10 +1175,7 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 		 * non-zero for some reason.
 		 */
 		if (baddr == 0) {
-			if ((sv->sv_flags & SV_ASLR) == 0 ||
-			    (fctl0 & NT_FREEBSD_FCTL_ASLR_DISABLE) != 0)
-				do_asr = 1;
-			else if ((__elfN(pie_aslr_enabled) &&
+			if ((__elfN(pie_aslr_enabled) &&
 			    (imgp->proc->p_flag2 & P2_ASLR_DISABLE) == 0) ||
 			    (imgp->proc->p_flag2 & P2_ASLR_ENABLE) != 0)
 				do_asr = 1;
@@ -1213,8 +1210,8 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 		PROC_UNLOCK(imgp->proc);
 	}
 
-	if ((imgp->proc->p_flag2 & P2_ASLR_ENABLE) != 0 ||
-	    (__elfN(aslr_enabled) && hdr->e_type == ET_EXEC) ||
+	if (((imgp->proc->p_flag2 & P2_ASLR_ENABLE) != 0 ||
+	    (__elfN(aslr_enabled) && hdr->e_type == ET_EXEC)) &&
 	    do_asr) {
 		imgp->map_flags |= MAP_ASLR;
 		/*
