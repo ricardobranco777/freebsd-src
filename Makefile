@@ -502,7 +502,7 @@ EXTRA_ARCHES_mips+=	mipsn32
 # powerpcspe excluded from main list until clang fixed
 EXTRA_ARCHES_powerpc=	powerpcspe
 .endif
-TARGETS?=amd64 arm arm64 i386 mips powerpc riscv
+TARGETS?=amd64 arm arm64 mips powerpc riscv
 _UNIVERSE_TARGETS=	${TARGETS}
 TARGET_ARCHES_arm?=	armv6 armv7
 TARGET_ARCHES_arm64?=	aarch64
