@@ -86,7 +86,6 @@ __FBSDID("$FreeBSD$");
 #include "xmsr.h"
 #include "spinup_ap.h"
 #include "rtc.h"
-#include "vmgenc.h"
 
 #define GUEST_NIO_PORT		0x488	/* guest upcalls via i/o port */
 
@@ -1174,13 +1173,6 @@ main(int argc, char *argv[])
 		perror("device emulation initialization error");
 		exit(4);
 	}
-
-	/*
-	 * Initialize after PCI, to allow a bootrom file to reserve the high
-	 * region.
-	 */
-	if (acpi)
-		vmgenc_init(ctx);
 
 	if (dbg_port != 0)
 		init_dbgport(dbg_port);

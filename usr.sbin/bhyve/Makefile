@@ -67,7 +67,6 @@ SRCS=	\
 	usb_mouse.c		\
 	virtio.c		\
 	vga.c			\
-	vmgenc.c		\
 	xmsr.c			\
 	spinup_ap.c		\
 	iov.c
