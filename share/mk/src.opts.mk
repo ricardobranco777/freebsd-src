@@ -62,11 +62,7 @@ __DEFAULT_YES_OPTIONS = \
     AUTHPF \
     AUTOFS \
     BHYVE \
-<<<<<<< HEAD
     BIND_NOW \
-    BINUTILS \
-=======
->>>>>>> freebsd/master
     BLACKLIST \
     BLUETOOTH \
     BOOT \
