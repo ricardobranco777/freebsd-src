@@ -378,7 +378,6 @@ int	 rt_addrmsg(int, struct ifaddr *, int);
 int	 rt_routemsg(int, struct rtentry *, struct ifnet *ifp, int, int);
 int	 rt_routemsg_info(int, struct rt_addrinfo *, int);
 void	 rt_newmaddrmsg(int, struct ifmultiaddr *);
-int	 rt_setgate(struct rtentry *, struct sockaddr *, struct sockaddr *);
 void 	 rt_maskedcopy(struct sockaddr *, struct sockaddr *, struct sockaddr *);
 struct rib_head *rt_table_init(int, int, u_int);
 void	rt_table_destroy(struct rib_head *);
@@ -436,6 +435,8 @@ int	rib_add_redirect(u_int fibnum, struct sockaddr *dst,
 
 /* New API */
 void	rib_walk(int af, u_int fibnum, rt_walktree_f_t *wa_f, void *arg);
+struct nhop_object *rib_lookup(uint32_t fibnum, const struct sockaddr *dst,
+	    uint32_t flags, uint32_t flowid);
 #endif
 
 #endif
