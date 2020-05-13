@@ -968,7 +968,6 @@ MAN+=	\
 	uart.4 \
 	uath.4 \
 	ubsa.4 \
-	ubsec.4 \
 	ubser.4 \
 	ubtbcmfw.4 \
 	uchcom.4 \

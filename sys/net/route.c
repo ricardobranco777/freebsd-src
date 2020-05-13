@@ -420,87 +420,14 @@ sys_setfib(struct thread *td, struct setfib_args *uap)
 }
 
 /*
- * Look up the route that matches the address given
- * Or, at least try.. Create a cloned route if needed.
- *
- * The returned route, if any, is locked.
- */
-struct rtentry *
-rtalloc1(struct sockaddr *dst, int report, u_long ignflags)
-{
-
-	return (rtalloc1_fib(dst, report, ignflags, RT_DEFAULT_FIB));
-}
-
-struct rtentry *
-rtalloc1_fib(struct sockaddr *dst, int report, u_long ignflags,
-		    u_int fibnum)
-{
-	RIB_RLOCK_TRACKER;
-	struct rib_head *rh;
-	struct radix_node *rn;
-	struct rtentry *newrt;
-	struct rt_addrinfo info;
-	int err = 0, msgtype = RTM_MISS;
-
-	KASSERT((fibnum < rt_numfibs), ("rtalloc1_fib: bad fibnum"));
-	rh = rt_tables_get_rnh(fibnum, dst->sa_family);
-	newrt = NULL;
-	if (rh == NULL)
-		goto miss;
-
-	/*
-	 * Look up the address in the table for that Address Family
-	 */
-	if ((ignflags & RTF_RNH_LOCKED) == 0)
-		RIB_RLOCK(rh);
-#ifdef INVARIANTS
-	else
-		RIB_LOCK_ASSERT(rh);
-#endif
-	rn = rh->rnh_matchaddr(dst, &rh->head);
-	if (rn && ((rn->rn_flags & RNF_ROOT) == 0)) {
-		newrt = RNTORT(rn);
-		RT_LOCK(newrt);
-		RT_ADDREF(newrt);
-		if ((ignflags & RTF_RNH_LOCKED) == 0)
-			RIB_RUNLOCK(rh);
-		return (newrt);
-
-	} else if ((ignflags & RTF_RNH_LOCKED) == 0)
-		RIB_RUNLOCK(rh);
-	/*
-	 * Either we hit the root or could not find any match,
-	 * which basically means: "cannot get there from here".
-	 */
-miss:
-	RTSTAT_INC(rts_unreach);
-
-	if (report) {
-		/*
-		 * If required, report the failure to the supervising
-		 * Authorities.
-		 * For a delete, this is not an error. (report == 0)
-		 */
-		bzero(&info, sizeof(info));
-		info.rti_info[RTAX_DST] = dst;
-		rt_missmsg_fib(msgtype, &info, 0, err, fibnum);
-	}
-	return (newrt);
-}
-
-/*
  * Remove a reference count from an rtentry.
  * If the count gets low enough, take it out of the routing table
  */
 void
 rtfree(struct rtentry *rt)
 {
-	struct rib_head *rnh;
 
 	KASSERT(rt != NULL,("%s: NULL rt", __func__));
-	rnh = rt_tables_get_rnh(rt->rt_fibnum, rt_key(rt)->sa_family);
-	KASSERT(rnh != NULL,("%s: NULL rnh", __func__));
 
 	RT_LOCK_ASSERT(rt);
 
@@ -513,18 +440,6 @@ rtfree(struct rtentry *rt)
 		log(LOG_DEBUG, "%s: %p has %d refs\n", __func__, rt, rt->rt_refcnt);
 		goto done;
 	}
-
-	/*
-	 * On last reference give the "close method" a chance
-	 * to cleanup private state.  This also permits (for
-	 * IPv4 and IPv6) a chance to decide if the routing table
-	 * entry should be purged immediately or at a later time.
-	 * When an immediate purge is to happen the close routine
-	 * typically calls rtexpunge which clears the RTF_UP flag
-	 * on the entry so that the code below reclaims the storage.
-	 */
-	if (rt->rt_refcnt == 0 && rnh->rnh_close)
-		rnh->rnh_close((struct radix_node *)rt, &rnh->head);
 
 	/*
 	 * If we are no longer "up" (and ref == 0)
@@ -1571,7 +1486,6 @@ add_route(struct rib_head *rnh, struct rt_addrinfo *info,
 		return (ENOBUFS);
 	}
 	rt->rt_flags = RTF_UP | flags;
-	rt->rt_fibnum = rnh->rib_fibnum;
 	rt->rt_nhop = nh;
 
 	/* Fill in dst */
