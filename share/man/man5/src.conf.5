@@ -180,21 +180,8 @@ This option only affects amd64/amd64.
 .It Va WITHOUT_BIND_NOW
 Do not build all binaries with the
 .Dv DF_BIND_NOW
-<<<<<<< HEAD
 flag set.
 Run-time relocation processing will be performed on demand.
-.It Va WITHOUT_BINUTILS
-Do not build or install GNU
-.Xr as 1
-as part
-of the normal system build.
-.Pp
-This is a default setting on
-arm/armv6, arm/armv7, arm64/aarch64, i386/i386, mips/mips, mips/mips64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
-=======
-flag set to indicate that the run-time loader should perform all relocation
-processing at process startup rather than on demand.
->>>>>>> origin/freebsd/current/master
 .It Va WITH_BINUTILS
 Build and install GNU
 .Xr as 1
@@ -206,7 +193,7 @@ Do not build GNU binutils
 as part of the bootstrap process.
 .Pp
 This is a default setting on
-arm/armv6, arm/armv7, arm64/aarch64, i386/i386, mips/mips, mips/mips64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
+arm/armv6, arm/armv7, arm64/aarch64, mips/mips, mips/mips64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
 .It Va WITH_BINUTILS_BOOTSTRAP
 Build GNU binutils
 as part of the bootstrap process.
