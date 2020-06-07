@@ -180,6 +180,7 @@ This option only affects amd64/amd64.
 .It Va WITHOUT_BIND_NOW
 Do not build all binaries with the
 .Dv DF_BIND_NOW
+<<<<<<< HEAD
 flag set.
 Run-time relocation processing will be performed on demand.
 .It Va WITH_BINUTILS
@@ -191,6 +192,10 @@ This option is not available as of
 .It Va WITH_BINUTILS_BOOTSTRAP
 Build GNU binutils
 as part of the bootstrap process.
+=======
+flag set to indicate that the run-time loader should perform all relocation
+processing at process startup rather than on demand.
+>>>>>>> tor/freebsd/current/master
 .It Va WITHOUT_BLACKLIST
 Set this if you do not want to build
 .Xr blacklistd 8
@@ -386,10 +391,13 @@ When set, it enforces these options:
 .Pp
 .Bl -item -compact
 .It
+<<<<<<< HEAD
 .Va WITHOUT_BINUTILS_BOOTSTRAP
 .It
 .Va WITHOUT_CFI
 .It
+=======
+>>>>>>> tor/freebsd/current/master
 .Va WITHOUT_CLANG_BOOTSTRAP
 .It
 .Va WITHOUT_ELFTOOLCHAIN_BOOTSTRAP
@@ -1697,8 +1705,6 @@ compilers, debuggers etc.
 When set, it enforces these options:
 .Pp
 .Bl -item -compact
-.It
-.Va WITHOUT_BINUTILS
 .It
 .Va WITHOUT_CLANG
 .It
