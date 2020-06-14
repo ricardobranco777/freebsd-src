@@ -35,7 +35,6 @@ PROG=	${PROG_CXX}
 MK_DEBUG_FILES=	no
 .endif
 
-
 .if ${MACHINE_CPUARCH} == "riscv" && ${LINKER_FEATURES:Mriscv-relaxations} == ""
 CFLAGS += -mno-relax
 .endif
