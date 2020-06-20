@@ -2208,6 +2208,45 @@ process_z(Obj_Entry *root)
 		}
 	}
 }
+
+static void
+parse_rtld_phdr(Obj_Entry *obj)
+{
+	const Elf_Phdr *ph;
+	Elf_Addr note_start, note_end;
+
+#ifdef HARDENEDBSD
+	obj->stack_flags = PF_R | PF_W;
+#else
+	obj->stack_flags = PF_X | PF_R | PF_W;
+#endif
+	for (ph = obj->phdr;  (const char *)ph < (const char *)obj->phdr +
+	    obj->phsize; ph++) {
+		switch (ph->p_type) {
+		case PT_GNU_STACK:
+			obj->stack_flags = ph->p_flags;
+#ifdef HARDENEDBSD
+			/*
+			 * XXX Shared objects that set RWX stack can
+			 * die in a fire
+			 */
+			obj->stack_flags &= ~(PF_X);
+#endif
+			break;
+		case PT_GNU_RELRO:
+			obj->relro_page = obj->relocbase +
+			    trunc_page(ph->p_vaddr);
+			obj->relro_size = round_page(ph->p_memsz);
+			break;
+		case PT_NOTE:
+			note_start = (Elf_Addr)obj->relocbase + ph->p_vaddr;
+			note_end = note_start + ph->p_filesz;
+			digest_notes(obj, note_start, note_end);
+			break;
+		}
+	}
+}
+
 /*
  * Initialize the dynamic linker.  The argument is the address at which
  * the dynamic linker has been mapped into memory.  The primary task of
@@ -2276,6 +2315,9 @@ init_rtld(caddr_t mapbase, Elf_Auxinfo **aux_info)
 
     /* Replace the path with a dynamically allocated copy. */
     obj_rtld.path = xstrdup(ld_path_rtld);
+
+    parse_rtld_phdr(&obj_rtld);
+    obj_enforce_relro(&obj_rtld);
 
     r_debug.r_brk = r_debug_state;
     r_debug.r_state = RT_CONSISTENT;
