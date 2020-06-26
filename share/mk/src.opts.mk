@@ -202,13 +202,8 @@ __DEFAULT_NO_OPTIONS = \
     BEARSSL \
     BHYVE_SNAPSHOT \
     BSD_GREP \
-<<<<<<< HEAD
-    BSD_GREP_FASTMATCH \
     DEVD_PIE \
-=======
-    CLANG_EXTRAS \
     CLANG_FORMAT \
->>>>>>> internal/freebsd/current/master
     DTRACE_TESTS \
     EXPERIMENTAL \
     FREEBSD_UPDATE \
