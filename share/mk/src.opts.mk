@@ -202,8 +202,13 @@ __DEFAULT_NO_OPTIONS = \
     BEARSSL \
     BHYVE_SNAPSHOT \
     BSD_GREP \
+<<<<<<< HEAD
     BSD_GREP_FASTMATCH \
     DEVD_PIE \
+=======
+    CLANG_EXTRAS \
+    CLANG_FORMAT \
+>>>>>>> internal/freebsd/current/master
     DTRACE_TESTS \
     EXPERIMENTAL \
     FREEBSD_UPDATE \
@@ -519,6 +524,7 @@ MK_LLDB:=	no
 
 .if ${MK_CLANG} == "no"
 MK_CLANG_EXTRAS:= no
+MK_CLANG_FORMAT:= no
 MK_CLANG_FULL:= no
 MK_LLVM_COV:= no
 MK_SAFESTACK:=	no
