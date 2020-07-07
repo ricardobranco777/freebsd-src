@@ -239,13 +239,7 @@ sbuf_tty_drain(void *a, const char *d, int len)
 }
 
 #ifdef STACK
-<<<<<<< HEAD
-static bool tty_info_kstacks = false;
-SYSCTL_BOOL(_kern, OID_AUTO, tty_info_kstacks, CTLFLAG_RWTUN,
-    &tty_info_kstacks, 0,
-    "Enable printing kernel stack(9) traces on ^T (tty info)");
-=======
-static int tty_info_kstacks = STACK_SBUF_FMT_COMPACT;
+static int tty_info_kstacks = STACK_SBUF_FMT_NONE;
 
 static int
 sysctl_tty_info_kstacks(SYSCTL_HANDLER_ARGS)
@@ -275,7 +269,6 @@ SYSCTL_PROC(_kern, OID_AUTO, tty_info_kstacks,
     sysctl_tty_info_kstacks, "I",
     "Adjust format of kernel stack(9) traces on ^T (tty info): "
     "0 - disabled; 1 - long; 2 - compact");
->>>>>>> internal/freebsd/current/master
 #endif
 
 /*
