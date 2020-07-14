@@ -50,8 +50,13 @@ dialog --backtitle 'HardenedBSD Installer' --title 'Network Configuration' --yes
 if [ $? -eq $DIALOG_OK ]; then
 	if [ ! -z $BSDINSTALL_CONFIGCURRENT ]; then
 		ifconfig $INTERFACE up
+<<<<<<< HEAD
 		dialog --backtitle 'HardenedBSD Installer' --infobox "Acquiring DHCP lease..." 0 0
 		err=$( dhclient $INTERFACE 2>&1 )
+=======
+		dialog --backtitle 'FreeBSD Installer' --infobox "Acquiring DHCP lease..." 0 0
+		err=$( pkill -F /var/run/dhclient/dhclient.${INTERFACE}.pid; dhclient $INTERFACE 2>&1 )
+>>>>>>> origin/freebsd/current/master
 		if [ $? -ne 0 ]; then
 			f_dprintf "%s" "$err"
 			dialog --backtitle 'HardenedBSD Installer' --msgbox "DHCP lease acquisition failed." 0 0
