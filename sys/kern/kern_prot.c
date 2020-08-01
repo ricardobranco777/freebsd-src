@@ -1891,7 +1891,8 @@ crunuse(struct thread *td)
 {
 	struct ucred *cr, *crold;
 
-	cr = td->td_ucred;
+	MPASS(td->td_realucred == td->td_ucred);
+	cr = td->td_realucred;
 	mtx_lock(&cr->cr_mtx);
 	cr->cr_ref += td->td_ucredref;
 	td->td_ucredref = 0;
@@ -1907,6 +1908,7 @@ crunuse(struct thread *td)
 		crold = NULL;
 	}
 	mtx_unlock(&cr->cr_mtx);
+	td->td_realucred = NULL;
 	return (crold);
 }
 
