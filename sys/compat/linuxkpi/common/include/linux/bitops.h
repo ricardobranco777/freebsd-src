@@ -278,8 +278,8 @@ find_next_zero_bit(const unsigned long *addr, unsigned long size,
 static inline void
 clear_bit_unlock(long bit, volatile unsigned long *var)
 {
+	atomic_thread_fence_rel();
 	clear_bit(bit, var);
-	wmb();
 }
 
 static inline int
