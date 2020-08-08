@@ -12,7 +12,7 @@ CFI_OVERRIDE=-fno-sanitize=cfi-icall
 
 CFLAGS+= -I${SRCTOP}/lib/libc/gen		# for pw_scan.h
 .if defined(BOOTSTRAPPING)
-CFLAGS+=-I${.CURDIR}
+CFLAGS+=-I${.CURDIR}/bootstrap
 .endif
 
 .include <bsd.prog.mk>
