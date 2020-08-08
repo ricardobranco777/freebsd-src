@@ -4,9 +4,13 @@
 
 .include <src.opts.mk>
 
+<<<<<<< HEAD
 NOCFI=	yes
 
 .if ${MK_BSD_GREP} == "yes"
+=======
+.if ${MK_BSD_GREP} == "yes" || defined(BOOTSTRAPPING)
+>>>>>>> origin/freebsd/current/master
 PROG=	grep
 MAN1=	grep.1 zgrep.1
 .else
@@ -52,7 +56,7 @@ MLINKS=		zgrep.1 zfgrep.1 \
 
 CFLAGS.gcc+= --param max-inline-insns-single=500
 
-.if ${MK_BSD_GREP} == "yes"
+.if ${MK_BSD_GREP} == "yes" || defined(BOOTSTRAPPING)
 LINKS+=	${BINDIR}/grep ${BINDIR}/egrep \
 	${BINDIR}/grep ${BINDIR}/fgrep \
 	${BINDIR}/grep ${BINDIR}/rgrep \
