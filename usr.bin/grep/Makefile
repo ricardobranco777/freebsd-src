@@ -4,13 +4,9 @@
 
 .include <src.opts.mk>
 
-<<<<<<< HEAD
 NOCFI=	yes
 
-.if ${MK_BSD_GREP} == "yes"
-=======
 .if ${MK_BSD_GREP} == "yes" || defined(BOOTSTRAPPING)
->>>>>>> origin/freebsd/current/master
 PROG=	grep
 MAN1=	grep.1 zgrep.1
 .else
