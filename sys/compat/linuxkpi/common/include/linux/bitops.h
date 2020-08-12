@@ -278,16 +278,6 @@ find_next_zero_bit(const unsigned long *addr, unsigned long size,
 #define	test_bit(i, a)							\
     !!(READ_ONCE(((volatile const unsigned long *)(a))[BIT_WORD(i)]) & BIT_MASK(i))
 
-<<<<<<< HEAD
-static inline void
-clear_bit_unlock(long bit, volatile unsigned long *var)
-{
-	atomic_thread_fence_rel();
-	clear_bit(bit, var);
-}
-
-=======
->>>>>>> origin/freebsd/current/master
 static inline int
 test_and_clear_bit(long bit, volatile unsigned long *var)
 {
