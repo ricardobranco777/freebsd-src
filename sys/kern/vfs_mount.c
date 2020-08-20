@@ -2445,16 +2445,22 @@ dev_vfs_event_mntopt(struct sbuf *sb, const char *what, struct vfsoptlist *opts)
 
 	if (opts == NULL || TAILQ_EMPTY(opts))
 		return;
-	sbuf_printf(sb, " %s=\"", what);
+	if (sbuf_printf(sb, " %s=\"", what) == -1) {
+		return;
+	}
 	TAILQ_FOREACH(opt, opts, link) {
 		if (opt->name[0] == '\0' || (opt->len > 0 && *(char *)opt->value == '\0'))
 			continue;
 		devctl_safe_quote_sb(sb, opt->name);
 		if (opt->len > 0) {
-			sbuf_putc(sb, '=');
+			if (sbuf_putc(sb, '=') == -1) {
+				return;
+			}
 			devctl_safe_quote_sb(sb, opt->value);
 		}
-		sbuf_putc(sb, ';');
+		if (sbuf_putc(sb, ';') == -1) {
+			return;
+		}
 	}
 	sbuf_putc(sb, '"');
 }
@@ -2469,34 +2475,59 @@ dev_vfs_event(const char *type, struct mount *mp, bool donew)
 	struct statfs *sfp = &mp->mnt_stat;
 	char *buf;
 
-	buf = malloc(DEVCTL_LEN, M_MOUNT, M_WAITOK);
+	buf = malloc(DEVCTL_LEN, M_MOUNT, M_NOWAIT);
 	if (buf == NULL)
 		return;
-	sbuf_new(&sb, buf, DEVCTL_LEN, SBUF_FIXEDLEN);
-	sbuf_cpy(&sb, "mount-point=\"");
+	if (sbuf_new(&sb, buf, DEVCTL_LEN, SBUF_FIXEDLEN) == NULL) {
+		free(buf, M_MOUNT);
+		return;
+	}
+	if (sbuf_cpy(&sb, "mount-point=\"") == -1) {
+		goto err;
+	}
 	devctl_safe_quote_sb(&sb, sfp->f_mntonname);
-	sbuf_cat(&sb, "\" mount-dev=\"");
+	if (sbuf_cat(&sb, "\" mount-dev=\"") == -1) {
+		goto err;
+	}
 	devctl_safe_quote_sb(&sb, sfp->f_mntfromname);
-	sbuf_cat(&sb, "\" mount-type=\"");
+	if (sbuf_cat(&sb, "\" mount-type=\"") == -1) {
+		goto err;
+	}
 	devctl_safe_quote_sb(&sb, sfp->f_fstypename);
-	sbuf_cat(&sb, "\" fsid=0x");
+	if (sbuf_cat(&sb, "\" fsid=0x") == -1) {
+		goto err;
+	}
 	cp = (const uint8_t *)&sfp->f_fsid.val[0];
-	for (int i = 0; i < sizeof(sfp->f_fsid); i++)
-		sbuf_printf(&sb, "%02x", cp[i]);
-	sbuf_printf(&sb, " owner=%u flags=\"", sfp->f_owner);
-	for (fp = optnames; fp->o_opt != 0; fp++) {
-		if ((mp->mnt_flag & fp->o_opt) != 0) {
-			sbuf_cat(&sb, fp->o_name);
-			sbuf_putc(&sb, ';');
+	for (int i = 0; i < sizeof(sfp->f_fsid); i++) {
+		if (sbuf_printf(&sb, "%02x", cp[i]) == -1) {
+			goto err;
 		}
 	}
-	sbuf_putc(&sb, '"');
+	if (sbuf_printf(&sb, " owner=%u flags=\"", sfp->f_owner) == -1) {
+		goto err;
+	}
+	for (fp = optnames; fp->o_opt != 0; fp++) {
+		if ((mp->mnt_flag & fp->o_opt) != 0) {
+			if (sbuf_cat(&sb, fp->o_name) == -1) {
+				goto err;
+			}
+			if (sbuf_putc(&sb, ';') == -1) {
+				goto err;
+			}
+		}
+	}
+	if (sbuf_putc(&sb, '"') == -1) {
+		goto err;
+	}
 	dev_vfs_event_mntopt(&sb, "opt", mp->mnt_opt);
 	if (donew)
 		dev_vfs_event_mntopt(&sb, "optnew", mp->mnt_optnew);
-	sbuf_finish(&sb);
+	if (sbuf_finish(&sb) == -1) {
+		goto err;
+	}
 
 	devctl_notify("VFS", "FS", type, sbuf_data(&sb));
+err:
 	sbuf_delete(&sb);
 	free(buf, M_MOUNT);
 }
