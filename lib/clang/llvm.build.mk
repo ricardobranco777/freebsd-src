@@ -107,4 +107,11 @@ CXXFLAGS+=	-fno-exceptions
 CXXFLAGS+=	-fno-rtti
 CXXFLAGS.clang+= -stdlib=libc++
 
+<<<<<<< HEAD
 NOCFI=		yes
+=======
+.if ${MACHINE_ARCH:Mmips64}
+STATIC_CFLAGS+= -mxgot
+STATIC_CXXFLAGS+= -mxgot
+.endif
+>>>>>>> origin/freebsd/current/master
