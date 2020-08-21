@@ -2516,7 +2516,6 @@ mount_devctl_event(const char *type, struct mount *mp, bool donew)
 			}
 		}
 	}
-<<<<<<< HEAD
 	if (sbuf_putc(&sb, '"') == -1) {
 		goto err;
 	}
@@ -2527,18 +2526,10 @@ mount_devctl_event(const char *type, struct mount *mp, bool donew)
 		goto err;
 	}
 
-	devctl_notify("VFS", "FS", type, sbuf_data(&sb));
-err:
-=======
-	sbuf_putc(&sb, '"');
-	mount_devctl_event_mntopt(&sb, "opt", mp->mnt_opt);
-	if (donew)
-		mount_devctl_event_mntopt(&sb, "optnew", mp->mnt_optnew);
-	sbuf_finish(&sb);
-
-	if (sbuf_error(&sb) == 0)
+	if (sbuf_error(&sb) == 0) {
 		devctl_notify("VFS", "FS", type, sbuf_data(&sb));
->>>>>>> origin/freebsd/current/master
+	}
+err:
 	sbuf_delete(&sb);
 	free(buf, M_MOUNT);
 }
