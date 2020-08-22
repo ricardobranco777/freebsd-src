@@ -2519,9 +2519,9 @@ mount_devctl_event(const char *type, struct mount *mp, bool donew)
 	if (sbuf_putc(&sb, '"') == -1) {
 		goto err;
 	}
-	dev_vfs_event_mntopt(&sb, "opt", mp->mnt_opt);
+	mount_devctl_event_mntopt(&sb, "opt", mp->mnt_opt);
 	if (donew)
-		dev_vfs_event_mntopt(&sb, "optnew", mp->mnt_optnew);
+		mount_devctl_event_mntopt(&sb, "optnew", mp->mnt_optnew);
 	if (sbuf_finish(&sb) == -1) {
 		goto err;
 	}
