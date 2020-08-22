@@ -1209,6 +1209,11 @@ nextname:
 		VOP_UNLOCK(dp);
 success:
 	/*
+	 * FIXME: for lookups which only cross a mount point to fetch the
+	 * root vnode, ni_dvp will be set to vp_crossmp. This can be a problem
+	 * if either WANTPARENT or LOCKPARENT is set.
+	 */
+	/*
 	 * Because of shared lookup we may have the vnode shared locked, but
 	 * the caller may want it to be exclusively locked.
 	 */
@@ -1379,6 +1384,7 @@ NDFREE_PNBUF(struct nameidata *ndp)
 {
 
 	if ((ndp->ni_cnd.cn_flags & HASBUF) != 0) {
+		MPASS((ndp->ni_cnd.cn_flags & (SAVENAME | SAVESTART)) != 0);
 		uma_zfree(namei_zone, ndp->ni_cnd.cn_pnbuf);
 		ndp->ni_cnd.cn_flags &= ~HASBUF;
 	}
