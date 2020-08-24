@@ -742,10 +742,17 @@ struct sysentvec elf_linux_sysvec = {
 	.sv_imgact_try	= linux_exec_imgact_try,
 	.sv_minsigstksz	= LINUX_MINSIGSTKSZ,
 	.sv_minuser	= VM_MIN_ADDRESS,
+<<<<<<< HEAD
 	.sv_maxuser	= VM_MAXUSER_ADDRESS,
 	.sv_usrstack	= USRSTACK,
 	.sv_psstrings	= PS_STRINGS,
 	.sv_stackprot	= VM_PROT_READ | VM_PROT_WRITE,
+=======
+	.sv_maxuser	= VM_MAXUSER_ADDRESS_LA48,
+	.sv_usrstack	= USRSTACK_LA48,
+	.sv_psstrings	= PS_STRINGS_LA48,
+	.sv_stackprot	= VM_PROT_ALL,
+>>>>>>> origin/freebsd/current/master
 	.sv_copyout_auxargs = linux_copyout_auxargs,
 	.sv_copyout_strings = linux_copyout_strings,
 	.sv_setregs	= linux_exec_setregs,
@@ -755,7 +762,7 @@ struct sysentvec elf_linux_sysvec = {
 	.sv_set_syscall_retval = linux_set_syscall_retval,
 	.sv_fetch_syscall_args = linux_fetch_syscall_args,
 	.sv_syscallnames = NULL,
-	.sv_shared_page_base = SHAREDPAGE,
+	.sv_shared_page_base = SHAREDPAGE_LA48,
 	.sv_shared_page_len = PAGE_SIZE,
 	.sv_schedtail	= linux_schedtail,
 	.sv_thread_detach = linux_thread_detach,
