@@ -183,11 +183,7 @@ _LIBRARIES=	\
 		tacplus \
 		termcap \
 		termcapw \
-<<<<<<< HEAD
-		tls \
-=======
 		tpool \
->>>>>>> origin/freebsd/current/master
 		ufs \
 		ugidfw \
 		ulog \
