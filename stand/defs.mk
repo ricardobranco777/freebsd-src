@@ -36,6 +36,9 @@ SASRC=		${BOOTSRC}/libsa
 SYSDIR=		${SRCTOP}/sys
 UBOOTSRC=	${BOOTSRC}/uboot
 ZFSSRC=		${SASRC}/zfs
+OZFS=		${SRCTOP}/sys/contrib/openzfs
+ZFSOSSRC=	${OZFS}/module/os/freebsd/
+ZFSOSINC=	${OZFS}/include/os/freebsd
 LIBCSRC=	${SRCTOP}/lib/libc
 
 BOOTOBJ=	${OBJTOP}/stand
