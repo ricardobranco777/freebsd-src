@@ -1151,7 +1151,6 @@ set_interrupt_apic_ids(void)
 	}
 }
 
-
 #ifdef COUNT_XINVLTLB_HITS
 u_int xhits_gbl[MAXCPU];
 u_int xhits_pg[MAXCPU];

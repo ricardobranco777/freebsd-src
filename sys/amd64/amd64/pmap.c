@@ -1527,7 +1527,7 @@ static void
 nkpt_init(vm_paddr_t addr)
 {
 	int pt_pages;
-	
+
 #ifdef NKPT
 	pt_pages = NKPT;
 #else
@@ -3690,7 +3690,6 @@ pmap_map(vm_offset_t *virt, vm_paddr_t start, vm_paddr_t end, int prot)
 	return PHYS_TO_DMAP(start);
 }
 
-
 /*
  * Add a list of wired pages to the kva
  * this routine is only used for temporary
@@ -3763,7 +3762,7 @@ pmap_add_delayed_free_list(vm_page_t m, struct spglist *free,
 		m->flags &= ~PG_ZERO;
 	SLIST_INSERT_HEAD(free, m, plinks.s.ss);
 }
-	
+
 /*
  * Inserts the specified page table page into the specified pmap's collection
  * of idle page table pages.  Each of a pmap's page table pages is responsible
@@ -4456,7 +4455,6 @@ retry:
 	return (m);
 }
 
-
 /***************************************************
  * Pmap allocation/deallocation routines.
  ***************************************************/
@@ -4652,7 +4650,6 @@ pmap_growkernel(vm_offset_t addr)
 		}
 	}
 }
-
 
 /***************************************************
  * page management routines.
@@ -5879,7 +5876,6 @@ pmap_remove(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 
 	lock = NULL;
 	for (; sva < eva; sva = va_next) {
-
 		if (pmap->pm_stats.resident_count == 0)
 			break;
 
@@ -6167,10 +6163,9 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 	 * fails.  In that case, stale TLB entries are immediately
 	 * invalidated.
 	 */
-	
+
 	PMAP_LOCK(pmap);
 	for (; sva < eva; sva = va_next) {
-
 		pml4e = pmap_pml4e(pmap, sva);
 		if ((*pml4e & PG_V) == 0) {
 			va_next = (sva + NBPML4) & ~PML4MASK;

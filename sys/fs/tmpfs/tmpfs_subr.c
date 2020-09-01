@@ -670,7 +670,7 @@ loop:
 		goto loop;
 	} else
 		node->tn_vpstate |= TMPFS_VNODE_ALLOCATING;
-	
+
 	TMPFS_NODE_UNLOCK(node);
 
 	/* Get a new vnode and associate it with our node. */
