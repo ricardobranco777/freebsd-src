@@ -3195,7 +3195,6 @@ prison_priv_check(struct ucred *cred, int priv)
 #endif /* VIMAGE */
 
 	switch (priv) {
-
 		/*
 		 * Allow ktrace privileges for root in jail.
 		 */
