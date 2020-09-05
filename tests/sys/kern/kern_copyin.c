@@ -1,10 +1,7 @@
 /*-
-<<<<<<< HEAD
  * Copyright (c) 2016 Oliver Pinter <op@hardenedbsd.org>
  * Copyright (c) 2015 The FreeBSD Foundation
-=======
  * Copyright (c) 2015, 2020 The FreeBSD Foundation
->>>>>>> origin/freebsd/current/master
  * All rights reserved.
  *
  * This software was developed by Konstantin Belousov <kib@FreeBSD.org>
@@ -36,15 +33,12 @@
 __FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
-<<<<<<< HEAD
 #ifdef HARDENEDBSD
 #include <sys/mman.h>
 #endif
 #include <sys/stat.h>
-=======
 #include <sys/exec.h>
 #include <sys/sysctl.h>
->>>>>>> origin/freebsd/current/master
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -100,25 +94,10 @@ ATF_TC_WITHOUT_HEAD(kern_copyin);
 ATF_TC_BODY(kern_copyin, tc)
 {
 	char template[] = "copyin.XXXXXX";
-<<<<<<< HEAD
-#ifdef HARDENEDBSD
-	/*
-	 * On HardenedBSD, the last page not always mapped in contrast
-	 * to FreeBSD, where the last page always mapped as shared page.
-	 * 
-	 * To fix this test, which expects the existence of the last page
-	 * just map them in at the test start, and unmap them at the end.
-	 */
-	void *last_page = (void *)(VM_MAXUSER_ADDRESS - PAGE_SIZE);
-	void *p;
-
-	p = mmap(last_page, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_EXCL | MAP_FIXED, -1, 0);
-	ATF_REQUIRE(last_page != MAP_FAILED);
-	ATF_REQUIRE(p == last_page);
-#endif
-=======
 	uintptr_t maxuser;
->>>>>>> origin/freebsd/current/master
+#ifdef HARDENEDBSD
+	void *p;
+#endif
 
 #if defined(__mips__)
 	/*
@@ -133,6 +112,19 @@ ATF_TC_BODY(kern_copyin, tc)
 	ATF_REQUIRE(maxuser != 0);
 #else
 	maxuser = VM_MAXUSER_ADDRESS;
+#endif
+
+#ifdef HARDENEDBSD
+	/*
+	 * On HardenedBSD, the last page not always mapped in contrast
+	 * to FreeBSD, where the last page always mapped as shared page.
+	 * 
+	 * To fix this test, which expects the existence of the last page
+	 * just map them in at the test start, and unmap them at the end.
+	 */
+	p = mmap((void *)maxuser, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_EXCL | MAP_FIXED, -1, 0);
+	ATF_REQUIRE(p != MAP_FAILED);
+	ATF_REQUIRE(p == (void *)maxuser);
 #endif
 
 	scratch_file = mkstemp(template);
