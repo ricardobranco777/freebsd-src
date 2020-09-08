@@ -71,6 +71,9 @@ CWARNEXTRA+=	-Wno-address-of-packed-member
 .endif
 .endif	# gcc
 
+OPTIMIZATION_CFLAGS?=	-O2
+CFLAGS+=		${OPTIMIZATION_CFLAGS}
+
 # This warning is utter nonsense
 CWARNFLAGS+=	-Wno-format-zero-length
 
