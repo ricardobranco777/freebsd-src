@@ -229,7 +229,6 @@ kern_mmap_req(struct thread *td, const struct mmap_req *mrp)
 	cap_rights_t rights;
 	mmap_check_fp_fn check_fp_fn;
 #ifdef PAX_ASLR
-	vm_offset_t orig_addr;
 	int pax_aslr_done;
 #endif
 
