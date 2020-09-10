@@ -1577,16 +1577,12 @@ vm_map_insert(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 	KASSERT(object != kernel_object ||
 	    (cow & MAP_COPY_ON_WRITE) == 0,
 	    ("vm_map_insert: kernel object and COW"));
-<<<<<<< HEAD
-	KASSERT(object == NULL || (cow & MAP_NOFAULT) == 0,
-	    ("vm_map_insert: paradoxical MAP_NOFAULT request"));
-#ifndef PAX_NOEXEC
-=======
 	KASSERT(object == NULL || (cow & MAP_NOFAULT) == 0 ||
 	    (cow & MAP_SPLIT_BOUNDARY_MASK) != 0,
 	    ("vm_map_insert: paradoxical MAP_NOFAULT request, obj %p cow %#x",
 	    object, cow));
->>>>>>> origin/freebsd/current/master
+
+#ifndef PAX_NOEXEC
 	KASSERT((prot & ~max) == 0,
 	    ("prot %#x is not subset of max_prot %#x", prot, max));
 #endif
