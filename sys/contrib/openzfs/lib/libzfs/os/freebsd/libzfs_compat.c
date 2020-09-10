@@ -201,11 +201,20 @@ zfs_ioctl(libzfs_handle_t *hdl, int request, zfs_cmd_t *zc)
 int
 libzfs_load_module(void)
 {
+
+	if (getuid()) {
+		/*
+		 * HBSD: KLD-related syscalls require a privileged
+		 * account.
+		 */
+		return (0);
+	}
 	/*
 	 * XXX: kldfind(ZFS_KMOD) would be nice here, but we retain
 	 * modfind("zfs") so out-of-base openzfs userland works with the
 	 * in-base module.
 	 */
+
 	if (modfind("zfs") < 0) {
 		/* Not present in kernel, try loading it. */
 		if (kldload(ZFS_KMOD) < 0 && errno != EEXIST) {
