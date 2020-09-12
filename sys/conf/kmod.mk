@@ -85,9 +85,6 @@ __KLD_SHARED=yes
 __KLD_SHARED=no
 .endif
 
-OPTIMIZATION_CFLAGS?=	-O2
-CFLAGS+=		${OPTIMIZATION_CFLAGS}
-
 .if !empty(CFLAGS:M-O[23s]) && empty(CFLAGS:M-fno-strict-aliasing)
 CFLAGS+=	-fno-strict-aliasing
 .endif
