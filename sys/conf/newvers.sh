@@ -54,7 +54,11 @@
 
 TYPE="FreeBSD"
 REVISION="13.0"
+<<<<<<< HEAD
 BRANCH=${BRANCH_OVERRIDE:-CURRENT}-HBSD
+=======
+BRANCH="${BRANCH_OVERRIDE:-CURRENT}"
+>>>>>>> origin/freebsd/current/master
 RELEASE="${REVISION}-${BRANCH}"
 VERSION="${TYPE} ${RELEASE}"
 
