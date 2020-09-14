@@ -985,6 +985,7 @@ _sanity_check: .PHONY .MAKE
 _cleanobj_fast_depend_hack: .PHONY
 	@echo ">>> Deleting stale dependencies...";
 	sh ${.CURDIR}/tools/build/depend-cleanup.sh ${OBJTOP}
+<<<<<<< HEAD
 # Date      SVN Rev  Syscalls/Changes
 # Syscall stubs rewritten in C and obsolete MD assembly implementations
 # 20191009  r353340  removal of opensolaris_atomic.S (also r353381)
@@ -1011,6 +1012,8 @@ _cleanobj_fast_depend_hack: .PHONY
 	fi
 .endif
 .endfor
+=======
+>>>>>>> origin/freebsd/current/master
 
 _worldtmp: .PHONY
 	@echo
