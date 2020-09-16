@@ -309,16 +309,13 @@ struct tmpfs_node {
 			 * a position within the file is accessed.
 			 */
 			vm_object_t		tn_aobj;	/* (c) */
-<<<<<<< HEAD
+			struct tmpfs_mount	*tn_tmp;	/* (c) */
 
 			/*
 			 * The extended attributes list, which may be
 			 * empty.
 			 */
 			struct tmpfs_extattr_list_head	 tn_extattr_list; /* (i) */
-=======
-			struct tmpfs_mount	*tn_tmp;	/* (c) */
->>>>>>> origin/freebsd/current/master
 		} tn_reg;
 	} tn_spec;	/* (v) */
 };
