@@ -356,22 +356,6 @@ lib${LIB_PRIVATE}${LIB}_nossp_pic.a: ${NOSSPSOBJS}
 
 .endif # !defined(INTERNALLIB)
 
-<<<<<<< HEAD
-=======
-.if defined(INTERNALLIB) && ${MK_PIE} != "no"
-PIEOBJS+=	${OBJS:.o=.pieo}
-DEPENDOBJS+=	${PIEOBJS}
-CLEANFILES+=	${PIEOBJS}
-
-_LIBS+=		lib${LIB_PRIVATE}${LIB}_pie.a
-
-lib${LIB_PRIVATE}${LIB}_pie.a: ${PIEOBJS}
-	@${ECHO} building pie ${LIB} library
-	@rm -f ${.TARGET}
-	${AR} ${ARFLAGS} ${.TARGET} ${PIEOBJS} ${ARADD}
-.endif
-
->>>>>>> origin/freebsd/current/master
 .if defined(_SKIP_BUILD)
 all:
 .else
