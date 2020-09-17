@@ -55,8 +55,6 @@ __FBSDID("$FreeBSD$");
 struct sysentvec elf64_freebsd_sysvec_la48 = {
 	.sv_size	= SYS_MAXSYSCALL,
 	.sv_table	= sysent,
-	.sv_errsize	= 0,
-	.sv_errtbl	= NULL,
 	.sv_transtrap	= NULL,
 	.sv_fixup	= __elfN(freebsd_fixup),
 	.sv_sendsig	= sendsig,
@@ -95,8 +93,6 @@ struct sysentvec elf64_freebsd_sysvec_la48 = {
 struct sysentvec elf64_freebsd_sysvec_la57 = {
 	.sv_size	= SYS_MAXSYSCALL,
 	.sv_table	= sysent,
-	.sv_errsize	= 0,
-	.sv_errtbl	= NULL,
 	.sv_transtrap	= NULL,
 	.sv_fixup	= __elfN(freebsd_fixup),
 	.sv_sendsig	= sendsig,

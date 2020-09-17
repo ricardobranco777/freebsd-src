@@ -158,7 +158,7 @@ ARFLAGS		?=	rcv
 .if defined(%POSIX)
 ARFLAGS		?=	-rv
 .else
-ARFLAGS		?=	-crD
+ARFLAGS		?=	-crsD
 .endif
 .endif
 
