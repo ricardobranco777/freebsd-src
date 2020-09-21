@@ -67,12 +67,7 @@ __FBSDID("$FreeBSD$");
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
-<<<<<<< HEAD
-#include "opt_mpath.h"
 #include "opt_pax.h"
-
-=======
->>>>>>> origin/freebsd/current/master
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/lock.h>
