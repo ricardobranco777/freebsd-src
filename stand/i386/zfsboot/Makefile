@@ -81,11 +81,7 @@ zfsboot.ld: zfsboot.ldr zfsboot.bin ${BTXKERN}
 	    -o ${.TARGET} -P 1 zfsboot.bin
 
 zfsboot.ldr:
-<<<<<<< HEAD
-	touch ${.TARGET}
-=======
 	:> ${.TARGET}
->>>>>>> origin/freebsd/current/master
 
 zfsboot.bin: zfsboot.out
 	${OBJCOPY} -S -O binary zfsboot.out ${.TARGET}
