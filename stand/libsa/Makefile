@@ -122,7 +122,11 @@ beforedepend:
 	ln -sf ${SRCTOP}/include/arpa/inet.h arpa/inet.h; \
 	ln -sf ${SRCTOP}/include/arpa/tftp.h arpa/tftp.h; \
 	for i in _time.h _strings.h _string.h; do \
+<<<<<<< HEAD
 		[ -f xlocale/$$i ] || touch xlocale/$$i; \
+=======
+		[ -f xlocale/$$i ] || :> xlocale/$$i; \
+>>>>>>> origin/freebsd/current/master
 	done; \
 	for i in ${STAND_H_INC}; do \
 		ln -sf ${SASRC}/stand.h $$i; \
