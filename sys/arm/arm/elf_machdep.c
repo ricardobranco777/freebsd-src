@@ -89,7 +89,11 @@ struct sysentvec elf32_freebsd_sysvec = {
 	.sv_maxssiz	= NULL,
 	.sv_flags	=
 #if __ARM_ARCH >= 6
+<<<<<<< HEAD
 			  SV_SHP | SV_TIMEKEEP |
+=======
+			  SV_ASLR | SV_SHP | SV_TIMEKEEP | SV_RNG_SEED_VER |
+>>>>>>> freebsd/master
 #endif
 			  SV_ABI_FREEBSD | SV_ILP32,
 	.sv_set_syscall_retval = cpu_set_syscall_retval,
