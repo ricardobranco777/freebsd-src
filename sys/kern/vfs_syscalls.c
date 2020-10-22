@@ -3772,8 +3772,8 @@ kern_mkdirat(struct thread *td, int fd, const char *path, enum uio_seg segflg,
 restart:
 	bwillwrite();
 	NDINIT_ATRIGHTS(&nd, CREATE, LOCKPARENT | SAVENAME | AUDITVNODE1 |
-	    NOCACHE, segflg, path, fd, &cap_mkdirat_rights,
-	    td);
+	    NC_NOMAKEENTRY | NC_KEEPPOSENTRY, segflg, path, fd,
+	    &cap_mkdirat_rights, td);
 	nd.ni_cnd.cn_flags |= WILLBEDIR;
 	if ((error = namei(&nd)) != 0)
 		return (error);
