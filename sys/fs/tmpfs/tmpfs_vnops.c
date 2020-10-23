@@ -1349,7 +1349,6 @@ tmpfs_rmdir(struct vop_rmdir_args *v)
 	TMPFS_NODE_UNLOCK(dnode);
 
 	if (tmpfs_use_nc(dvp)) {
-		cache_purge(dvp);
 		cache_purge(vp);
 	}
 
