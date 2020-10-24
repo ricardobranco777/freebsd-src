@@ -275,12 +275,10 @@
             ..
             find_interface
             ..
-<<<<<<< HEAD
-            hardenedbsd
-=======
             flua
->>>>>>> freebsd/master
             ..
+            hardenedbsd
+	    ..
             hast
             ..
             hostapd

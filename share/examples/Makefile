@@ -16,11 +16,8 @@ LDIRS=	BSD_daemon \
 	drivers \
 	etc \
 	find_interface \
-<<<<<<< HEAD
-	hardenedbsd \
-=======
 	flua \
->>>>>>> freebsd/master
+	hardenedbsd \
 	indent \
 	ipfw \
 	jails \
