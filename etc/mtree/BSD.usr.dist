@@ -275,7 +275,11 @@
             ..
             find_interface
             ..
+<<<<<<< HEAD
             hardenedbsd
+=======
+            flua
+>>>>>>> freebsd/master
             ..
             hast
             ..
@@ -858,6 +862,8 @@
             man2
             ..
             man3
+            ..
+            man3lua
             ..
             man4
                 aarch64
