@@ -13,12 +13,8 @@ CFLAGS+=	-DWITH_ICONV
 .endif
 
 FILESGROUPS+=	CALS
-<<<<<<< HEAD
 CALS=	calendars/calendar.all \
 	calendars/calendar.freebsd
-=======
-CALS=	calendars/calendar.freebsd
->>>>>>> origin/freebsd/current/master
 CALSDIR=	${SHAREDIR}/calendar
 
 HAS_TESTS=
