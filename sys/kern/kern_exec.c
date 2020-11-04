@@ -1084,17 +1084,9 @@ exec_new_vmspace(struct image_params *imgp, struct sysentvec *sv)
 	 * not disrupted
 	 */
 	map = &vmspace->vm_map;
-<<<<<<< HEAD
 	sv_minuser = MAX(sv->sv_minuser, PAGE_SIZE);
-	if (vmspace->vm_refcnt == 1 && vm_map_min(map) == sv_minuser &&
-=======
-	if (map_at_zero)
-		sv_minuser = sv->sv_minuser;
-	else
-		sv_minuser = MAX(sv->sv_minuser, PAGE_SIZE);
 	if (refcount_load(&vmspace->vm_refcnt) == 1 &&
 	    vm_map_min(map) == sv_minuser &&
->>>>>>> origin/freebsd/current/master
 	    vm_map_max(map) == sv->sv_maxuser &&
 	    cpu_exec_vmspace_reuse(p, map)) {
 		shmexit(vmspace);
