@@ -291,6 +291,7 @@ struct vmspace {
 	caddr_t vm_taddr;	/* (c) user virtual address of text */
 	caddr_t vm_daddr;	/* (c) user virtual address of data */
 	caddr_t vm_maxsaddr;	/* user VA at max stack growth */
+<<<<<<< HEAD
 	vm_offset_t vm_aslr_delta_mmap;	/* mmap() random delta for ASLR */
 	vm_offset_t vm_aslr_delta_stack;	/* stack random delta for ASLR */
 	vm_offset_t vm_aslr_delta_thr_stack;	/* thread stack random delta for ASLR */
@@ -300,6 +301,9 @@ struct vmspace {
 	vm_offset_t vm_aslr_delta_map32bit; /* random for MAP_32BIT mappings */
 #endif
 	volatile int vm_refcnt;	/* number of references */
+=======
+	u_int vm_refcnt;	/* number of references */
+>>>>>>> origin/freebsd/current/master
 	/*
 	 * Keep the PMAP last, so that CPU-specific variations of that
 	 * structure on a single architecture don't result in offset
