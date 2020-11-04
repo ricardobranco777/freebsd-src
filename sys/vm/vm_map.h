@@ -299,7 +299,7 @@ struct vmspace {
 #ifdef __LP64__
 	vm_offset_t vm_aslr_delta_map32bit; /* random for MAP_32BIT mappings */
 #endif
-	volatile int vm_refcnt;	/* number of references */
+	u_int vm_refcnt;	/* number of references */
 	/*
 	 * Keep the PMAP last, so that CPU-specific variations of that
 	 * structure on a single architecture don't result in offset
