@@ -434,6 +434,8 @@ sysctl_kern_binmisc(SYSCTL_HANDLER_ARGS)
 			return (error);
 		if (IBE_VERSION != xbe.xbe_version)
 			return (EINVAL);
+		if ((xbe.xbe_flags & ~IBF_VALID_UFLAGS) != 0)
+			return (EINVAL);
 		if (interp_list_entry_count == IBE_MAX_ENTRIES)
 			return (ENOSPC);
 		error = imgact_binmisc_add_entry(&xbe);
@@ -580,24 +582,24 @@ imgact_binmisc_exec(struct image_params *imgp)
 	struct sbuf *sname;
 	char *s, *d;
 
+	sname = NULL;
 	/* Do we have an interpreter for the given image header? */
 	sx_slock(&interp_list_sx);
 	if ((ibe = imgact_binmisc_find_interpreter(image_header)) == NULL) {
-		sx_sunlock(&interp_list_sx);
-		return (-1);
+		error = -1;
+		goto done;
 	}
 
 	/* No interpreter nesting allowed. */
 	if (imgp->interpreted & IMGACT_BINMISC) {
-		sx_sunlock(&interp_list_sx);
-		return (ENOEXEC);
+		error = ENOEXEC;
+		goto done;
 	}
 
 	imgp->interpreted |= IMGACT_BINMISC;
 
 	if (imgp->args->fname != NULL) {
 		fname = imgp->args->fname;
-		sname = NULL;
 	} else {
 		/* Use the fdescfs(5) path for fexecve(2). */
 		sname = sbuf_new_auto();
@@ -636,7 +638,6 @@ imgact_binmisc_exec(struct image_params *imgp)
 
 		default:
 			/* Hmm... This shouldn't happen. */
-			sx_sunlock(&interp_list_sx);
 			printf("%s: Unknown macro #%c sequence in "
 			    "interpreter string\n", KMOD_NAME, *(s + 1));
 			error = EINVAL;
@@ -648,7 +649,6 @@ imgact_binmisc_exec(struct image_params *imgp)
 	/* Make room for the interpreter */
 	error = exec_args_adjust_args(imgp->args, 0, offset);
 	if (error != 0) {
-		sx_sunlock(&interp_list_sx);
 		goto done;
 	}
 
@@ -698,11 +698,11 @@ imgact_binmisc_exec(struct image_params *imgp)
 		s++;
 	}
 	*d = '\0';
-	sx_sunlock(&interp_list_sx);
 
 	imgp->interpreter_name = imgp->args->begin_argv;
 
 done:
+	sx_sunlock(&interp_list_sx);
 	if (sname)
 		sbuf_delete(sname);
 	return (error);
