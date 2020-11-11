@@ -24,7 +24,6 @@
 # - c++11:     supports full (or nearly full) C++11 programming environment.
 # - retpoline: supports the retpoline speculative execution vulnerability
 #              mitigation.
-# - init-all:  supports stack variable initialization.
 #
 # These variables with an X_ prefix will also be provided if XCC is set.
 #
@@ -215,7 +214,7 @@ ${X_}COMPILER_FEATURES=		c++11 c++14
 ${X_}COMPILER_FEATURES+=	c++17
 .endif
 .if ${${X_}COMPILER_TYPE} == "clang"
-${X_}COMPILER_FEATURES+=	retpoline init-all
+${X_}COMPILER_FEATURES+=	retpoline
 .endif
 
 .else
