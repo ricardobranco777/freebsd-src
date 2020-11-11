@@ -862,6 +862,7 @@ MALLOC_DECLARE(M_SUBPROC);
  */
 #define	PID_MAX		99999
 #define	NO_PID		100000
+#define	THREAD0_TID	NO_PID
 extern pid_t pid_max;
 
 #define	SESS_LEADER(p)	((p)->p_session->s_leader == (p))
@@ -974,10 +975,6 @@ extern LIST_HEAD(pidhashhead, proc) *pidhashtbl;
 extern struct sx *pidhashtbl_lock;
 extern u_long pidhash;
 extern u_long pidhashlock;
-#define	TIDHASH(tid)	(&tidhashtbl[(tid) & tidhash])
-extern LIST_HEAD(tidhashhead, thread) *tidhashtbl;
-extern u_long tidhash;
-extern struct rwlock tidhash_lock;
 
 #define	PGRPHASH(pgid)	(&pgrphashtbl[(pgid) & pgrphash])
 extern LIST_HEAD(pgrphashhead, pgrp) *pgrphashtbl;
