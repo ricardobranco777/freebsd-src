@@ -81,6 +81,13 @@ __DEFAULT_DEPENDENT_OPTIONS = \
 
 .include <bsd.mkopt.mk>
 
+<<<<<<< HEAD
+=======
+.if ${MK_INIT_ALL_PATTERN} == "yes" && ${MK_INIT_ALL_ZERO} == "yes"
+.warning WITH_INIT_ALL_PATTERN and WITH_INIT_ALL_ZERO are mutually exclusive.
+.endif
+
+>>>>>>> origin/freebsd/current/master
 #
 # Supported NO_* options (if defined, MK_* will be forced to "no",
 # regardless of user's setting).
