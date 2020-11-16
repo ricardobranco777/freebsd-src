@@ -339,6 +339,7 @@ thread_ctor(void *mem, int size, void *arg, int flags)
 	audit_thread_alloc(td);
 #endif
 	umtx_thread_alloc(td);
+	MPASS(td->td_sel == NULL);
 	return (0);
 }
 
@@ -379,6 +380,7 @@ thread_dtor(void *mem, int size, void *arg)
 	osd_thread_exit(td);
 	td_softdep_cleanup(td);
 	MPASS(td->td_su == NULL);
+	seltdfini(td);
 }
 
 /*
@@ -415,7 +417,7 @@ thread_fini(void *mem, int size)
 	turnstile_free(td->td_turnstile);
 	sleepq_free(td->td_sleepqueue);
 	umtx_thread_fini(td);
-	seltdfini(td);
+	MPASS(td->td_sel == NULL);
 }
 
 /*
