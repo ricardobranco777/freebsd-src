@@ -201,22 +201,16 @@ static struct bool_flags pr_flag_allow[NBBY * NBPW] = {
 	{"allow.read_msgbuf", "allow.noread_msgbuf", PR_ALLOW_READ_MSGBUF},
 	{"allow.unprivileged_proc_debug", "allow.nounprivileged_proc_debug",
 	 PR_ALLOW_UNPRIV_DEBUG},
-<<<<<<< HEAD
 	{"allow.extattr", "allow.noextattr", PR_ALLOW_EXTATTR},
-=======
 	{"allow.suser", "allow.nosuser", PR_ALLOW_SUSER},
->>>>>>> origin/freebsd/current/master
 };
 const size_t pr_flag_allow_size = sizeof(pr_flag_allow);
 
 #define	JAIL_DEFAULT_ALLOW		(PR_ALLOW_SET_HOSTNAME | \
 					 PR_ALLOW_RESERVED_PORTS | \
 					 PR_ALLOW_UNPRIV_DEBUG | \
-<<<<<<< HEAD
-					 PR_ALLOW_EXTATTR)
-=======
+					 PR_ALLOW_EXTATTR | \
 					 PR_ALLOW_SUSER)
->>>>>>> origin/freebsd/current/master
 #define	JAIL_DEFAULT_ENFORCE_STATFS	2
 #define	JAIL_DEFAULT_DEVFS_RSNUM	0
 static unsigned jail_default_allow = JAIL_DEFAULT_ALLOW;
@@ -3851,13 +3845,10 @@ SYSCTL_JAIL_PARAM(_allow, read_msgbuf, CTLTYPE_INT | CTLFLAG_RW,
     "B", "Jail may read the kernel message buffer");
 SYSCTL_JAIL_PARAM(_allow, unprivileged_proc_debug, CTLTYPE_INT | CTLFLAG_RW,
     "B", "Unprivileged processes may use process debugging facilities");
-<<<<<<< HEAD
 SYSCTL_JAIL_PARAM(_allow, extattr, CTLTYPE_INT | CTLFLAG_RW,
     "B", "Jails may set system-level filesystem extended attributes");
-=======
 SYSCTL_JAIL_PARAM(_allow, suser, CTLTYPE_INT | CTLFLAG_RW,
     "B", "Processes in jail with uid 0 have privilege");
->>>>>>> origin/freebsd/current/master
 
 SYSCTL_JAIL_PARAM_SUBNODE(allow, mount, "Jail mount/unmount permission flags");
 SYSCTL_JAIL_PARAM(_allow_mount, , CTLTYPE_INT | CTLFLAG_RW,
