@@ -98,7 +98,7 @@ static const uint8_t alpa_map[] = {
 /*
  * Local function prototypes.
  */
-static int isp_handle_other_response(ispsoftc_t *, int, isphdr_t *, uint32_t *);
+static int isp_handle_other_response(ispsoftc_t *, int, isphdr_t *, uint32_t *, uint16_t);
 static void isp_parse_status_24xx(ispsoftc_t *, isp24xx_statusreq_t *, XS_T *, uint32_t *);
 static void isp_clear_portdb(ispsoftc_t *, int);
 static void isp_mark_portdb(ispsoftc_t *, int);
@@ -912,7 +912,7 @@ isp_init(ispsoftc_t *isp)
 
 #ifdef	ISP_TARGET_MODE
 	/* unconditionally set up the ATIO queue if we support target mode */
-	icbp->icb_atioqlen = RESULT_QUEUE_LEN(isp);
+	icbp->icb_atioqlen = ATIO_QUEUE_LEN(isp);
 	if (icbp->icb_atioqlen < 8) {
 		isp_prt(isp, ISP_LOGERR, "bad ATIO queue length %d", icbp->icb_atioqlen);
 		return;
@@ -2822,35 +2822,31 @@ isp_start(XS_T *xs)
 		goto start_again;
 	}
 
-	reqp->req_header.rqs_entry_count = 1;
-	reqp->req_header.rqs_entry_type = RQSTYPE_T7RQS;
-
-	/*
-	 * Set task attributes
-	 */
-	if (XS_TAG_P(xs))
-		reqp->req_task_attribute = XS_TAG_TYPE(xs);
-	else
-		reqp->req_task_attribute = FCP_CMND_TASK_ATTR_SIMPLE;
-	reqp->req_task_attribute |= (XS_PRIORITY(xs) << FCP_CMND_PRIO_SHIFT) &
-	     FCP_CMND_PRIO_MASK;
-
 	/*
 	 * NB: we do not support long CDBs (yet)
 	 */
 	cdblen = XS_CDBLEN(xs);
-
 	if (cdblen > sizeof (reqp->req_cdb)) {
 		isp_prt(isp, ISP_LOGERR, "Command Length %u too long for this chip", cdblen);
 		XS_SETERR(xs, HBA_REQINVAL);
 		return (CMD_COMPLETE);
 	}
 
+	reqp->req_header.rqs_entry_type = RQSTYPE_T7RQS;
+	reqp->req_header.rqs_entry_count = 1;
 	reqp->req_nphdl = lp->handle;
-	reqp->req_tidlo = lp->portid;
-	reqp->req_tidhi = lp->portid >> 16;
-	reqp->req_vpidx = ISP_GET_VPIDX(isp, XS_CHANNEL(xs));
+	reqp->req_time = XS_TIME(xs);
 	be64enc(reqp->req_lun, CAM_EXTLUN_BYTE_SWIZZLE(XS_LUN(xs)));
+	if (XS_XFRIN(xs))
+		reqp->req_alen_datadir = FCP_CMND_DATA_READ;
+	else if (XS_XFROUT(xs))
+		reqp->req_alen_datadir = FCP_CMND_DATA_WRITE;
+	if (XS_TAG_P(xs))
+		reqp->req_task_attribute = XS_TAG_TYPE(xs);
+	else
+		reqp->req_task_attribute = FCP_CMND_TASK_ATTR_SIMPLE;
+	reqp->req_task_attribute |= (XS_PRIORITY(xs) << FCP_CMND_PRIO_SHIFT) &
+	     FCP_CMND_PRIO_MASK;
 	if (FCPARAM(isp, XS_CHANNEL(xs))->fctape_enabled && (lp->prli_word3 & PRLI_WD3_RETRY)) {
 		if (FCP_NEXT_CRN(isp, &reqp->req_crn, xs)) {
 			isp_prt(isp, ISP_LOG_WARN1,
@@ -2860,8 +2856,11 @@ isp_start(XS_T *xs)
 			return (CMD_EAGAIN);
 		}
 	}
-	reqp->req_time = XS_TIME(xs);
 	ISP_MEMCPY(reqp->req_cdb, XS_CDBP(xs), cdblen);
+	reqp->req_dl = XS_XFRLEN(xs);
+	reqp->req_tidlo = lp->portid;
+	reqp->req_tidhi = lp->portid >> 16;
+	reqp->req_vpidx = ISP_GET_VPIDX(isp, XS_CHANNEL(xs));
 
 	/* Whew. Thankfully the same for type 7 requests */
 	reqp->req_handle = isp_allocate_handle(isp, xs, ISP_HANDLE_INITIATOR);
@@ -2878,7 +2877,7 @@ isp_start(XS_T *xs)
 	 * The callee is responsible for adding all requests at this point.
 	 */
 	dmaresult = ISP_DMASETUP(isp, xs, reqp);
-	if (dmaresult != CMD_QUEUED) {
+	if (dmaresult != 0) {
 		isp_destroy_handle(isp, reqp->req_handle);
 		/*
 		 * dmasetup sets actual error in packet, and
@@ -2887,7 +2886,7 @@ isp_start(XS_T *xs)
 		return (dmaresult);
 	}
 	isp_xs_prt(isp, xs, ISP_LOGDEBUG0, "START cmd cdb[0]=0x%x datalen %ld", XS_CDBP(xs)[0], (long) XS_XFRLEN(xs));
-	return (CMD_QUEUED);
+	return (0);
 }
 
 /*
@@ -3180,14 +3179,15 @@ isp_intr_atioq(ispsoftc_t *isp)
 		case RQSTYPE_ATIO:
 		case RQSTYPE_NOTIFY_ACK:	/* Can be set to ATIO queue.*/
 		case RQSTYPE_ABTS_RCVD:		/* Can be set to ATIO queue.*/
-			(void) isp_target_notify(isp, addr, &oop);
+			(void) isp_target_notify(isp, addr, &oop,
+			    ATIO_QUEUE_LEN(isp));
 			break;
 		case RQSTYPE_RPT_ID_ACQ:	/* Can be set to ATIO queue.*/
 		default:
 			isp_print_qentry(isp, "?ATIOQ entry?", oop, addr);
 			break;
 		}
-		optr = ISP_NXT_QENTRY(oop, RESULT_QUEUE_LEN(isp));
+		optr = ISP_NXT_QENTRY(oop, ATIO_QUEUE_LEN(isp));
 	}
 	if (isp->isp_atioodx != optr) {
 		ISP_WRITE(isp, BIU2400_ATIO_RSPOUTP, optr);
@@ -3288,7 +3288,8 @@ isp_intr_respq(ispsoftc_t *isp)
 			}
 			ISP_MEMZERO(hp, QENTRY_LEN);	/* PERF */
 			continue;
-		} else if (isp_handle_other_response(isp, etype, hp, &cptr)) {
+		} else if (isp_handle_other_response(isp, etype, hp,
+		    &cptr, RESULT_QUEUE_LEN(isp))) {
 			/* More then one IOCB could be consumed. */
 			while (sptr != cptr) {
 				ISP_MEMZERO(hp, QENTRY_LEN);	/* PERF */
@@ -3442,8 +3443,7 @@ isp_intr_respq(ispsoftc_t *isp)
 		isp_prt(isp, ISP_LOGDEBUG2, "asked for %lu got raw resid %lu settled for %lu",
 		    (u_long)XS_XFRLEN(xs), (u_long)resid, (u_long)XS_GET_RESID(xs));
 
-		if (XS_XFRLEN(xs))
-			ISP_DMAFREE(isp, xs, sp->req_handle);
+		ISP_DMAFREE(isp, xs);
 		isp_destroy_handle(isp, sp->req_handle);
 
 		ISP_MEMZERO(hp, QENTRY_LEN);	/* PERF */
@@ -3731,7 +3731,7 @@ isp_intr_async(ispsoftc_t *isp, uint16_t mbox)
  */
 
 static int
-isp_handle_other_response(ispsoftc_t *isp, int type, isphdr_t *hp, uint32_t *optrp)
+isp_handle_other_response(ispsoftc_t *isp, int type, isphdr_t *hp, uint32_t *optrp, uint16_t ql)
 {
 	isp_ridacq_t rid;
 	int chan, c;
@@ -3796,7 +3796,7 @@ isp_handle_other_response(ispsoftc_t *isp, int type, isphdr_t *hp, uint32_t *opt
 	case RQSTYPE_ABTS_RCVD:		/* Can be set to ATIO queue. */
 	case RQSTYPE_ABTS_RSP:
 #ifdef	ISP_TARGET_MODE
-		return (isp_target_notify(isp, hp, optrp));
+		return (isp_target_notify(isp, hp, optrp, ql));
 #endif
 		/* FALLTHROUGH */
 	default:

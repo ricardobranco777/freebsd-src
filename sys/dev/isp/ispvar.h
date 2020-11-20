@@ -65,8 +65,7 @@ struct ispmdvec {
 	uint32_t	(*dv_rd_reg) (ispsoftc_t *, int);
 	void		(*dv_wr_reg) (ispsoftc_t *, int, uint32_t);
 	int		(*dv_mbxdma) (ispsoftc_t *);
-	int		(*dv_dmaset) (ispsoftc_t *, XS_T *, void *);
-	void		(*dv_dmaclr) (ispsoftc_t *, XS_T *, uint32_t);
+	int		(*dv_send_cmd) (ispsoftc_t *, void *, void *, uint32_t);
 	int		(*dv_irqsetup) (ispsoftc_t *);
 	void		(*dv_dregs) (ispsoftc_t *, const char *);
 	const void *	dv_ispfw;	/* ptr to f/w */
@@ -98,12 +97,8 @@ struct ispmdvec {
 #define	ISP_MBOXDMASETUP(isp)	\
 	(*(isp)->isp_mdvec->dv_mbxdma)((isp))
 
-#define	ISP_DMASETUP(isp, xs, req)	\
-	(*(isp)->isp_mdvec->dv_dmaset)((isp), (xs), (req))
-
-#define	ISP_DMAFREE(isp, xs, hndl)		\
-	if ((isp)->isp_mdvec->dv_dmaclr)	\
-	    (*(isp)->isp_mdvec->dv_dmaclr)((isp), (xs), (hndl))
+#define	ISP_SEND_CMD(isp, qe, segp, nseg)	\
+	(*(isp)->isp_mdvec->dv_send_cmd)((isp), (qe), (segp), (nseg))
 
 #define	ISP_IRQSETUP(isp)	\
 	(((isp)->isp_mdvec->dv_irqsetup) ? (*(isp)->isp_mdvec->dv_irqsetup)(isp) : 0)
@@ -133,20 +128,15 @@ struct ispmdvec {
 
 /*
  * Request/Response Queue defines and macros.
- * The maximum is defined per platform (and can be based on board type).
  */
 /* This is the size of a queue entry (request and response) */
 #define	QENTRY_LEN			64
-/* Both request and result queue length must be a power of two */
-#define	RQUEST_QUEUE_LEN(x)		MAXISPREQUEST(x)
-#ifdef	ISP_TARGET_MODE
-#define	RESULT_QUEUE_LEN(x)		MAXISPREQUEST(x)
-#else
-#define	RESULT_QUEUE_LEN(x)		\
-	(((MAXISPREQUEST(x) >> 2) < 64)? 64 : MAXISPREQUEST(x) >> 2)
-#endif
-#define	ISP_QUEUE_ENTRY(q, idx)		(((uint8_t *)q) + ((idx) * QENTRY_LEN))
-#define	ISP_QUEUE_SIZE(n)		((n) * QENTRY_LEN)
+/* Queue lengths must be a power of two and at least 8 elements. */
+#define	RQUEST_QUEUE_LEN(x)		8192
+#define	RESULT_QUEUE_LEN(x)		1024
+#define	ATIO_QUEUE_LEN(x)		1024
+#define	ISP_QUEUE_ENTRY(q, idx)		(((uint8_t *)q) + ((size_t)(idx) * QENTRY_LEN))
+#define	ISP_QUEUE_SIZE(n)		((size_t)(n) * QENTRY_LEN)
 #define	ISP_NXT_QENTRY(idx, qlen)	(((idx) + 1) & ((qlen)-1))
 #define	ISP_QFREE(in, out, qlen)	\
 	((in == out)? (qlen - 1) : ((in > out)? \
@@ -683,8 +673,7 @@ int isp_start(XS_T *);
 /* these values are what isp_start returns */
 #define	CMD_COMPLETE	101	/* command completed */
 #define	CMD_EAGAIN	102	/* busy- maybe retry later */
-#define	CMD_QUEUED	103	/* command has been queued for execution */
-#define	CMD_RQLATER 	104	/* requeue this command later */
+#define	CMD_RQLATER	103	/* requeue this command later */
 
 /*
  * Command Completion Point- Core layers call out from this with completed cmds
@@ -867,6 +856,8 @@ void isp_async(ispsoftc_t *, ispasync_t, ...);
  *	XS_CDBP(xs)		gets a pointer to the scsi CDB ""
  *	XS_CDBLEN(xs)		gets the CDB's length ""
  *	XS_XFRLEN(xs)		gets the associated data transfer length ""
+ *	XS_XFRIN(xs)		gets IN direction
+ *	XS_XFROUT(xs)		gets OUT direction
  *	XS_TIME(xs)		gets the time (in seconds) for this command
  *	XS_GET_RESID(xs)	gets the current residual count
  *	XS_GET_RESID(xs, resid)	sets the current residual count
@@ -948,7 +939,7 @@ void isp_async(ispsoftc_t *, ispasync_t, ...);
 /*
  * This function handles new response queue entry appropriate for target mode.
  */
-int isp_target_notify(ispsoftc_t *, void *, uint32_t *);
+int isp_target_notify(ispsoftc_t *, void *, uint32_t *, uint16_t);
 
 /*
  * This function externalizes the ability to acknowledge an Immediate Notify request.

@@ -109,7 +109,7 @@ static void isp_handle_notify_24xx(ispsoftc_t *, in_fcentry_24xx_t *);
  */
 
 int
-isp_target_notify(ispsoftc_t *isp, void *vptr, uint32_t *optrp)
+isp_target_notify(ispsoftc_t *isp, void *vptr, uint32_t *optrp, uint16_t ql)
 {
 	union {
 		at7_entry_t	*at7iop;
@@ -149,7 +149,7 @@ isp_target_notify(ispsoftc_t *isp, void *vptr, uint32_t *optrp)
 			len -= (QENTRY_LEN - 8);
 			isp_prt(isp, ISP_LOGINFO, "long IU length (%d) ignored", len);
 			while (len > 0) {
-				*optrp =  ISP_NXT_QENTRY(*optrp, RESULT_QUEUE_LEN(isp));
+				*optrp = ISP_NXT_QENTRY(*optrp, ql);
 				len -= QENTRY_LEN;
 			}
 		}
@@ -730,9 +730,7 @@ isp_handle_ctio7(ispsoftc_t *isp, ct7_entry_t *ct)
 			isp_prt(isp, pl, "NO xs for CTIO (handle 0x%x) status 0x%x", ct->ct_syshandle, ct->ct_nphdl);
 		}
 	} else {
-		if ((ct->ct_flags & CT7_DATAMASK) != CT7_NO_DATA) {
-			ISP_DMAFREE(isp, xs, ct->ct_syshandle);
-		}
+		ISP_DMAFREE(isp, xs);
 		if (ct->ct_flags & CT7_SENDSTATUS) {
 			/*
 			 * Sent status and command complete.
