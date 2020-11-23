@@ -926,15 +926,11 @@ struct sysentvec elf_linux_sysvec = {
 	.sv_shared_page_len = PAGE_SIZE,
 	.sv_schedtail	= linux_schedtail,
 	.sv_thread_detach = linux_thread_detach,
-<<<<<<< HEAD
 	.sv_trap	= NULL,	
 	.sv_pax_aslr_init = pax_aslr_init_vmspace32,
-=======
-	.sv_trap	= NULL,
 	.sv_onexec	= linux_on_exec,
 	.sv_onexit	= linux_on_exit,
 	.sv_ontdexit	= linux_thread_dtor,
->>>>>>> origin/freebsd/current/master
 };
 
 static void
