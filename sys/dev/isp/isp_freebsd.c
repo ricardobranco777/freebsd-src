@@ -121,17 +121,12 @@ isp_attach_chan(ispsoftc_t *isp, struct cam_devq *devq, int chan)
 	if (sim == NULL)
 		return (ENOMEM);
 
-	ISP_LOCK(isp);
 	if (xpt_bus_register(sim, isp->isp_dev, chan) != CAM_SUCCESS) {
-		ISP_UNLOCK(isp);
 		cam_sim_free(sim, FALSE);
 		return (EIO);
 	}
-	ISP_UNLOCK(isp);
 	if (xpt_create_path(&path, NULL, cam_sim_path(sim), CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
-		ISP_LOCK(isp);
 		xpt_bus_deregister(cam_sim_path(sim));
-		ISP_UNLOCK(isp);
 		cam_sim_free(sim, FALSE);
 		return (ENXIO);
 	}
@@ -168,9 +163,7 @@ isp_attach_chan(ispsoftc_t *isp, struct cam_devq *devq, int chan)
 	if (kproc_create(isp_kthread, fc, &fc->kproc, 0, 0,
 	    "%s_%d", device_get_nameunit(isp->isp_osinfo.dev), chan)) {
 		xpt_free_path(fc->path);
-		ISP_LOCK(isp);
 		xpt_bus_deregister(cam_sim_path(fc->sim));
-		ISP_UNLOCK(isp);
 		cam_sim_free(fc->sim, FALSE);
 		return (ENOMEM);
 	}
@@ -285,9 +278,7 @@ unwind:
 		ISP_GET_PC(isp, chan, sim, sim);
 		ISP_GET_PC(isp, chan, path, path);
 		xpt_free_path(path);
-		ISP_LOCK(isp);
 		xpt_bus_deregister(cam_sim_path(sim));
-		ISP_UNLOCK(isp);
 		cam_sim_free(sim, FALSE);
 	}
 	cam_simq_free(isp->isp_osinfo.devq);
@@ -3259,10 +3250,7 @@ isp_async(ispsoftc_t *isp, ispasync_t cmd, ...)
 		mbox1 = ISP_READ(isp, OUTMAILBOX1);
 		isp_prt(isp, ISP_LOGERR, "Internal Firmware Error @ RISC Address 0x%x", mbox1);
 #if 0
-		mbox1 = isp->isp_osinfo.mbox_sleep_ok;
-		isp->isp_osinfo.mbox_sleep_ok = 0;
 		isp_reinit(isp, 1);
-		isp->isp_osinfo.mbox_sleep_ok = mbox1;
 		isp_async(isp, ISPASYNC_FW_RESTARTED, NULL);
 #endif
 		break;
@@ -3366,64 +3354,6 @@ isp_nanotime_sub(struct timespec *b, struct timespec *a)
 	if (elapsed == 0)
 		elapsed++;
 	return (elapsed);
-}
-
-int
-isp_mbox_acquire(ispsoftc_t *isp)
-{
-	if (isp->isp_osinfo.mboxbsy) {
-		return (1);
-	} else {
-		isp->isp_osinfo.mboxcmd_done = 0;
-		isp->isp_osinfo.mboxbsy = 1;
-		return (0);
-	}
-}
-
-void
-isp_mbox_wait_complete(ispsoftc_t *isp, mbreg_t *mbp)
-{
-	u_int t, to;
-
-	to = (mbp->timeout == 0) ? MBCMD_DEFAULT_TIMEOUT : mbp->timeout;
-	if (isp->isp_osinfo.mbox_sleep_ok) {
-		isp->isp_osinfo.mbox_sleep_ok = 0;
-		isp->isp_osinfo.mbox_sleeping = 1;
-		msleep_sbt(&isp->isp_osinfo.mboxcmd_done, &isp->isp_lock,
-		    PRIBIO, "ispmbx_sleep", to * SBT_1US, 0, 0);
-		isp->isp_osinfo.mbox_sleep_ok = 1;
-		isp->isp_osinfo.mbox_sleeping = 0;
-	} else {
-		for (t = 0; t < to; t += 100) {
-			if (isp->isp_osinfo.mboxcmd_done)
-				break;
-			ISP_RUN_ISR(isp);
-			if (isp->isp_osinfo.mboxcmd_done)
-				break;
-			ISP_DELAY(100);
-		}
-	}
-	if (isp->isp_osinfo.mboxcmd_done == 0) {
-		isp_prt(isp, ISP_LOGWARN, "%s Mailbox Command (0x%x) Timeout (%uus) (%s:%d)",
-		    isp->isp_osinfo.mbox_sleep_ok? "Interrupting" : "Polled",
-		    isp->isp_lastmbxcmd, to, mbp->func, mbp->lineno);
-		mbp->param[0] = MBOX_TIMEOUT;
-		isp->isp_osinfo.mboxcmd_done = 1;
-	}
-}
-
-void
-isp_mbox_notify_done(ispsoftc_t *isp)
-{
-	isp->isp_osinfo.mboxcmd_done = 1;
-	if (isp->isp_osinfo.mbox_sleeping)
-		wakeup(&isp->isp_osinfo.mboxcmd_done);
-}
-
-void
-isp_mbox_release(ispsoftc_t *isp)
-{
-	isp->isp_osinfo.mboxbsy = 0;
 }
 
 int
