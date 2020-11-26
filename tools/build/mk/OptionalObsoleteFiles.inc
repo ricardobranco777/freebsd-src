@@ -2613,6 +2613,7 @@ OLD_DIRS+=usr/share/i18n/csmapper/GB
 .endif
 
 .if ${MK_INET6} == no
+OLD_FILES+=sbin/ping6
 OLD_FILES+=sbin/rtsol
 OLD_FILES+=usr/sbin/ip6addrctl
 OLD_FILES+=usr/sbin/mld6query
@@ -2641,6 +2642,7 @@ OLD_FILES+=usr/share/man/man8/traceroute6.8.gz
 .endif
 
 .if ${MK_INET6_SUPPORT} == no
+OLD_FILES+=rescue/ping6
 OLD_FILES+=rescue/rtsol
 .endif
 
