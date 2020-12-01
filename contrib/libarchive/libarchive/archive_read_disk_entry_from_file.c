@@ -103,8 +103,15 @@ __FBSDID("$FreeBSD");
 
 static int setup_mac_metadata(struct archive_read_disk *,
     struct archive_entry *, int *fd);
+<<<<<<< HEAD
 static int setup_xattrs_namespace(struct archive_read_disk *,
     struct archive_entry *, int *, int);
+=======
+#ifdef ARCHIVE_XATTR_FREEBSD
+static int setup_xattrs_namespace(struct archive_read_disk *,
+    struct archive_entry *, int *, int);
+#endif
+>>>>>>> origin/freebsd/current/master
 static int setup_xattrs(struct archive_read_disk *,
     struct archive_entry *, int *fd);
 static int setup_sparse(struct archive_read_disk *,
@@ -763,11 +770,23 @@ setup_xattrs_namespace(struct archive_read_disk *a,
 		size_t len = 255 & (int)*p;
 		char *name;
 
+<<<<<<< HEAD
 		switch (namespace) {
 		case EXTATTR_NAMESPACE_SYSTEM:
 			strcpy(buff, "system.");
 			break;
 		default:
+=======
+		if (namespace == EXTATTR_NAMESPACE_SYSTEM) {
+			if (!strcmp(p + 1, "nfs4.acl") ||
+			    !strcmp(p + 1, "posix1e.acl_access") ||
+			    !strcmp(p + 1, "posix1e.acl_default")) {
+				p += 1 + len;
+				continue;
+			}
+			strcpy(buff, "system.");
+		} else {
+>>>>>>> origin/freebsd/current/master
 			strcpy(buff, "user.");
 		}
 		name = buff + strlen(buff);
@@ -786,28 +805,43 @@ setup_xattrs(struct archive_read_disk *a,
     struct archive_entry *entry, int *fd)
 {
 	int namespaces[2];
+<<<<<<< HEAD
 	int i, res, worstres;
+=======
+	int i, res;
+>>>>>>> origin/freebsd/current/master
 
 	namespaces[0] = EXTATTR_NAMESPACE_USER;
 	namespaces[1] = EXTATTR_NAMESPACE_SYSTEM;
 
+<<<<<<< HEAD
 	worstres = ARCHIVE_OK;
 
+=======
+>>>>>>> origin/freebsd/current/master
 	for (i = 0; i < 2; i++) {
 		res = setup_xattrs_namespace(a, entry, fd,
 		    namespaces[i]);
 		switch (res) {
 			case (ARCHIVE_OK):
+<<<<<<< HEAD
 				break;
 			case (ARCHIVE_WARN):
 				worstres = ARCHIVE_WARN;
+=======
+			case (ARCHIVE_WARN):
+>>>>>>> origin/freebsd/current/master
 				break;
 			default:
 				return (res);
 		}
 	}
 
+<<<<<<< HEAD
 	return (worstres);
+=======
+	return (ARCHIVE_OK);
+>>>>>>> origin/freebsd/current/master
 }
 
 #else
