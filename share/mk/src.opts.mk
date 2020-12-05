@@ -209,8 +209,11 @@ __DEFAULT_NO_OPTIONS = \
     CLANG_FORMAT \
     DTRACE_TESTS \
     EXPERIMENTAL \
+<<<<<<< HEAD
     FREEBSD_UPDATE \
     GNU_GREP_COMPAT \
+=======
+>>>>>>> origin/freebsd/current/master
     HESIOD \
     LIB32 \
     LIBSOFT \
