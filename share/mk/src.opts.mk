@@ -69,6 +69,7 @@ __DEFAULT_YES_OPTIONS = \
     BOOTPARAMD \
     BOOTPD \
     BSD_CPIO \
+    BSD_GREP \
     BSDINSTALL \
     BSNMP \
     BZIP2 \
@@ -105,7 +106,6 @@ __DEFAULT_YES_OPTIONS = \
     FP_LIBC \
     FTP \
     GAMES \
-    GDB \
     GH_BC \
     GNU_DIFF \
     GNU_GREP \
@@ -204,11 +204,16 @@ __DEFAULT_YES_OPTIONS = \
 __DEFAULT_NO_OPTIONS = \
     BEARSSL \
     BHYVE_SNAPSHOT \
+<<<<<<< HEAD
     BSD_GREP \
     DEVD_PIE \
+=======
+    CLANG_EXTRAS \
+>>>>>>> origin/freebsd/current/master
     CLANG_FORMAT \
     DTRACE_TESTS \
     EXPERIMENTAL \
+    GDB \
     HESIOD \
     LIB32 \
     LIBSOFT \
