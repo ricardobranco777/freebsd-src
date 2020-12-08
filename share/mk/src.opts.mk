@@ -204,12 +204,7 @@ __DEFAULT_YES_OPTIONS = \
 __DEFAULT_NO_OPTIONS = \
     BEARSSL \
     BHYVE_SNAPSHOT \
-<<<<<<< HEAD
-    BSD_GREP \
     DEVD_PIE \
-=======
-    CLANG_EXTRAS \
->>>>>>> origin/freebsd/current/master
     CLANG_FORMAT \
     DTRACE_TESTS \
     EXPERIMENTAL \
