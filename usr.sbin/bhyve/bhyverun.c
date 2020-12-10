@@ -1125,6 +1125,7 @@ main(int argc, char *argv[])
 			acpi = 1;
 			break;
 		case 'b':
+			warnx("-b flag is deprecated and will be removed in FreeBSD 13.0");
 			bvmcons = 1;
 			break;
 		case 'D':
@@ -1146,6 +1147,7 @@ main(int argc, char *argv[])
 			memflags |= VM_MEM_F_INCORE;
 			break;
 		case 'g':
+			warnx("-g flag is deprecated and will be removed in FreeBSD 13.0");
 			dbg_port = atoi(optarg);
 			break;
 		case 'G':
