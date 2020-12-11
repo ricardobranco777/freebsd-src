@@ -108,7 +108,6 @@ __DEFAULT_YES_OPTIONS = \
     GAMES \
     GH_BC \
     GNU_DIFF \
-    GNU_GREP \
     GOOGLETEST \
     GPIO \
     HAST \
@@ -210,6 +209,7 @@ __DEFAULT_NO_OPTIONS = \
     EXPERIMENTAL \
     FREEBSD_UPDATE \
     GDB \
+    GNU_GREP \
     HESIOD \
     LIB32 \
     LIBSOFT \
