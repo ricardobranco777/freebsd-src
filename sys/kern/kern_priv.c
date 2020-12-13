@@ -271,7 +271,7 @@ priv_check_cred(struct ucred *cred, int priv)
 		}
 	}
 
-#if !defined(PAX_HARDENING)
+#if !defined(HARDEN_KLD)
 	/*
 	 * Inspecting kernel module information should be root-only
 	 * when PAX_HARDENING is set.
