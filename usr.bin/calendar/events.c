@@ -32,13 +32,13 @@ __FBSDID("$FreeBSD$");
 
 #include <sys/time.h>
 #include <err.h>
+#include <langinfo.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef WITH_ICONV
 #include <iconv.h>
 #include <errno.h>
-#include <langinfo.h>
 
 static iconv_t conv = (iconv_t)-1;
 static char *currentEncoding = NULL;
@@ -202,13 +202,9 @@ event_print_all(FILE *fp)
 	struct event *e;
 	struct tm tm;
 	char dbuf[80];
-#ifdef WITH_ICONV
 	static int d_first;
 
 	d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
-#else
-#define	d_first	0
-#endif
 
 	while (walkthrough_dates(&e) != 0) {
 		if (e) {
