@@ -11280,7 +11280,11 @@ restart:
 	return (error);
 }
 SYSCTL_OID(_vm_pmap, OID_AUTO, kernel_maps,
+<<<<<<< HEAD
     CTLTYPE_STRING | CTLFLAG_RD | CTLFLAG_MPSAFE | CTLFLAG_ROOTONLY,
+=======
+    CTLTYPE_STRING | CTLFLAG_RD | CTLFLAG_MPSAFE | CTLFLAG_SKIP,
+>>>>>>> freebsd/current/main
     NULL, 0, sysctl_kmaps, "A",
     "Dump kernel address layout");
 #endif /* !PAX_HARDENING */

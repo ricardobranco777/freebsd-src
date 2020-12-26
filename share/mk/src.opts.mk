@@ -69,7 +69,6 @@ __DEFAULT_YES_OPTIONS = \
     BOOTPARAMD \
     BOOTPD \
     BSD_CPIO \
-    BSD_GREP \
     BSDINSTALL \
     BSNMP \
     BZIP2 \
@@ -207,8 +206,11 @@ __DEFAULT_NO_OPTIONS = \
     CLANG_FORMAT \
     DTRACE_TESTS \
     EXPERIMENTAL \
+<<<<<<< HEAD
     FREEBSD_UPDATE \
     GNU_GREP \
+=======
+>>>>>>> freebsd/current/main
     HESIOD \
     LIB32 \
     LIBSOFT \
