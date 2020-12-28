@@ -82,17 +82,14 @@ HAS_TESTS=
 SUBDIR.${MK_TESTS}+= tests
 .endif
 
-<<<<<<< HEAD
 .if ${MK_SHLIBRANDOM} != "no"
 CFLAGS+=	-DSHLIBRANDOM
 .endif
 
 NOPIE=	yes
-=======
 # Some of the required math functions (div & mod) are implemented in
 # libcompiler_rt on some architectures.
 LIBADD+=	compiler_rt
->>>>>>> freebsd/current/main
 
 .include <bsd.prog.mk>
 ${PROG_FULL}:	${VERSION_MAP}
