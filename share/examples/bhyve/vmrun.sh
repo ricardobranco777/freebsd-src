@@ -54,7 +54,7 @@ errmsg() {
 usage() {
 	local msg=$1
 
-	echo "Usage: vmrun.sh [-aAEhiTv] [-c <CPUs>] [-C <console>]" \
+	echo "Usage: vmrun.sh [-aAEhiSTv] [-c <CPUs>] [-C <console>]" \
 	    "[-d <disk file>]"
 	echo "                [-e <name=value>] [-f <path of firmware>]" \
 	    "[-F <size>]"
@@ -90,6 +90,7 @@ usage() {
 	    "(e.g. 10/0/0)"
 	echo "       -P: UEFI GOP VNC port (default: ${DEFAULT_VNCPORT})"
 	echo "       -s: UEFI GOP VNC password"
+	echo "       -S: Unconditionally wire guest memory"
 	echo "       -t: tap device for virtio-net (default: $DEFAULT_TAPDEV)"
 	echo "       -T: Enable tablet device (for UEFI GOP)"
 	echo "       -u: RTC keeps UTC time"
@@ -126,6 +127,7 @@ disk_emulation=${DEFAULT_DISK}
 loader_opt=""
 bhyverun_opt="-H -A -P"
 pass_total=0
+wire=""
 
 # EFI-specific options
 efi_mode=0
@@ -137,7 +139,7 @@ vncport=${DEFAULT_VNCPORT}
 vncsize=${DEFAULT_VNCSIZE}
 tablet=""
 
-while getopts aAc:C:d:e:Ef:F:hH:iI:l:L:m:n:p:P:s:t:Tuvw c ; do
+while getopts aAc:C:d:e:Ef:F:hH:iI:l:L:m:n:p:P:s:St:Tuvw c ; do
 	case $c in
 	a)
 		bhyverun_opt="${bhyverun_opt} -a"
@@ -201,6 +203,9 @@ while getopts aAc:C:d:e:Ef:F:hH:iI:l:L:m:n:p:P:s:t:Tuvw c ; do
 	s)
 		vncpassword=",password=${OPTARG}"
 		;;
+	S)
+		wire="-S"
+		;;
 	t)
 		eval "tap_dev${tap_total}=\"${OPTARG}\""
 		tap_total=$(($tap_total + 1))
@@ -246,8 +251,7 @@ fi
 
 # If PCI passthru devices are configured then guest memory must be wired
 if [ ${pass_total} -gt 0 ]; then
-	loader_opt="${loader_opt} -S"
-	bhyverun_opt="${bhyverun_opt} -S"
+	wire="-S"
 fi
 
 if [ ${efi_mode} -gt 0 ]; then
@@ -323,7 +327,7 @@ while [ 1 ]; do
 
 	if [ ${efi_mode} -eq 0 ]; then
 		${LOADER} -c ${console} -m ${memsize} ${BOOTDISKS} \
-		    ${loader_opt} ${vmname}
+		    ${wire} ${loader_opt} ${vmname}
 		bhyve_exit=$?
 		if [ $bhyve_exit -ne 0 ]; then
 			break
@@ -371,10 +375,11 @@ while [ 1 ]; do
 
 	${FBSDRUN} -c ${cpus} -m ${memsize} ${bhyverun_opt}		\
 		-s 0:0,hostbridge					\
-		-s 1:0,lpc						\
+		-s 31:0,lpc						\
 		${efiargs}						\
 		${devargs}						\
 		-l com1,${console}					\
+		${wire}							\
 		${installer_opt}					\
 		${vmname}
 
