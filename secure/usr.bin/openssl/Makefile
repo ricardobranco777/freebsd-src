@@ -1,10 +1,14 @@
 # $FreeBSD$
 
+.include <bsd.init.mk>
+
 CONFS=	openssl.cnf
 CONFSDIR=	/etc/ssl
 PROG=	openssl
 
 LIBADD=	ssl crypto
+
+MK_CFI=	no
 
 .if exists(Makefile.man)
 .include "Makefile.man"
