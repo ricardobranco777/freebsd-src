@@ -110,6 +110,7 @@ const char* opcode2opname(uint32_t opcode)
 		"READDIRPLUS",
 		"RENAME2",
 		"LSEEK",
+		"COPY_FILE_RANGE",
 	};
 	if (opcode >= nitems(table))
 		return ("Unknown (opcode > max)");
@@ -182,6 +183,20 @@ void MockFS::debug_request(const mockfs_buf_in &in, ssize_t buflen)
 			printf(" block=%" PRIx64 " blocksize=%#x",
 				in.body.bmap.block, in.body.bmap.blocksize);
 			break;
+		case FUSE_COPY_FILE_RANGE:
+			printf(" off_in=%" PRIu64 " ino_out=%" PRIu64
+			       " off_out=%" PRIu64 " size=%" PRIu64,
+			       in.body.copy_file_range.off_in,
+			       in.body.copy_file_range.nodeid_out,
+			       in.body.copy_file_range.off_out,
+			       in.body.copy_file_range.len);
+			if (verbosity > 1)
+				printf(" fh_in=%" PRIu64 " fh_out=%" PRIu64
+				       " flags=%" PRIx64,
+				       in.body.copy_file_range.fh_in,
+				       in.body.copy_file_range.fh_out,
+				       in.body.copy_file_range.flags);
+			break;
 		case FUSE_CREATE:
 			if (m_kernel_minor_version >= 12)
 				name = (const char*)in.body.bytes +
@@ -221,15 +236,15 @@ void MockFS::debug_request(const mockfs_buf_in &in, ssize_t buflen)
 		case FUSE_LSEEK:
 			switch (in.body.lseek.whence) {
 			case SEEK_HOLE:
-				printf(" SEEK_HOLE offset=%ld",
+				printf(" SEEK_HOLE offset=%jd",
 				    in.body.lseek.offset);
 				break;
 			case SEEK_DATA:
-				printf(" SEEK_DATA offset=%ld",
+				printf(" SEEK_DATA offset=%jd",
 				    in.body.lseek.offset);
 				break;
 			default:
-				printf(" whence=%u offset=%ld",
+				printf(" whence=%u offset=%jd",
 				    in.body.lseek.whence, in.body.lseek.offset);
 				break;
 			}
@@ -661,6 +676,11 @@ void MockFS::audit_request(const mockfs_buf_in &in, ssize_t buflen) {
 		break;
 	case FUSE_LSEEK:
 		EXPECT_EQ(inlen, fih + sizeof(in.body.lseek));
+		EXPECT_EQ((size_t)buflen, inlen);
+		break;
+	case FUSE_COPY_FILE_RANGE:
+		EXPECT_EQ(inlen, fih + sizeof(in.body.copy_file_range));
+		EXPECT_EQ(0ul, in.body.copy_file_range.flags);
 		EXPECT_EQ((size_t)buflen, inlen);
 		break;
 	case FUSE_NOTIFY_REPLY:

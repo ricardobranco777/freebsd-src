@@ -264,6 +264,18 @@ cache_ncp_invalidate(struct namecache *ncp)
 })
 
 /*
+ * Like the above but also checks NCF_WHITE.
+ */
+#define cache_fpl_neg_ncp_canuse(ncp)	({				\
+	struct namecache *_ncp = (ncp);					\
+	u_char _nc_flag;						\
+									\
+	atomic_thread_fence_acq();					\
+	_nc_flag = atomic_load_char(&_ncp->nc_flag);			\
+	__predict_true((_nc_flag & (NCF_INVALID | NCF_WIP | NCF_WHITE)) == 0);	\
+})
+
+/*
  * Name caching works as follows:
  *
  * Names found by directory scans are retained in a cache
@@ -3562,31 +3574,6 @@ SYSCTL_BOOL(_vfs, OID_AUTO, cache_fast_lookup, CTLFLAG_RW,
 
 #define CACHE_FPL_FAILED	-2020
 
-static void
-cache_fpl_cleanup_cnp(struct componentname *cnp)
-{
-
-	uma_zfree(namei_zone, cnp->cn_pnbuf);
-#ifdef DIAGNOSTIC
-	cnp->cn_pnbuf = NULL;
-	cnp->cn_nameptr = NULL;
-#endif
-}
-
-static void
-cache_fpl_handle_root(struct nameidata *ndp, struct vnode **dpp)
-{
-	struct componentname *cnp;
-
-	cnp = &ndp->ni_cnd;
-	while (*(cnp->cn_nameptr) == '/') {
-		cnp->cn_nameptr++;
-		ndp->ni_pathlen--;
-	}
-
-	*dpp = ndp->ni_rootdir;
-}
-
 /*
  * Components of nameidata (or objects it can point to) which may
  * need restoring in case fast path lookup fails.
@@ -3612,6 +3599,34 @@ struct cache_fpl {
 	bool in_smr;
 	bool fsearch;
 };
+
+static void
+cache_fpl_cleanup_cnp(struct componentname *cnp)
+{
+
+	uma_zfree(namei_zone, cnp->cn_pnbuf);
+#ifdef DIAGNOSTIC
+	cnp->cn_pnbuf = NULL;
+	cnp->cn_nameptr = NULL;
+#endif
+}
+
+static struct vnode *
+cache_fpl_handle_root(struct cache_fpl *fpl)
+{
+	struct nameidata *ndp;
+	struct componentname *cnp;
+
+	ndp = fpl->ndp;
+	cnp = fpl->cnp;
+
+	while (*(cnp->cn_nameptr) == '/') {
+		cnp->cn_nameptr++;
+		ndp->ni_pathlen--;
+	}
+
+	return (ndp->ni_rootdir);
+}
 
 static void
 cache_fpl_checkpoint(struct cache_fpl *fpl, struct nameidata_saved *snd)
@@ -3746,6 +3761,7 @@ _Static_assert((CACHE_FPL_SUPPORTED_CN_FLAGS & CACHE_FPL_INTERNAL_CN_FLAGS) == 0
     "supported and internal flags overlap");
 
 static bool cache_fplookup_is_mp(struct cache_fpl *fpl);
+static int cache_fplookup_cross_mount(struct cache_fpl *fpl);
 
 static bool
 cache_fpl_islastcn(struct nameidata *ndp)
@@ -4224,6 +4240,56 @@ cache_fplookup_final(struct cache_fpl *fpl)
 	return (cache_fplookup_final_child(fpl, tvs));
 }
 
+/*
+ * Comment from locked lookup:
+ * Check for degenerate name (e.g. / or "") which is a way of talking about a
+ * directory, e.g. like "/." or ".".
+ */
+static int __noinline
+cache_fplookup_degenerate(struct cache_fpl *fpl)
+{
+	struct componentname *cnp;
+	struct vnode *dvp;
+	enum vgetstate dvs;
+	int error, lkflags;
+
+	fpl->tvp = fpl->dvp;
+	fpl->tvp_seqc = fpl->dvp_seqc;
+
+	cnp = fpl->cnp;
+	dvp = fpl->dvp;
+
+	if (__predict_false(cnp->cn_nameiop != LOOKUP)) {
+		cache_fpl_smr_exit(fpl);
+		return (cache_fpl_handled(fpl, EISDIR));
+	}
+
+	MPASS((cnp->cn_flags & SAVESTART) == 0);
+
+	if ((cnp->cn_flags & (LOCKPARENT|WANTPARENT)) != 0) {
+		return (cache_fplookup_final_withparent(fpl));
+	}
+
+	dvs = vget_prep_smr(dvp);
+	cache_fpl_smr_exit(fpl);
+	if (__predict_false(dvs == VGET_NONE)) {
+		return (cache_fpl_aborted(fpl));
+	}
+
+	if ((cnp->cn_flags & LOCKLEAF) != 0) {
+		lkflags = LK_SHARED;
+		if ((cnp->cn_flags & LOCKSHARED) == 0)
+			lkflags = LK_EXCLUSIVE;
+		error = vget_finish(dvp, lkflags, dvs);
+		if (__predict_false(error != 0)) {
+			return (cache_fpl_aborted(fpl));
+		}
+	} else {
+		vget_finish_ref(dvp, dvs);
+	}
+	return (cache_fpl_handled(fpl, 0));
+}
+
 static int __noinline
 cache_fplookup_noentry(struct cache_fpl *fpl)
 {
@@ -4342,6 +4408,7 @@ cache_fplookup_noentry(struct cache_fpl *fpl)
 static int __noinline
 cache_fplookup_dot(struct cache_fpl *fpl)
 {
+	int error;
 
 	MPASS(!seqc_in_modify(fpl->dvp_seqc));
 	/*
@@ -4351,6 +4418,12 @@ cache_fplookup_dot(struct cache_fpl *fpl)
 	 */
 	fpl->tvp = fpl->dvp;
 	fpl->tvp_seqc = fpl->dvp_seqc;
+	if (cache_fplookup_is_mp(fpl)) {
+		error = cache_fplookup_cross_mount(fpl);
+		if (__predict_false(error != 0)) {
+			return (error);
+		}
+	}
 
 	counter_u64_add(dothits, 1);
 	SDT_PROBE3(vfs, namecache, lookup, hit, fpl->dvp, ".", fpl->dvp);
@@ -4370,6 +4443,8 @@ cache_fplookup_dotdot(struct cache_fpl *fpl)
 	ndp = fpl->ndp;
 	cnp = fpl->cnp;
 	dvp = fpl->dvp;
+
+	MPASS(cache_fpl_isdotdot(cnp));
 
 	/*
 	 * XXX this is racy the same way regular lookup is
@@ -4438,19 +4513,11 @@ cache_fplookup_neg(struct cache_fpl *fpl, struct namecache *ncp, uint32_t hash)
 	 * If they want to create an entry we need to replace this one.
 	 */
 	if (__predict_false(fpl->cnp->cn_nameiop != LOOKUP)) {
-		/*
-		 * TODO
-		 * This should call something similar to
-		 * cache_fplookup_final_modifying.
-		 */
-		return (cache_fpl_partial(fpl));
+		fpl->tvp = NULL;
+		return (cache_fplookup_modifying(fpl));
 	}
 	neg_promote = cache_neg_hit_prep(ncp);
-	if (!cache_ncp_canuse(ncp)) {
-		cache_neg_hit_abort(ncp);
-		return (cache_fpl_partial(fpl));
-	}
-	if (__predict_false((nc_flag & NCF_WHITE) != 0)) {
+	if (!cache_fpl_neg_ncp_canuse(ncp)) {
 		cache_neg_hit_abort(ncp);
 		return (cache_fpl_partial(fpl));
 	}
@@ -4470,13 +4537,21 @@ cache_fplookup_next(struct cache_fpl *fpl)
 	struct vnode *dvp, *tvp;
 	u_char nc_flag;
 	uint32_t hash;
+	int error;
 
 	cnp = fpl->cnp;
 	dvp = fpl->dvp;
 
-	if (__predict_false(cnp->cn_namelen == 1 && cnp->cn_nameptr[0] == '.')) {
-		return (cache_fplookup_dot(fpl));
+	if (__predict_false(cnp->cn_nameptr[0] == '.')) {
+		if (cnp->cn_namelen == 1) {
+			return (cache_fplookup_dot(fpl));
+		}
+		if (cnp->cn_namelen == 2 && cnp->cn_nameptr[1] == '.') {
+			return (cache_fplookup_dotdot(fpl));
+		}
 	}
+
+	MPASS(!cache_fpl_isdotdot(cnp));
 
 	hash = cache_get_hash(cnp->cn_nameptr, cnp->cn_namelen, dvp);
 
@@ -4510,6 +4585,13 @@ cache_fplookup_next(struct cache_fpl *fpl)
 		return (cache_fpl_partial(fpl));
 	}
 
+	if (cache_fplookup_is_mp(fpl)) {
+		error = cache_fplookup_cross_mount(fpl);
+		if (__predict_false(error != 0)) {
+			return (error);
+		}
+	}
+
 	counter_u64_add(numposhits, 1);
 	SDT_PROBE3(vfs, namecache, lookup, hit, dvp, ncp->nc_name, tvp);
 	return (0);
@@ -4519,8 +4601,7 @@ static bool
 cache_fplookup_mp_supported(struct mount *mp)
 {
 
-	if (mp == NULL)
-		return (false);
+	MPASS(mp != NULL);
 	if ((mp->mnt_kern_flag & MNTK_FPLOOKUP) == 0)
 		return (false);
 	return (true);
@@ -4686,6 +4767,44 @@ cache_fplookup_is_mp(struct cache_fpl *fpl)
  * nameidata state has to be compatible with the original.
  */
 static int
+cache_fplookup_preparse(struct cache_fpl *fpl)
+{
+	struct nameidata *ndp;
+	struct componentname *cnp;
+
+	ndp = fpl->ndp;
+	cnp = fpl->cnp;
+
+	if (__predict_false(cnp->cn_nameptr[0] == '\0')) {
+		return (cache_fplookup_degenerate(fpl));
+	}
+
+	/*
+	 * By this point the shortest possible pathname is one character + nul
+	 * terminator, hence 2.
+	 */
+	KASSERT(ndp->ni_pathlen >= 2, ("%s: ni_pathlen %zu\n", __func__,
+	    ndp->ni_pathlen));
+
+	if (__predict_false(cnp->cn_nameptr[ndp->ni_pathlen - 2] == '/')) {
+		/*
+		 * TODO
+		 * Regular lookup performs the following:
+		 * *ndp->ni_next = '\0';
+		 * cnp->cn_flags |= TRAILINGSLASH;
+		 *
+		 * Which is problematic since it modifies data read
+		 * from userspace. Then if fast path lookup was to
+		 * abort we would have to either restore it or convey
+		 * the flag. Since this is a corner case just ignore
+		 * it for simplicity.
+		 */
+		return (cache_fpl_aborted(fpl));
+	}
+	return (0);
+}
+
+static int
 cache_fplookup_parse(struct cache_fpl *fpl)
 {
 	struct nameidata *ndp;
@@ -4696,15 +4815,24 @@ cache_fplookup_parse(struct cache_fpl *fpl)
 	cnp = fpl->cnp;
 
 	/*
-	 * Search a new directory.
+	 * Find the end of this path component, it is either / or nul.
 	 *
-	 * The last component of the filename is left accessible via
-	 * cnp->cn_nameptr for callers that need the name. Callers needing
-	 * the name set the SAVENAME flag. When done, they assume
-	 * responsibility for freeing the pathname buffer.
+	 * Store / as a temporary sentinel so that we only have one character
+	 * to test for. Pathnames tend to be short so this should not be
+	 * resulting in cache misses.
 	 */
-	for (cp = cnp->cn_nameptr; *cp != 0 && *cp != '/'; cp++)
+	KASSERT(cnp->cn_nameptr[ndp->ni_pathlen - 1] == '\0',
+	    ("%s: expected nul at %p + %zu; string [%s]\n", __func__,
+	    cnp->cn_nameptr, ndp->ni_pathlen - 1, cnp->cn_nameptr));
+	cnp->cn_nameptr[ndp->ni_pathlen - 1] = '/';
+	for (cp = cnp->cn_nameptr; *cp != '/'; cp++) {
+		KASSERT(*cp != '\0',
+		    ("%s: encountered unexpected nul; string [%s]\n", __func__,
+		    cnp->cn_nameptr));
 		continue;
+	}
+	cnp->cn_nameptr[ndp->ni_pathlen - 1] = '\0';
+
 	cnp->cn_namelen = cp - cnp->cn_nameptr;
 	if (__predict_false(cnp->cn_namelen > NAME_MAX)) {
 		cache_fpl_smr_exit(fpl);
@@ -4715,45 +4843,26 @@ cache_fplookup_parse(struct cache_fpl *fpl)
 	    ("%s: ni_pathlen underflow to %zd\n", __func__, ndp->ni_pathlen));
 	ndp->ni_next = cp;
 
+#ifdef INVARIANTS
 	/*
-	 * Replace multiple slashes by a single slash and trailing slashes
-	 * by a null.  This must be done before VOP_LOOKUP() because some
-	 * fs's don't know about trailing slashes.  Remember if there were
-	 * trailing slashes to handle symlinks, existing non-directories
-	 * and non-existing files that won't be directories specially later.
+	 * Code below is only here to assure compatibility with regular lookup.
+	 * It covers handling of trailing slashles and names like "/", both of
+	 * which of can be taken care of upfront which lockless lookup does
+	 * in cache_fplookup_preparse. Regular lookup performs these for each
+	 * path component.
 	 */
 	while (*cp == '/' && (cp[1] == '/' || cp[1] == '\0')) {
 		cp++;
-		ndp->ni_pathlen--;
 		if (*cp == '\0') {
-			/*
-			 * TODO
-			 * Regular lookup performs the following:
-			 * *ndp->ni_next = '\0';
-			 * cnp->cn_flags |= TRAILINGSLASH;
-			 *
-			 * Which is problematic since it modifies data read
-			 * from userspace. Then if fast path lookup was to
-			 * abort we would have to either restore it or convey
-			 * the flag. Since this is a corner case just ignore
-			 * it for simplicity.
-			 */
-			return (cache_fpl_partial(fpl));
+			panic("%s: ran into TRAILINGSLASH handling from [%s]\n",
+			    __func__, cnp->cn_pnbuf);
 		}
 	}
-	ndp->ni_next = cp;
 
-	/*
-	 * Check for degenerate name (e.g. / or "")
-	 * which is a way of talking about a directory,
-	 * e.g. like "/." or ".".
-	 *
-	 * TODO
-	 * Another corner case handled by the regular lookup
-	 */
-	if (__predict_false(cnp->cn_nameptr[0] == '\0')) {
-		return (cache_fpl_partial(fpl));
+	if (cnp->cn_nameptr[0] == '\0') {
+		panic("%s: ran into degenerate name from [%s]\n", __func__, cnp->cn_pnbuf);
 	}
+#endif
 	return (0);
 }
 
@@ -4869,13 +4978,18 @@ cache_fplookup_impl(struct vnode *dvp, struct cache_fpl *fpl)
 		cache_fpl_aborted(fpl);
 		goto out;
 	}
-	mp = atomic_load_ptr(&fpl->dvp->v_mount);
-	if (!cache_fplookup_mp_supported(mp)) {
+	mp = atomic_load_ptr(&dvp->v_mount);
+	if (__predict_false(mp == NULL || !cache_fplookup_mp_supported(mp))) {
 		cache_fpl_aborted(fpl);
 		goto out;
 	}
 
 	VNPASS(cache_fplookup_vnode_supported(fpl->dvp), fpl->dvp);
+
+	error = cache_fplookup_preparse(fpl);
+	if (__predict_false(cache_fpl_terminated(fpl))) {
+		goto out;
+	}
 
 	for (;;) {
 		error = cache_fplookup_parse(fpl);
@@ -4891,25 +5005,9 @@ cache_fplookup_impl(struct vnode *dvp, struct cache_fpl *fpl)
 			break;
 		}
 
-		if (__predict_false(cache_fpl_isdotdot(cnp))) {
-			error = cache_fplookup_dotdot(fpl);
-			if (__predict_false(cache_fpl_terminated(fpl))) {
-				break;
-			}
-		} else {
-			error = cache_fplookup_next(fpl);
-			if (__predict_false(cache_fpl_terminated(fpl))) {
-				break;
-			}
-
-			VNPASS(!seqc_in_modify(fpl->tvp_seqc), fpl->tvp);
-
-			if (cache_fplookup_is_mp(fpl)) {
-				error = cache_fplookup_cross_mount(fpl);
-				if (__predict_false(error != 0)) {
-					break;
-				}
-			}
+		error = cache_fplookup_next(fpl);
+		if (__predict_false(cache_fpl_terminated(fpl))) {
+			break;
 		}
 
 		VNPASS(!seqc_in_modify(fpl->tvp_seqc), fpl->tvp);
@@ -5083,7 +5181,7 @@ cache_fplookup(struct nameidata *ndp, enum cache_fpl_status *status,
 	cnp = fpl.cnp;
 	cnp->cn_nameptr = cnp->cn_pnbuf;
 	if (cnp->cn_pnbuf[0] == '/') {
-		cache_fpl_handle_root(ndp, &dvp);
+		dvp = cache_fpl_handle_root(&fpl);
 		ndp->ni_resflags |= NIRES_ABS;
 	} else {
 		if (ndp->ni_dirfd == AT_FDCWD) {
