@@ -152,6 +152,7 @@ APMPACKAGE=	apm
 CONFGROUPS+=	AUDIT
 AUDIT+=		auditd
 AUDIT+=		auditdistd
+AUDITPACKAGE=	rc
 .endif
 
 .if ${MK_AUTOFS} != "no"
@@ -319,6 +320,7 @@ ZFS+=		zfsbe
 ZFS+=		zfsd
 ZFS+=		zpool
 ZFS+=		zvol
+ZFSPACKAGE=	rc
 .endif
 
 .for fg in ${CONFGROUPS}
