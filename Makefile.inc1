@@ -730,18 +730,11 @@ BSARGS= 	DESTDIR= \
 		SSP_CFLAGS= \
 		MK_HTML=no NO_LINT=yes MK_MAN=no MK_MAN_UTILS=yes \
 		-DNO_PIC MK_PROFILE=no -DNO_SHARED \
-<<<<<<< HEAD
-		-DNO_CPU_CFLAGS MK_WARNS=no MK_CTF=no \
+		-DNO_CPU_CFLAGS MK_WERROR=no MK_CTF=no \
 		MK_CLANG_EXTRAS=yes MK_CLANG_FULL=no \
 		MK_LLDB=no MK_TESTS=no \
 		MK_INCLUDES=yes MK_CFI=no MK_RETPOLINE=no \
 		MK_CLANG_FORMAT=no
-=======
-		-DNO_CPU_CFLAGS MK_WERROR=no MK_CTF=no \
-		MK_CLANG_EXTRAS=no MK_CLANG_FORMAT=no MK_CLANG_FULL=no \
-		MK_LLDB=no MK_RETPOLINE=no MK_TESTS=no \
-		MK_INCLUDES=yes
->>>>>>> origin/freebsd/current/main
 
 BMAKE=		\
 		${BMAKEENV} ${MAKE} ${WORLD_FLAGS} -f Makefile.inc1 \
@@ -759,16 +752,10 @@ TMAKE=		\
 		BWPHASE=${.TARGET:C,^_,,} \
 		SSP_CFLAGS= \
 		-DNO_LINT \
-<<<<<<< HEAD
-		-DNO_CPU_CFLAGS MK_WARNS=no MK_CTF=no \
+		-DNO_CPU_CFLAGS MK_WERROR=no MK_CTF=no \
 		MK_CLANG_EXTRAS=yes MK_CLANG_FULL=no \
 		MK_LLDB=no MK_TESTS=no MK_CFI=no MK_RETPOLINE=no \
 		MK_CLANG_FORMAT=no
-=======
-		-DNO_CPU_CFLAGS MK_WERROR=no MK_CTF=no \
-		MK_CLANG_EXTRAS=no MK_CLANG_FORMAT=no MK_CLANG_FULL=no \
-		MK_LLDB=no MK_RETPOLINE=no MK_TESTS=no
->>>>>>> origin/freebsd/current/main
 
 # cross-tools stage
 # TOOLS_PREFIX set in BMAKE
@@ -794,12 +781,8 @@ KTMAKE=		\
 		SSP_CFLAGS= \
 		MK_HTML=no -DNO_LINT MK_MAN=no \
 		-DNO_PIC MK_PROFILE=no -DNO_SHARED \
-<<<<<<< HEAD
-		-DNO_CPU_CFLAGS MK_WARNS=no MK_CTF=no MK_CFI=no \
+		-DNO_CPU_CFLAGS MK_WERROR=no MK_CTF=no MK_CFI=no \
 		MK_RETPOLINE=no
-=======
-		-DNO_CPU_CFLAGS MK_RETPOLINE=no MK_WERROR=no MK_CTF=no
->>>>>>> origin/freebsd/current/main
 
 # world stage
 WMAKEENV=	${CROSSENV} \
