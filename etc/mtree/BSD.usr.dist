@@ -58,6 +58,8 @@
                 ..
             ..
         ..
+        compat
+        ..
         dtrace
         ..
         engines
