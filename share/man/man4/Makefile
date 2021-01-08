@@ -179,16 +179,13 @@ MAN=	aac.4 \
 	gpioths.4 \
 	gre.4 \
 	h_ertt.4 \
-<<<<<<< HEAD
 	hardening.4 \
-=======
 	hconf.4 \
 	hcons.4 \
 	hgame.4 \
 	hidbus.4 \
 	hidquirk.4 \
 	hidraw.4 \
->>>>>>> origin/freebsd/current/main
 	hifn.4 \
 	hkbd.4 \
 	hms.4 \
