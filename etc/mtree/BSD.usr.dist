@@ -58,6 +58,11 @@
                 ..
             ..
         ..
+<<<<<<< HEAD
+=======
+        compat
+        ..
+>>>>>>> origin/freebsd/current/main
         dtrace
         ..
         engines
