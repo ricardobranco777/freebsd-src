@@ -1069,7 +1069,6 @@ exec_new_vmspace(struct image_params *imgp, struct sysentvec *sv)
 	struct rlimit rlim_stack;
 	vm_offset_t sv_minuser, stack_addr;
 	vm_map_t map;
-	vm_prot_t stack_prot;
 	u_long ssiz;
 	vm_prot_t stackprot;
 	vm_prot_t stackmaxprot;

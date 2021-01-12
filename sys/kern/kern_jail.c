@@ -1314,8 +1314,7 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 #ifdef PAX
 		if (!pax_init_prison(pr, opts)) {
 			error = EINVAL;
-			prison_deref(pr, PD_LIST_XLOCKED);
-			goto done_releroot;
+			goto done_deref;
 		}
 #endif
 
