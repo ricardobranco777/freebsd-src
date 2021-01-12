@@ -1191,7 +1191,6 @@ exec_new_vmspace(struct image_params *imgp, struct sysentvec *sv)
 	imgp->eff_stack_sz = lim_cur(curthread, RLIMIT_STACK);
 	if (ssiz < imgp->eff_stack_sz)
 		imgp->eff_stack_sz = ssiz;
-<<<<<<< HEAD
 	error = vm_map_stack(map, stack_addr, (vm_size_t)ssiz,
 	    stackprot, stackmaxprot, MAP_STACK_GROWS_DOWN);
 	if (error != KERN_SUCCESS) {
@@ -1200,17 +1199,6 @@ exec_new_vmspace(struct image_params *imgp, struct sysentvec *sv)
 		    "failed to map the main stack @%p",
 		    (void *)p->p_usrstack);
 #endif
-=======
-	stack_addr = sv->sv_usrstack - ssiz;
-	stack_prot = obj != NULL && imgp->stack_prot != 0 ?
-	    imgp->stack_prot : sv->sv_stackprot;
-	error = vm_map_stack(map, stack_addr, (vm_size_t)ssiz, stack_prot,
-	    VM_PROT_ALL, MAP_STACK_GROWS_DOWN);
-	if (error != KERN_SUCCESS) {
-		uprintf("exec_new_vmspace: mapping stack size %#jx prot %#x "
-		    "failed mach error %d errno %d\n", (uintmax_t)ssiz,
-		    stack_prot, error, vm_mmap_to_errno(error));
->>>>>>> freebsd/main
 		return (vm_mmap_to_errno(error));
 	}
 
