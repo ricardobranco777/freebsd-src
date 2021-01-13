@@ -2749,12 +2749,14 @@ vm_map_pmap_enter(vm_map_t map, vm_offset_t addr, vm_prot_t prot,
 /*
  *	vm_map_protect:
  *
- *	Sets the protection and/or the maximum protection of the
- *	specified address region in the target map.
+ *	Sets the protection of the specified address
+ *	region in the target map.  If "set_max" is
+ *	specified, the maximum protection is to be set;
+ *	otherwise, only the current protection is affected.
  */
 int
 vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
-    vm_prot_t new_prot, vm_prot_t new_maxprot, int flags)
+	       vm_prot_t new_prot, boolean_t set_max)
 {
 	vm_map_entry_t entry, first_entry, in_tran, prev_entry;
 	vm_object_t obj;
@@ -2768,15 +2770,20 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	if (start == end)
 		return (KERN_SUCCESS);
 
-	if ((flags & (VM_MAP_PROTECT_SET_PROT | VM_MAP_PROTECT_SET_MAXPROT)) ==
-	    (VM_MAP_PROTECT_SET_PROT | VM_MAP_PROTECT_SET_MAXPROT) &&
-	    (new_prot & new_maxprot) != new_prot)
-		return (KERN_OUT_OF_BOUNDS);
-
 again:
 	in_tran = NULL;
 	vm_map_lock(map);
 
+<<<<<<< HEAD
+=======
+	if ((map->flags & MAP_WXORX) != 0 && (new_prot &
+	    (VM_PROT_WRITE | VM_PROT_EXECUTE)) == (VM_PROT_WRITE |
+	    VM_PROT_EXECUTE)) {
+		vm_map_unlock(map);
+		return (KERN_PROTECTION_FAILURE);
+	}
+
+>>>>>>> parent of 0659df6faddf (vm_map_protect: allow to set prot and max_prot in one go.)
 	/*
 	 * Ensure that we are not concurrently wiring pages.  vm_map_wire() may
 	 * need to fault pages into the map and will drop the map lock while
@@ -2801,12 +2808,7 @@ again:
 			vm_map_unlock(map);
 			return (KERN_INVALID_ARGUMENT);
 		}
-		if ((flags & VM_MAP_PROTECT_SET_PROT) == 0)
-			new_prot = entry->protection;
-		if ((flags & VM_MAP_PROTECT_SET_MAXPROT) == 0)
-			new_maxprot = entry->max_protection;
-		if ((new_prot & entry->max_protection) != new_prot ||
-		    (new_maxprot & entry->max_protection) != new_maxprot) {
+		if ((new_prot & entry->max_protection) != new_prot) {
 			vm_map_unlock(map);
 			return (KERN_PROTECTION_FAILURE);
 		}
@@ -2847,16 +2849,12 @@ again:
 			return (rv);
 		}
 
-		if ((flags & VM_MAP_PROTECT_SET_PROT) == 0)
-			new_prot = entry->protection;
-		if ((flags & VM_MAP_PROTECT_SET_MAXPROT) == 0)
-			new_maxprot = entry->max_protection;
-
-		if ((flags & VM_MAP_PROTECT_SET_PROT) == 0 ||
+		if (set_max ||
 		    ((new_prot & ~entry->protection) & VM_PROT_WRITE) == 0 ||
 		    ENTRY_CHARGED(entry) ||
-		    (entry->eflags & MAP_ENTRY_GUARD) != 0)
+		    (entry->eflags & MAP_ENTRY_GUARD) != 0) {
 			continue;
+		}
 
 		cred = curthread->td_ucred;
 		obj = entry->object.vm_object;
@@ -2923,11 +2921,11 @@ again:
 		}
 #endif
 
-		if ((flags & VM_MAP_PROTECT_SET_MAXPROT) != 0) {
-			entry->max_protection = new_maxprot;
-			entry->protection = new_maxprot & old_prot;
-		}
-		if ((flags & VM_MAP_PROTECT_SET_PROT) != 0)
+		if (set_max)
+			entry->protection =
+			    (entry->max_protection = new_prot) &
+			    old_prot;
+		else
 			entry->protection = new_prot;
 
 		/*

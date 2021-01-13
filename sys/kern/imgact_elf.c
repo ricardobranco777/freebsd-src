@@ -691,7 +691,10 @@ __elfN(load_section)(struct image_params *imgp, vm_ooffset_t offset,
 	if ((prot & VM_PROT_WRITE) == 0)
 		vm_map_protect(map, trunc_page(map_addr), round_page(map_addr +
 		    map_len), prot, FALSE);
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> parent of 0659df6faddf (vm_map_protect: allow to set prot and max_prot in one go.)
 
 	return (0);
 }
