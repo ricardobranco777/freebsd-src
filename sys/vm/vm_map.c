@@ -2777,17 +2777,6 @@ again:
 	in_tran = NULL;
 	vm_map_lock(map);
 
-<<<<<<< HEAD
-=======
-	if ((map->flags & MAP_WXORX) != 0 &&
-	    (flags & VM_MAP_PROTECT_SET_PROT) != 0 &&
-	    (new_prot & (VM_PROT_WRITE | VM_PROT_EXECUTE)) == (VM_PROT_WRITE |
-	    VM_PROT_EXECUTE)) {
-		vm_map_unlock(map);
-		return (KERN_PROTECTION_FAILURE);
-	}
-
->>>>>>> origin/freebsd/current/main
 	/*
 	 * Ensure that we are not concurrently wiring pages.  vm_map_wire() may
 	 * need to fault pages into the map and will drop the map lock while
