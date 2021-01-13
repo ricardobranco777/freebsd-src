@@ -690,8 +690,12 @@ __elfN(load_section)(struct image_params *imgp, vm_ooffset_t offset,
 #else
 	if ((prot & VM_PROT_WRITE) == 0)
 		vm_map_protect(map, trunc_page(map_addr), round_page(map_addr +
+<<<<<<< HEAD
 		    map_len), prot, FALSE);
 #endif
+=======
+		    map_len), prot, 0, VM_MAP_PROTECT_SET_PROT);
+>>>>>>> origin/freebsd/current/main
 
 	return (0);
 }
