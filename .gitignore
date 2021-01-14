@@ -1,5 +1,14 @@
+<<<<<<< HEAD
 .clang_complete
 .snap
+=======
+*.a
+*.core
+*.o
+*.so
+*.swp
+*~
+>>>>>>> origin/freebsd/current/main
 _.tinderbox.*
 _.universe-toolchain
 _.amd64.*
@@ -17,6 +26,11 @@ GPATH
 GRTAGS
 GTAGS
 ID
+<<<<<<< HEAD
 .tags
+=======
+cscope.files
+cscope.in.out
+>>>>>>> origin/freebsd/current/main
 cscope.out
-?cscope.out
+cscope.po.out
