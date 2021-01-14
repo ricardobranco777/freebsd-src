@@ -2839,11 +2839,7 @@ again:
 			return (rv);
 		}
 
-<<<<<<< HEAD
 		if (set_max ||
-=======
-		if ((flags & VM_MAP_PROTECT_SET_PROT) == 0 ||
->>>>>>> origin/freebsd/current/main
 		    ((new_prot & ~entry->protection) & VM_PROT_WRITE) == 0 ||
 		    ENTRY_CHARGED(entry) ||
 		    (entry->eflags & MAP_ENTRY_GUARD) != 0) {
