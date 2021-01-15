@@ -60,7 +60,6 @@
 #include <net/ethernet.h>
 #include <net/if_arp.h>
 
-
 static const struct ng_cmdlist ng_eiface_cmdlist[] = {
 	{
 	  NGM_EIFACE_COOKIE,
@@ -143,7 +142,6 @@ ng_eiface_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 	ng_eiface_print_ioctl(ifp, command, data);
 #endif
 	switch (command) {
-
 	/* These two are mostly handled at a higher layer */
 	case SIOCSIFADDR:
 		error = ether_ioctl(ifp, command, data);
@@ -385,7 +383,7 @@ ng_eiface_constructor(node_p node)
 {
 	struct ifnet *ifp;
 	priv_p priv;
-	u_char eaddr[6] = {0,0,0,0,0,0};
+	struct ether_addr eaddr;
 
 	/* Allocate node and interface private structures */
 	priv = malloc(sizeof(*priv), M_NETGRAPH, M_WAITOK | M_ZERO);
@@ -435,7 +433,8 @@ ng_eiface_constructor(node_p node)
 		    ifp->if_xname);
 
 	/* Attach the interface */
-	ether_ifattach(ifp, eaddr);
+	ether_gen_addr(ifp, &eaddr);
+	ether_ifattach(ifp, eaddr.octet);
 	ifp->if_baudrate = ifmedia_baudrate(IFM_ETHER | IFM_1000_T);
 
 	/* Done */
@@ -483,7 +482,6 @@ ng_eiface_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	switch (msg->header.typecookie) {
 	case NGM_EIFACE_COOKIE:
 		switch (msg->header.cmd) {
-
 		case NGM_EIFACE_SET:
 		    {
 			if (msg->header.arglen != ETHER_ADDR_LEN) {
@@ -622,8 +620,8 @@ ng_eiface_rmnode(node_p node)
 	 * hence we have to change the current vnet context here.
 	 */
 	CURVNET_SET_QUIET(ifp->if_vnet);
-	ifmedia_removeall(&priv->media);
 	ether_ifdetach(ifp);
+	ifmedia_removeall(&priv->media);
 	if_free(ifp);
 	CURVNET_RESTORE();
 	free_unr(V_ng_eiface_unit, priv->unit);

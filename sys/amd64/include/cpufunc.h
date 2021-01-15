@@ -160,23 +160,13 @@ enable_intr(void)
 #ifdef _KERNEL
 
 #define	HAVE_INLINE_FFS
-#define        ffs(x)  __builtin_ffs(x)
+#define	ffs(x)		__builtin_ffs(x)
 
 #define	HAVE_INLINE_FFSL
-
-static __inline __pure2 int
-ffsl(long mask)
-{
-	return (mask == 0 ? mask : (int)bsfq((u_long)mask) + 1);
-}
+#define	ffsl(x)		__builtin_ffsl(x)
 
 #define	HAVE_INLINE_FFSLL
-
-static __inline __pure2 int
-ffsll(long long mask)
-{
-	return (ffsl((long)mask));
-}
+#define	ffsll(x)	__builtin_ffsll(x)
 
 #define	HAVE_INLINE_FLS
 
@@ -408,6 +398,15 @@ rdtsc32(void)
 	uint32_t rv;
 
 	__asm __volatile("rdtsc" : "=a" (rv) : : "edx");
+	return (rv);
+}
+
+static __inline uint32_t
+rdtscp32(void)
+{
+	uint32_t rv;
+
+	__asm __volatile("rdtscp" : "=a" (rv) : : "ecx", "edx");
 	return (rv);
 }
 

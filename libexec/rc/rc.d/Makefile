@@ -73,9 +73,9 @@ CONFS=	DAEMON \
 	nfsuserd \
 	nisdomain \
 	${_nscd} \
-	nsswitch \
 	ntpdate \
 	${_opensm} \
+	os-release \
 	pf \
 	pflog \
 	pfsync \
@@ -139,12 +139,6 @@ ACPIPACKAGE=	acpi
 CONFS+=		powerd
 .endif
 
-.if ${MK_AMD} != "no"
-CONFGROUPS+=	AMD
-AMD+=		amd
-AMDPACKAGE=	amd
-.endif
-
 .if ${MK_APM} != "no"
 CONFGROUPS+=	APM
 APM+=		apm
@@ -158,6 +152,7 @@ APMPACKAGE=	apm
 CONFGROUPS+=	AUDIT
 AUDIT+=		auditd
 AUDIT+=		auditdistd
+AUDITPACKAGE=	rc
 .endif
 
 .if ${MK_AUTOFS} != "no"
@@ -269,10 +264,6 @@ _nscd=		nscd
 CONFS+=		ntpd
 .endif
 
-.if ${MK_OPENNTPD} != "no"
-CONFS+=		local_openntpd
-.endif
-
 .if ${MK_OFED} != "no"
 _opensm=	opensm
 .endif
@@ -327,7 +318,9 @@ CONFGROUPS+=	ZFS
 ZFS+=		zfs
 ZFS+=		zfsbe
 ZFS+=		zfsd
+ZFS+=		zpool
 ZFS+=		zvol
+ZFSPACKAGE=	rc
 .endif
 
 .for fg in ${CONFGROUPS}

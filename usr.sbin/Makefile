@@ -96,6 +96,7 @@ SUBDIR=	adduser \
 	trpt \
 	tzsetup \
 	ugidfw \
+	valectl \
 	vigr \
 	vipw \
 	wake \
@@ -108,7 +109,6 @@ SUBDIR=	adduser \
 
 SUBDIR.${MK_ACCT}+=	accton
 SUBDIR.${MK_ACCT}+=	sa
-SUBDIR.${MK_AMD}+=	amd
 SUBDIR.${MK_AUDIT}+=	audit
 SUBDIR.${MK_AUDIT}+=	auditd
 .if ${MK_OPENSSL} != "no"
@@ -143,7 +143,6 @@ SUBDIR.${MK_GSSAPI}+=	gssd
 SUBDIR.${MK_GPIO}+=	gpioctl
 SUBDIR.${MK_HBSD_UPDATE}+=	hbsd-update
 SUBDIR.${MK_HBSDCONTROL}+=	hbsdcontrol
-SUBDIR.${MK_HTTPD}+=	simple_httpd
 SUBDIR.${MK_INET6}+=	ip6addrctl
 SUBDIR.${MK_INET6}+=	mld6query
 SUBDIR.${MK_INET6}+=	ndp
@@ -186,7 +185,6 @@ SUBDIR.${MK_NIS}+=	yppush
 SUBDIR.${MK_NIS}+=	ypserv
 SUBDIR.${MK_NIS}+=	ypset
 SUBDIR.${MK_NTP}+=	ntp
-SUBDIR.${MK_OPENNTPD}+=	ntp
 SUBDIR.${MK_OPENSSL}+=	keyserv
 SUBDIR.${MK_PF}+=	ftp-proxy
 SUBDIR.${MK_PKGBOOTSTRAP}+=	pkg

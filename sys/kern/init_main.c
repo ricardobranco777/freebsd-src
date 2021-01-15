@@ -47,6 +47,7 @@
 __FBSDID("$FreeBSD$");
 
 #include "opt_ddb.h"
+#include "opt_kdb.h"
 #include "opt_init_path.h"
 #include "opt_pax.h"
 #include "opt_verbose_sysinit.h"
@@ -65,6 +66,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/loginclass.h>
 #include <sys/mount.h>
 #include <sys/mutex.h>
+#include <sys/dtrace_bsd.h>
 #include <sys/syscallsubr.h>
 #include <sys/sysctl.h>
 #include <sys/pax.h>
@@ -116,7 +118,6 @@ linux_alloc_current_noop(struct thread *td __unused, int flags __unused)
 	return (0);
 }
 int (*lkpi_alloc_current)(struct thread *, int) = linux_alloc_current_noop;
-
 
 #ifndef BOOTHOWTO
 #define	BOOTHOWTO	0
@@ -280,7 +281,6 @@ restart:
 	 * Perform each task, and continue on to the next task.
 	 */
 	for (sipp = sysinit; sipp < sysinit_end; sipp++) {
-
 		if ((*sipp)->subsystem == SI_SUB_DUMMY)
 			continue;	/* skip dummy task(s)*/
 
@@ -375,18 +375,18 @@ SYSINIT(version, SI_SUB_COPYRIGHT, SI_ORDER_THIRD, print_version, NULL);
 #ifdef WITNESS
 static char wit_warn[] =
      "WARNING: WITNESS option enabled, expect reduced performance.\n";
-SYSINIT(witwarn, SI_SUB_COPYRIGHT, SI_ORDER_THIRD + 1,
+SYSINIT(witwarn, SI_SUB_COPYRIGHT, SI_ORDER_FOURTH,
    print_caddr_t, wit_warn);
-SYSINIT(witwarn2, SI_SUB_LAST, SI_ORDER_THIRD + 1,
+SYSINIT(witwarn2, SI_SUB_LAST, SI_ORDER_FOURTH,
    print_caddr_t, wit_warn);
 #endif
 
 #ifdef DIAGNOSTIC
 static char diag_warn[] =
      "WARNING: DIAGNOSTIC option enabled, expect reduced performance.\n";
-SYSINIT(diagwarn, SI_SUB_COPYRIGHT, SI_ORDER_THIRD + 2,
+SYSINIT(diagwarn, SI_SUB_COPYRIGHT, SI_ORDER_FIFTH,
     print_caddr_t, diag_warn);
-SYSINIT(diagwarn2, SI_SUB_LAST, SI_ORDER_THIRD + 2,
+SYSINIT(diagwarn2, SI_SUB_LAST, SI_ORDER_FIFTH,
     print_caddr_t, diag_warn);
 #endif
 
@@ -407,8 +407,6 @@ null_set_syscall_retval(struct thread *td __unused, int error __unused)
 struct sysentvec null_sysvec = {
 	.sv_size	= 0,
 	.sv_table	= NULL,
-	.sv_errsize	= 0,
-	.sv_errtbl	= NULL,
 	.sv_transtrap	= NULL,
 	.sv_fixup	= NULL,
 	.sv_sendsig	= NULL,
@@ -507,9 +505,8 @@ proc0_init(void *dummy __unused)
 	p->p_klist = knlist_alloc(&p->p_mtx);
 	STAILQ_INIT(&p->p_ktr);
 	p->p_nice = NZERO;
-	/* pid_max cannot be greater than PID_MAX */
-	td->td_tid = PID_MAX + 1;
-	LIST_INSERT_HEAD(TIDHASH(td->td_tid), td, td_hash);
+	td->td_tid = THREAD0_TID;
+	tidhash_add(td);
 	td->td_state = TDS_RUNNING;
 	td->td_pri_class = PRI_TIMESHARE;
 	td->td_user_pri = PUSER;
@@ -525,7 +522,6 @@ proc0_init(void *dummy __unused)
 	td->td_pax = PAX_NOTE_ALL_DISABLED;
 #endif
 	td->td_domain.dr_policy = td->td_cpuset->cs_domain;
-	epoch_thread_init(td);
 	prison0_init();
 	p->p_peers = 0;
 	p->p_leader = p;
@@ -554,7 +550,10 @@ proc0_init(void *dummy __unused)
 	/* End hack. creds get properly set later with thread_cow_get_proc */
 	curthread->td_ucred = NULL;
 	newcred->cr_prison = &prison0;
+	newcred->cr_users++; /* avoid assertion failure */
 	proc_set_cred_init(p, newcred);
+	newcred->cr_users--;
+	crfree(newcred);
 #ifdef AUDIT
 	audit_cred_kproc0(newcred);
 #endif
@@ -568,7 +567,8 @@ proc0_init(void *dummy __unused)
 	siginit(&proc0);
 
 	/* Create the file descriptor table. */
-	p->p_fd = fdinit(NULL, false);
+	p->p_pd = pdinit(NULL, false);
+	p->p_fd = fdinit(NULL, false, NULL);
 	p->p_fdtol = NULL;
 
 	/* Create the limits structures. */
@@ -603,7 +603,7 @@ proc0_init(void *dummy __unused)
 
 	/* Allocate a prototype map so we have something to fork. */
 	p->p_vmspace = &vmspace0;
-	vmspace0.vm_refcnt = 1;
+	refcount_init(&vmspace0.vm_refcnt, 1);
 	pmap_pinit0(vmspace_pmap(&vmspace0));
 
 	/*
@@ -619,6 +619,10 @@ proc0_init(void *dummy __unused)
 	 */
 	EVENTHANDLER_DIRECT_INVOKE(process_init, p);
 	EVENTHANDLER_DIRECT_INVOKE(thread_init, td);
+#ifdef KDTRACE_HOOKS
+	kdtrace_proc_ctor(p);
+	kdtrace_thread_ctor(td);
+#endif
 	EVENTHANDLER_DIRECT_INVOKE(process_ctor, p);
 	EVENTHANDLER_DIRECT_INVOKE(thread_ctor, td);
 
@@ -636,7 +640,6 @@ SYSINIT(p0init, SI_SUB_INTRINSIC, SI_ORDER_FIRST, proc0_init, NULL);
 static void
 proc0_post(void *dummy __unused)
 {
-	struct timespec ts;
 	struct proc *p;
 	struct rusage ru;
 	struct thread *td;
@@ -668,27 +671,8 @@ proc0_post(void *dummy __unused)
 	sx_sunlock(&allproc_lock);
 	PCPU_SET(switchtime, cpu_ticks());
 	PCPU_SET(switchticks, ticks);
-
-	/*
-	 * Give the ``random'' number generator a thump.
-	 */
-	nanotime(&ts);
-	srandom(ts.tv_sec ^ ts.tv_nsec);
 }
 SYSINIT(p0post, SI_SUB_INTRINSIC_POST, SI_ORDER_FIRST, proc0_post, NULL);
-
-static void
-random_init(void *dummy __unused)
-{
-
-	/*
-	 * After CPU has been started we have some randomness on most
-	 * platforms via get_cyclecount().  For platforms that don't
-	 * we will reseed random(9) in proc0_post() as well.
-	 */
-	srandom(get_cyclecount());
-}
-SYSINIT(random, SI_SUB_RANDOM, SI_ORDER_FIRST, random_init, NULL);
 
 /*
  ***************************************************************************
@@ -748,16 +732,24 @@ start_init(void *dummy)
 	/* Wipe GELI passphrase from the environment. */
 	kern_unsetenv("kern.geom.eli.passphrase");
 
+	/* For Multicons, report which console is primary to both */
+	if (boothowto & RB_MULTIPLE) {
+		if (boothowto & RB_SERIAL)
+			printf("Dual Console: Serial Primary, Video Secondary\n");
+		else
+			printf("Dual Console: Video Primary, Serial Secondary\n");
+	}
+
 	if ((var = kern_getenv("init_path")) != NULL) {
 		strlcpy(init_path, var, sizeof(init_path));
 		freeenv(var);
 	}
 	free_init_path = tmp_init_path = strdup(init_path, M_TEMP);
-	
+
 	while ((path = strsep(&tmp_init_path, ":")) != NULL) {
 		if (bootverbose)
 			printf("start_init: trying %s\n", path);
-			
+
 		memset(&args, 0, sizeof(args));
 		error = exec_alloc_args(&args);
 		if (error != 0)
@@ -785,16 +777,11 @@ start_init(void *dummy)
 		KASSERT((td->td_pflags & TDP_EXECVMSPC) == 0,
 		    ("nested execve"));
 		oldvmspace = td->td_proc->p_vmspace;
-		error = kern_execve(td, &args, NULL);
+		error = kern_execve(td, &args, NULL, oldvmspace);
 		KASSERT(error != 0,
 		    ("kern_execve returned success, not EJUSTRETURN"));
 		if (error == EJUSTRETURN) {
-			if ((td->td_pflags & TDP_EXECVMSPC) != 0) {
-				KASSERT(p->p_vmspace != oldvmspace,
-				    ("oldvmspace still used"));
-				vmspace_free(oldvmspace);
-				td->td_pflags &= ~TDP_EXECVMSPC;
-			}
+			exec_cleanup(td, oldvmspace);
 			free(free_init_path, M_TEMP);
 			TSEXIT();
 			return;
@@ -843,8 +830,9 @@ create_init(const void *udata __unused)
 #endif
 	proc_set_cred(initproc, newcred);
 	td = FIRST_THREAD_IN_PROC(initproc);
-	crfree(td->td_ucred);
-	td->td_ucred = crhold(initproc->p_ucred);
+	crcowfree(td);
+	td->td_realucred = crcowget(initproc->p_ucred);
+	td->td_ucred = td->td_realucred;
 	PROC_UNLOCK(initproc);
 	sx_xunlock(&proctree_lock);
 	crfree(oldcred);
@@ -865,6 +853,53 @@ kick_init(const void *udata __unused)
 	thread_lock(td);
 	TD_SET_CAN_RUN(td);
 	sched_add(td, SRQ_BORING);
-	thread_unlock(td);
 }
 SYSINIT(kickinit, SI_SUB_KTHREAD_INIT, SI_ORDER_MIDDLE, kick_init, NULL);
+
+/*
+ * DDB(4).
+ */
+#ifdef DDB
+static void
+db_show_print_syinit(struct sysinit *sip, bool ddb)
+{
+	const char *sname, *funcname;
+	c_db_sym_t sym;
+	db_expr_t  offset;
+
+#define xprint(...)							\
+	if (ddb)							\
+		db_printf(__VA_ARGS__);					\
+	else								\
+		printf(__VA_ARGS__)
+
+	if (sip == NULL) {
+		xprint("%s: no sysinit * given\n", __func__);
+		return;
+	}
+
+	sym = db_search_symbol((vm_offset_t)sip, DB_STGY_ANY, &offset);
+	db_symbol_values(sym, &sname, NULL);
+	sym = db_search_symbol((vm_offset_t)sip->func, DB_STGY_PROC, &offset);
+	db_symbol_values(sym, &funcname, NULL);
+	xprint("%s(%p)\n", (sname != NULL) ? sname : "", sip);
+	xprint("  %#08x %#08x\n", sip->subsystem, sip->order);
+	xprint("  %p(%s)(%p)\n",
+	    sip->func, (funcname != NULL) ? funcname : "", sip->udata);
+#undef xprint
+}
+
+DB_SHOW_COMMAND(sysinit, db_show_sysinit)
+{
+	struct sysinit **sipp;
+
+	db_printf("SYSINIT vs Name(Ptr)\n");
+	db_printf("  Subsystem  Order\n");
+	db_printf("  Function(Name)(Arg)\n");
+	for (sipp = sysinit; sipp < sysinit_end; sipp++) {
+		db_show_print_syinit(*sipp, true);
+		if (db_pager_quit)
+			break;
+	}
+}
+#endif /* DDB */

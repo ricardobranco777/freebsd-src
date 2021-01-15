@@ -5,7 +5,6 @@ SRCDIR=		${SRCTOP}/contrib/libcxxrt
 
 SHLIB_MAJOR=	1
 SHLIBDIR?=	/lib
-ALLOW_MIPS_SHARED_TEXTREL=
 
 .PATH: ${SRCDIR}
 
@@ -21,7 +20,7 @@ SRCS+=		libelftc_dem_gnu3.c\
 		typeinfo.cc\
 		guard.cc
 
-WARNS=		0
+WARNS?=		0
 CFLAGS+=	-isystem ${SRCDIR} -nostdinc++
 CXXSTD?=	c++14
 VERSION_MAP=	${.CURDIR}/Version.map

@@ -504,7 +504,6 @@ rt2860_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 	*(bus_addr_t *)arg = segs[0].ds_addr;
 }
 
-
 static int
 rt2860_alloc_tx_ring(struct rt2860_softc *sc, struct rt2860_tx_ring *ring)
 {
@@ -1179,6 +1178,7 @@ rt2860_maxrssi_chain(struct rt2860_softc *sc, const struct rt2860_rxwi *rxwi)
 static void
 rt2860_rx_intr(struct rt2860_softc *sc)
 {
+	struct epoch_tracker et;
 	struct rt2860_rx_radiotap_header *tap;
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211_frame *wh;
@@ -1326,11 +1326,13 @@ rt2860_rx_intr(struct rt2860_softc *sc)
 		/* send the frame to the 802.11 layer */
 		ni = ieee80211_find_rxnode(ic,
 		    (struct ieee80211_frame_min *)wh);
+		NET_EPOCH_ENTER(et);
 		if (ni != NULL) {
 			(void)ieee80211_input(ni, m, rssi - nf, nf);
 			ieee80211_free_node(ni);
 		} else
 			(void)ieee80211_input_all(ic, m, rssi - nf, nf);
+		NET_EPOCH_EXIT(et);
 
 		RAL_LOCK(sc);
 
@@ -2588,7 +2590,7 @@ rt5390_set_chan(struct rt2860_softc *sc, u_int chan)
 	rf = MIN(rf, 0x5f);
 	if (tmp != rf)
 		rt2860_mcu_cmd(sc, 0x74, (tmp << 8 ) | rf, 0);
-	
+
 	if (sc->mac_ver == 0x5390) {
 		if (chan <= 4)
 			rf = 0x73;

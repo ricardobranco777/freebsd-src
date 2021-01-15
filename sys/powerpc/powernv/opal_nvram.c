@@ -34,6 +34,7 @@
 #include <sys/conf.h>
 #include <sys/disk.h>
 #include <sys/kernel.h>
+#include <sys/mutex.h>
 #include <sys/uio.h>
 
 #include <dev/ofw/openfirm.h>
@@ -56,6 +57,7 @@
 
 struct opal_nvram_softc {
 	device_t	 sc_dev;
+	struct mtx	 sc_mtx;
 	uint32_t	 sc_size;
 	uint8_t		*sc_buf;
 	vm_paddr_t	 sc_buf_phys;
@@ -63,6 +65,9 @@ struct opal_nvram_softc {
 	struct cdev 	*sc_cdev;
 	int		 sc_isopen;
 };
+
+#define	NVRAM_LOCK(sc)		mtx_lock(&sc->sc_mtx)
+#define	NVRAM_UNLOCK(sc)	mtx_unlock(&sc->sc_mtx)
 
 /*
  * Device interface.
@@ -79,7 +84,6 @@ static device_method_t	opal_nvram_methods[] = {
 	DEVMETHOD(device_probe,		opal_nvram_probe),
 	DEVMETHOD(device_attach,	opal_nvram_attach),
 	DEVMETHOD(device_detach,	opal_nvram_detach),
-
 	{ 0, 0 }
 };
 
@@ -105,7 +109,6 @@ static	d_ioctl_t	opal_nvram_ioctl;
 
 static struct cdevsw opal_nvram_cdevsw = {
 	.d_version =	D_VERSION,
-	.d_flags =	D_NEEDGIANT,
 	.d_open =	opal_nvram_open,
 	.d_close =	opal_nvram_close,
 	.d_read =	opal_nvram_read,
@@ -154,6 +157,8 @@ opal_nvram_attach(device_t dev)
 	    "nvram");
 	sc->sc_cdev->si_drv1 = sc;
 
+	mtx_init(&sc->sc_mtx, "opal_nvram", 0, MTX_DEF);
+
 	return (0);
 }
 
@@ -168,7 +173,9 @@ opal_nvram_detach(device_t dev)
 		destroy_dev(sc->sc_cdev);
 	if (sc->sc_buf != NULL)
 		contigfree(sc->sc_buf, NVRAM_BUFSIZE, M_DEVBUF);
-	
+
+	mtx_destroy(&sc->sc_mtx);
+
 	return (0);
 }
 
@@ -176,11 +183,18 @@ static int
 opal_nvram_open(struct cdev *dev, int flags, int fmt, struct thread *td)
 {
 	struct opal_nvram_softc *sc = dev->si_drv1;
+	int err;
 
+	err = 0;
+
+	NVRAM_LOCK(sc);
 	if (sc->sc_isopen)
-		return EBUSY;
-	sc->sc_isopen = 1;
-	return (0);
+		err = EBUSY;
+	else
+		sc->sc_isopen = 1;
+	NVRAM_UNLOCK(sc);
+
+	return (err);
 }
 
 static int
@@ -188,7 +202,10 @@ opal_nvram_close(struct cdev *dev, int fflag, int devtype, struct thread *td)
 {
 	struct opal_nvram_softc *sc = dev->si_drv1;
 
+	NVRAM_LOCK(sc);
 	sc->sc_isopen = 0;
+	NVRAM_UNLOCK(sc);
+
 	return (0);
 }
 
@@ -199,6 +216,8 @@ opal_nvram_read(struct cdev *dev, struct uio *uio, int ioflag)
 	int rv, amnt;
 
 	rv = 0;
+
+	NVRAM_LOCK(sc);
 	while (uio->uio_resid > 0) {
 		amnt = MIN(uio->uio_resid, sc->sc_size - uio->uio_offset);
 		amnt = MIN(amnt, NVRAM_BUFSIZE);
@@ -222,6 +241,8 @@ opal_nvram_read(struct cdev *dev, struct uio *uio, int ioflag)
 		if (rv != 0)
 			break;
 	}
+	NVRAM_UNLOCK(sc);
+
 	return (rv);
 }
 
@@ -233,6 +254,8 @@ opal_nvram_write(struct cdev *dev, struct uio *uio, int ioflag)
 	struct opal_nvram_softc *sc = dev->si_drv1;
 
 	rv = 0;
+
+	NVRAM_LOCK(sc);
 	while (uio->uio_resid > 0) {
 		amnt = MIN(uio->uio_resid, sc->sc_size - uio->uio_offset);
 		amnt = MIN(amnt, NVRAM_BUFSIZE);
@@ -258,6 +281,9 @@ opal_nvram_write(struct cdev *dev, struct uio *uio, int ioflag)
 			break;
 		}
 	}
+
+	NVRAM_UNLOCK(sc);
+
 	return (rv);
 }
 

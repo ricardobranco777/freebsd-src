@@ -70,7 +70,6 @@ static int smbfs_fastlookup = 1;
 SYSCTL_DECL(_vfs_smbfs);
 SYSCTL_INT(_vfs_smbfs, OID_AUTO, fastlookup, CTLFLAG_RW, &smbfs_fastlookup, 0, "");
 
-
 #define DE_SIZE	(sizeof(struct dirent))
 
 static int
@@ -103,6 +102,7 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 		    (np->n_parent ? np->n_parentino : 2);
 		if (de.d_fileno == 0)
 			de.d_fileno = 0x7ffffffd + offset;
+		de.d_off = offset + 1;
 		de.d_namlen = offset + 1;
 		de.d_name[0] = '.';
 		de.d_name[1] = '.';
@@ -153,6 +153,7 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 		bzero((caddr_t)&de, DE_SIZE);
 		de.d_reclen = DE_SIZE;
 		de.d_fileno = ctx->f_attr.fa_ino;
+		de.d_off = offset + 1;
 		de.d_type = (ctx->f_attr.fa_attr & SMB_FA_DIR) ? DT_DIR : DT_REG;
 		de.d_namlen = ctx->f_nmlen;
 		bcopy(ctx->f_name, de.d_name, de.d_namlen);
@@ -286,7 +287,7 @@ smbfs_writevnode(struct vnode *vp, struct uio *uiop,
 
 	if (vn_rlimit_fsize(vp, uiop, td))
 		return (EFBIG);
-	
+
 	scred = smbfs_malloc_scred();
 	smb_makescred(scred, td, cred);
 	error = smb_write(smp->sm_share, np->n_fid, uiop, scred);
@@ -457,7 +458,7 @@ smbfs_getpages(ap)
 	 * XXXGL: is that true for SMB filesystem?
 	 */
 	VM_OBJECT_WLOCK(object);
-	if (pages[npages - 1]->valid != 0 && --npages == 0)
+	if (!vm_page_none_valid(pages[npages - 1]) && --npages == 0)
 		goto out;
 	VM_OBJECT_WUNLOCK(object);
 
@@ -505,14 +506,14 @@ smbfs_getpages(ap)
 			/*
 			 * Read operation filled an entire page
 			 */
-			m->valid = VM_PAGE_BITS_ALL;
+			vm_page_valid(m);
 			KASSERT(m->dirty == 0,
 			    ("smbfs_getpages: page %p is dirty", m));
 		} else if (size > toff) {
 			/*
 			 * Read operation filled a partial page.
 			 */
-			m->valid = 0;
+			vm_page_invalid(m);
 			vm_page_set_valid_range(m, 0, size - toff);
 			KASSERT(m->dirty == 0,
 			    ("smbfs_getpages: page %p is dirty", m));
@@ -637,7 +638,7 @@ smbfs_vinvalbuf(struct vnode *vp, struct thread *td)
 	struct smbnode *np = VTOSMB(vp);
 	int error = 0;
 
-	if (vp->v_iflag & VI_DOOMED)
+	if (VN_IS_DOOMED(vp))
 		return 0;
 
 	while (np->n_flag & NFLUSHINPROG) {

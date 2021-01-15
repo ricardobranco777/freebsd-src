@@ -101,6 +101,9 @@ vmd_free(struct vmd_softc *sc)
 	int i;
 	struct vmd_irq_handler *elm, *tmp;
 
+	if (sc->vmd_bus.rman.rm_end != 0)
+		rman_fini(&sc->vmd_bus.rman);
+
 #ifdef TASK_QUEUE_INTR
 	if (sc->vmd_irq_tq != NULL) {
 		taskqueue_drain(sc->vmd_irq_tq, &sc->vmd_irq_task);
@@ -316,7 +319,6 @@ vmd_attach(device_t dev)
 		goto fail;
 	}
 
-
 	sc->vmd_btag = rman_get_bustag(sc->vmd_regs_resource[0]);
 	sc->vmd_bhandle = rman_get_bushandle(sc->vmd_regs_resource[0]);
 
@@ -335,10 +337,10 @@ vmd_attach(device_t dev)
 	snprintf(buf, sizeof(buf), "%s bus numbers", device_get_nameunit(dev));
 	bus->rman.rm_descr = strdup(buf, M_DEVBUF);
 	error = rman_init(&bus->rman);
-
 	if (error) {
 		device_printf(dev, "Failed to initialize %s bus number rman\n",
 		    device_get_nameunit(dev));
+		bus->rman.rm_end = 0;
 		goto fail;
 	}
 
@@ -365,7 +367,6 @@ vmd_attach(device_t dev)
 		    rman_get_start(bus->res), rman_get_start(bus->res) +
 		    min_count - 1);
 	}
-
 
 	/*
 	 * Add the initial resource to the rman.
@@ -412,7 +413,6 @@ vmd_attach(device_t dev)
 	}
 
 	sc->vmd_child = device_add_child(dev, NULL, -1);
-
 	if (sc->vmd_child == NULL) {
 		device_printf(dev, "Failed to attach child\n");
 		goto fail;
@@ -420,10 +420,10 @@ vmd_attach(device_t dev)
 
 	error = device_probe_and_attach(sc->vmd_child);
 	if (error) {
-		device_printf(dev, "Failed to add probe child\n");
+		device_printf(dev, "Failed to add probe child: %d\n", error);
+		(void)device_delete_child(dev, sc->vmd_child);
 		goto fail;
 	}
-
 
 	return (0);
 
@@ -447,9 +447,6 @@ vmd_detach(device_t dev)
 		if (err)
 			return (err);
 	}
-	if (sc->vmd_bus.rman.rm_end != 0)
-		rman_fini(&sc->vmd_bus.rman);
-
 	vmd_free(sc);
 	return (0);
 }
@@ -517,7 +514,6 @@ vmd_pcib_route_interrupt(device_t pcib, device_t dev, int pin)
 {
 	return (pcib_route_interrupt(pcib, dev, pin));
 }
-
 
 static int
 vmd_pcib_alloc_msi(device_t pcib, device_t dev, int count, int maxcount,

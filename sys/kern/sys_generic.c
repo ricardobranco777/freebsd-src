@@ -55,6 +55,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/signalvar.h>
 #include <sys/socketvar.h>
 #include <sys/uio.h>
+#include <sys/eventfd.h>
 #include <sys/kernel.h>
 #include <sys/ktr.h>
 #include <sys/limits.h>
@@ -63,6 +64,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/resourcevar.h>
 #include <sys/selinfo.h>
 #include <sys/sleepqueue.h>
+#include <sys/specialfd.h>
 #include <sys/syscallsubr.h>
 #include <sys/sysctl.h>
 #include <sys/sysent.h>
@@ -156,10 +158,9 @@ struct selfd {
 	struct mtx		*sf_mtx;	/* Pointer to selinfo mtx. */
 	struct seltd		*sf_td;		/* (k) owning seltd. */
 	void			*sf_cookie;	/* (k) fd or pollfd. */
-	u_int			sf_refs;
 };
 
-static uma_zone_t selfd_zone;
+MALLOC_DEFINE(M_SELFD, "selfd", "selfd");
 static struct mtx_pool *mtxpool_select;
 
 #ifdef __LP64__
@@ -652,18 +653,19 @@ int
 sys_ioctl(struct thread *td, struct ioctl_args *uap)
 {
 	u_char smalldata[SYS_IOCTL_SMALL_SIZE] __aligned(SYS_IOCTL_SMALL_ALIGN);
-	u_long com;
+	uint32_t com;
 	int arg, error;
 	u_int size;
 	caddr_t data;
 
+#ifdef INVARIANTS
 	if (uap->com > 0xffffffff) {
 		printf(
 		    "WARNING pid %d (%s): ioctl sign-extension ioctl %lx\n",
 		    td->td_proc->p_pid, td->td_name, uap->com);
-		uap->com &= 0xffffffff;
 	}
-	com = uap->com;
+#endif
+	com = (uint32_t)uap->com;
 
 	/*
 	 * Interpret high order word to find amount of data to be
@@ -819,6 +821,108 @@ out:
 }
 
 int
+sys_posix_fallocate(struct thread *td, struct posix_fallocate_args *uap)
+{
+	int error;
+
+	error = kern_posix_fallocate(td, uap->fd, uap->offset, uap->len);
+	return (kern_posix_error(td, error));
+}
+
+int
+kern_posix_fallocate(struct thread *td, int fd, off_t offset, off_t len)
+{
+	struct file *fp;
+	int error;
+
+	AUDIT_ARG_FD(fd);
+	if (offset < 0 || len <= 0)
+		return (EINVAL);
+	/* Check for wrap. */
+	if (offset > OFF_MAX - len)
+		return (EFBIG);
+	AUDIT_ARG_FD(fd);
+	error = fget(td, fd, &cap_pwrite_rights, &fp);
+	if (error != 0)
+		return (error);
+	AUDIT_ARG_FILE(td->td_proc, fp);
+	if ((fp->f_ops->fo_flags & DFLAG_SEEKABLE) == 0) {
+		error = ESPIPE;
+		goto out;
+	}
+	if ((fp->f_flag & FWRITE) == 0) {
+		error = EBADF;
+		goto out;
+	}
+
+	error = fo_fallocate(fp, offset, len, td);
+ out:
+	fdrop(fp, td);
+	return (error);
+}
+
+int
+kern_specialfd(struct thread *td, int type, void *arg)
+{
+	struct file *fp;
+	struct specialfd_eventfd *ae;
+	int error, fd, fflags;
+
+	fflags = 0;
+	error = falloc_noinstall(td, &fp);
+	if (error != 0)
+		return (error);
+
+	switch (type) {
+	case SPECIALFD_EVENTFD:
+		ae = arg;
+		if ((ae->flags & EFD_CLOEXEC) != 0)
+			fflags |= O_CLOEXEC;
+		error = eventfd_create_file(td, fp, ae->initval, ae->flags);
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+
+	if (error == 0)
+		error = finstall(td, fp, &fd, fflags, NULL);
+	fdrop(fp, td);
+	if (error == 0)
+		td->td_retval[0] = fd;
+	return (error);
+}
+
+int
+sys___specialfd(struct thread *td, struct __specialfd_args *args)
+{
+	struct specialfd_eventfd ae;
+	int error;
+
+	switch (args->type) {
+	case SPECIALFD_EVENTFD:
+		if (args->len != sizeof(struct specialfd_eventfd)) {
+			error = EINVAL;
+			break;
+		}
+		error = copyin(args->req, &ae, sizeof(ae));
+		if (error != 0)
+			break;
+		if ((ae.flags & ~(EFD_CLOEXEC | EFD_NONBLOCK |
+		    EFD_SEMAPHORE)) != 0) {
+			error = EINVAL;
+			break;
+		}
+		error = kern_specialfd(td, args->type, &ae);
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+	return (error);
+}
+
+int
 poll_no_poll(int events)
 {
 	/*
@@ -918,7 +1022,7 @@ sys_select(struct thread *td, struct select_args *uap)
  *
  * There are applications that rely on the behaviour.
  *
- * nd is fd_lastfile + 1.
+ * nd is fd_nfiles.
  */
 static int
 select_check_badfd(fd_set *fd_in, int nd, int ndu, int abi_nfdbits)
@@ -981,9 +1085,9 @@ kern_select(struct thread *td, int nd, fd_set *fd_in, fd_set *fd_ou,
 		return (EINVAL);
 	fdp = td->td_proc->p_fd;
 	ndu = nd;
-	lf = fdp->fd_lastfile;
-	if (nd > lf + 1)
-		nd = lf + 1;
+	lf = fdp->fd_nfiles;
+	if (nd > lf)
+		nd = lf;
 
 	error = select_check_badfd(fd_in, nd, ndu, abi_nfdbits);
 	if (error != 0)
@@ -1062,7 +1166,7 @@ kern_select(struct thread *td, int nd, fd_set *fd_in, fd_set *fd_ou,
 	swizzle_fdset(ibits[0]);
 	swizzle_fdset(ibits[1]);
 	swizzle_fdset(ibits[2]);
-	
+
 	if (nbufbytes != 0)
 		bzero(selbits, nbufbytes / 2);
 
@@ -1204,7 +1308,7 @@ static __inline int
 getselfd_cap(struct filedesc *fdp, int fd, struct file **fpp)
 {
 
-	return (fget_unlocked(fdp, fd, &cap_event_rights, fpp, NULL));
+	return (fget_unlocked(fdp, fd, &cap_event_rights, fpp));
 }
 
 /*
@@ -1434,6 +1538,49 @@ sys_ppoll(struct thread *td, struct ppoll_args *uap)
 	return (kern_poll(td, uap->fds, uap->nfds, tsp, ssp));
 }
 
+#ifdef CAPABILITIES
+static int
+poll_fget(struct filedesc *fdp, int fd, struct file **fpp)
+{
+	const struct filedescent *fde;
+	const struct fdescenttbl *fdt;
+	const cap_rights_t *haverights;
+	struct file *fp;
+	int error;
+
+	if (__predict_false(fd >= fdp->fd_nfiles))
+		return (EBADF);
+
+	fdt = fdp->fd_files;
+	fde = &fdt->fdt_ofiles[fd];
+	fp = fde->fde_file;
+	if (__predict_false(fp == NULL))
+		return (EBADF);
+	haverights = cap_rights_fde_inline(fde);
+	error = cap_check_inline(haverights, &cap_event_rights);
+	if (__predict_false(error != 0))
+		return (EBADF);
+	*fpp = fp;
+	return (0);
+}
+#else
+static int
+poll_fget(struct filedesc *fdp, int fd, struct file **fpp)
+{
+	struct file *fp;
+
+	if (__predict_false(fd >= fdp->fd_nfiles))
+		return (EBADF);
+
+	fp = fdp->fd_ofiles[fd].fde_file;
+	if (__predict_false(fp == NULL))
+		return (EBADF);
+
+	*fpp = fp;
+	return (0);
+}
+#endif
+
 static int
 pollrescan(struct thread *td)
 {
@@ -1457,19 +1604,11 @@ pollrescan(struct thread *td)
 		/* If the selinfo wasn't cleared the event didn't fire. */
 		if (si != NULL)
 			continue;
-		fp = fdp->fd_ofiles[fd->fd].fde_file;
-#ifdef CAPABILITIES
-		if (fp == NULL ||
-		    cap_check(cap_rights(fdp, fd->fd), &cap_event_rights) != 0)
-#else
-		if (fp == NULL)
-#endif
-		{
+		if (poll_fget(fdp, fd->fd, &fp) != 0) {
 			fd->revents = POLLNVAL;
 			n++;
 			continue;
 		}
-
 		/*
 		 * Note: backend also returns POLLHUP and
 		 * POLLERR if appropriate.
@@ -1483,7 +1622,6 @@ pollrescan(struct thread *td)
 	td->td_retval[0] = n;
 	return (0);
 }
-
 
 static int
 pollout(struct thread *td, struct pollfd *fds, struct pollfd *ufds, u_int nfd)
@@ -1509,47 +1647,39 @@ pollout(struct thread *td, struct pollfd *fds, struct pollfd *ufds, u_int nfd)
 static int
 pollscan(struct thread *td, struct pollfd *fds, u_int nfd)
 {
-	struct filedesc *fdp = td->td_proc->p_fd;
+	struct filedesc *fdp;
 	struct file *fp;
-	int i, n = 0;
+	int i, n;
 
+	n = 0;
+	fdp = td->td_proc->p_fd;
 	FILEDESC_SLOCK(fdp);
 	for (i = 0; i < nfd; i++, fds++) {
-		if (fds->fd > fdp->fd_lastfile) {
+		if (fds->fd < 0) {
+			fds->revents = 0;
+			continue;
+		}
+		if (poll_fget(fdp, fds->fd, &fp) != 0) {
 			fds->revents = POLLNVAL;
 			n++;
-		} else if (fds->fd < 0) {
-			fds->revents = 0;
-		} else {
-			fp = fdp->fd_ofiles[fds->fd].fde_file;
-#ifdef CAPABILITIES
-			if (fp == NULL ||
-			    cap_check(cap_rights(fdp, fds->fd), &cap_event_rights) != 0)
-#else
-			if (fp == NULL)
-#endif
-			{
-				fds->revents = POLLNVAL;
-				n++;
-			} else {
-				/*
-				 * Note: backend also returns POLLHUP and
-				 * POLLERR if appropriate.
-				 */
-				selfdalloc(td, fds);
-				fds->revents = fo_poll(fp, fds->events,
-				    td->td_ucred, td);
-				/*
-				 * POSIX requires POLLOUT to be never
-				 * set simultaneously with POLLHUP.
-				 */
-				if ((fds->revents & POLLHUP) != 0)
-					fds->revents &= ~POLLOUT;
-
-				if (fds->revents != 0)
-					n++;
-			}
+			continue;
 		}
+		/*
+		 * Note: backend also returns POLLHUP and
+		 * POLLERR if appropriate.
+		 */
+		selfdalloc(td, fds);
+		fds->revents = fo_poll(fp, fds->events,
+		    td->td_ucred, td);
+		/*
+		 * POSIX requires POLLOUT to be never
+		 * set simultaneously with POLLHUP.
+		 */
+		if ((fds->revents & POLLHUP) != 0)
+			fds->revents &= ~POLLOUT;
+
+		if (fds->revents != 0)
+			n++;
 	}
 	FILEDESC_SUNLOCK(fdp);
 	td->td_retval[0] = n;
@@ -1623,11 +1753,11 @@ selfdalloc(struct thread *td, void *cookie)
 
 	stp = td->td_sel;
 	if (stp->st_free1 == NULL)
-		stp->st_free1 = uma_zalloc(selfd_zone, M_WAITOK|M_ZERO);
+		stp->st_free1 = malloc(sizeof(*stp->st_free1), M_SELFD, M_WAITOK|M_ZERO);
 	stp->st_free1->sf_td = stp;
 	stp->st_free1->sf_cookie = cookie;
 	if (stp->st_free2 == NULL)
-		stp->st_free2 = uma_zalloc(selfd_zone, M_WAITOK|M_ZERO);
+		stp->st_free2 = malloc(sizeof(*stp->st_free2), M_SELFD, M_WAITOK|M_ZERO);
 	stp->st_free2->sf_td = stp;
 	stp->st_free2->sf_cookie = cookie;
 }
@@ -1636,16 +1766,17 @@ static void
 selfdfree(struct seltd *stp, struct selfd *sfp)
 {
 	STAILQ_REMOVE(&stp->st_selq, sfp, selfd, sf_link);
-	if (sfp->sf_si != NULL) {
+	/*
+	 * Paired with doselwakeup.
+	 */
+	if (atomic_load_acq_ptr((uintptr_t *)&sfp->sf_si) != (uintptr_t)NULL) {
 		mtx_lock(sfp->sf_mtx);
 		if (sfp->sf_si != NULL) {
 			TAILQ_REMOVE(&sfp->sf_si->si_tdlist, sfp, sf_threads);
-			refcount_release(&sfp->sf_refs);
 		}
 		mtx_unlock(sfp->sf_mtx);
 	}
-	if (refcount_release(&sfp->sf_refs))
-		uma_zfree(selfd_zone, sfp);
+	free(sfp, M_SELFD);
 }
 
 /* Drain the waiters tied to all the selfd belonging the specified selinfo. */
@@ -1698,7 +1829,6 @@ selrecord(struct thread *selector, struct selinfo *sip)
 	 */
 	sfp->sf_si = sip;
 	sfp->sf_mtx = mtxp;
-	refcount_init(&sfp->sf_refs, 2);
 	STAILQ_INSERT_TAIL(&stp->st_selq, sfp, sf_link);
 	/*
 	 * Now that we've locked the sip, check for initialization.
@@ -1752,14 +1882,18 @@ doselwakeup(struct selinfo *sip, int pri)
 		 * sf_si seltdclear will know to ignore this si.
 		 */
 		TAILQ_REMOVE(&sip->si_tdlist, sfp, sf_threads);
-		sfp->sf_si = NULL;
 		stp = sfp->sf_td;
 		mtx_lock(&stp->st_mtx);
 		stp->st_flags |= SELTD_PENDING;
 		cv_broadcastpri(&stp->st_wait, pri);
 		mtx_unlock(&stp->st_mtx);
-		if (refcount_release(&sfp->sf_refs))
-			uma_zfree(selfd_zone, sfp);
+		/*
+		 * Paired with selfdfree.
+		 *
+		 * Storing this only after the wakeup provides an invariant that
+		 * stp is not used after selfdfree returns.
+		 */
+		atomic_store_rel_ptr((uintptr_t *)&sfp->sf_si, (uintptr_t)NULL);
 	}
 	mtx_unlock(sip->si_mtx);
 }
@@ -1769,14 +1903,18 @@ seltdinit(struct thread *td)
 {
 	struct seltd *stp;
 
-	if ((stp = td->td_sel) != NULL)
-		goto out;
-	td->td_sel = stp = malloc(sizeof(*stp), M_SELECT, M_WAITOK|M_ZERO);
+	stp = td->td_sel;
+	if (stp != NULL) {
+		MPASS(stp->st_flags == 0);
+		MPASS(STAILQ_EMPTY(&stp->st_selq));
+		return;
+	}
+	stp = malloc(sizeof(*stp), M_SELECT, M_WAITOK|M_ZERO);
 	mtx_init(&stp->st_mtx, "sellck", NULL, MTX_DEF);
 	cv_init(&stp->st_wait, "select");
-out:
 	stp->st_flags = 0;
 	STAILQ_INIT(&stp->st_selq);
+	td->td_sel = stp;
 }
 
 static int
@@ -1819,10 +1957,12 @@ seltdfini(struct thread *td)
 	stp = td->td_sel;
 	if (stp == NULL)
 		return;
+	MPASS(stp->st_flags == 0);
+	MPASS(STAILQ_EMPTY(&stp->st_selq));
 	if (stp->st_free1)
-		uma_zfree(selfd_zone, stp->st_free1);
+		free(stp->st_free1, M_SELFD);
 	if (stp->st_free2)
-		uma_zfree(selfd_zone, stp->st_free2);
+		free(stp->st_free2, M_SELFD);
 	td->td_sel = NULL;
 	cv_destroy(&stp->st_wait);
 	mtx_destroy(&stp->st_mtx);
@@ -1852,8 +1992,6 @@ static void
 selectinit(void *dummy __unused)
 {
 
-	selfd_zone = uma_zcreate("selfd", sizeof(struct selfd), NULL, NULL,
-	    NULL, NULL, UMA_ALIGN_PTR, 0);
 	mtxpool_select = mtx_pool_create("select mtxpool", 128, MTX_DEF);
 }
 

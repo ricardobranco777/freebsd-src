@@ -53,6 +53,8 @@ __FBSDID("$FreeBSD$");
 #include <net/if_var.h>
 #include <net/if_types.h>
 #include <net/route.h>
+#include <net/route/route_ctl.h>
+#include <net/route/nhop.h>
 #include <net/vnet.h>
 
 #include <netinet/in.h>
@@ -69,7 +71,6 @@ __FBSDID("$FreeBSD$");
 #include <netinet/tcp_var.h>
 #include <netinet/tcpip.h>
 #include <netinet/icmp_var.h>
-
 
 #ifdef INET
 
@@ -129,6 +130,12 @@ SYSCTL_INT(_net_inet_icmp, OID_AUTO, log_redirect, CTLFLAG_VNET | CTLFLAG_RW,
 	&VNET_NAME(log_redirect), 0,
 	"Log ICMP redirects to the console");
 
+VNET_DEFINE_STATIC(int, redirtimeout) = 60 * 10; /* 10 minutes */
+#define	V_redirtimeout			VNET(redirtimeout)
+SYSCTL_INT(_net_inet_icmp, OID_AUTO, redirtimeout, CTLFLAG_VNET | CTLFLAG_RW,
+	&VNET_NAME(redirtimeout), 0,
+	"Delay in seconds before expiring redirect route");
+
 VNET_DEFINE_STATIC(char, reply_src[IFNAMSIZ]);
 #define	V_reply_src			VNET(reply_src)
 SYSCTL_STRING(_net_inet_icmp, OID_AUTO, reply_src, CTLFLAG_VNET | CTLFLAG_RW,
@@ -175,6 +182,8 @@ int	icmpprintfs = 0;
 
 static void	icmp_reflect(struct mbuf *);
 static void	icmp_send(struct mbuf *, struct mbuf *);
+static int	icmp_verify_redirect_gateway(struct sockaddr_in *,
+    struct sockaddr_in *, struct sockaddr_in *, u_int);
 
 extern	struct protosw inetsw[];
 
@@ -473,7 +482,6 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 	ICMPSTAT_INC(icps_inhist[icp->icmp_type]);
 	code = icp->icmp_code;
 	switch (icp->icmp_type) {
-
 	case ICMP_UNREACH:
 		switch (code) {
 			case ICMP_UNREACH_NET:
@@ -560,7 +568,7 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 		 * - The outer IP header has no options.
 		 * - The outer IP header, the ICMP header, the inner IP header,
 		 *   and the first n bytes of the inner payload are contiguous.
-		 *   n is at least 8, but might be larger based on 
+		 *   n is at least 8, but might be larger based on
 		 *   ICMP_ADVLENPREF. See its definition in ip_icmp.h.
 		 */
 		ctlfunc = inetsw[ip_protox[icp->icmp_ip.ip_p]].pr_ctlinput;
@@ -613,7 +621,6 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 		if (icmplen < ICMP_MASKLEN)
 			break;
 		switch (ip->ip_dst.s_addr) {
-
 		case INADDR_BROADCAST:
 		case INADDR_ANY:
 			icmpdst.sin_addr = ip->ip_src;
@@ -626,7 +633,7 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 			    (struct sockaddr *)&icmpdst, m->m_pkthdr.rcvif);
 		if (ia == NULL)
 			break;
-		if (ia->ia_ifp == NULL) 
+		if (ia->ia_ifp == NULL)
 			break;
 		icp->icmp_type = ICMP_MASKREPLY;
 		if (V_icmpmaskfake == 0)
@@ -694,11 +701,31 @@ reflect:
 		}
 #endif
 		icmpsrc.sin_addr = icp->icmp_ip.ip_dst;
+
+		/*
+		 * RFC 1122 says network (code 0,2) redirects SHOULD
+		 * be treated identically to the host redirects.
+		 * Given that, ignore network masks.
+		 */
+
+		/*
+		 * Variable values:
+		 * icmpsrc: route destination
+		 * icmpdst: route gateway
+		 * icmpgw: message source
+		 */
+
+		if (icmp_verify_redirect_gateway(&icmpgw, &icmpsrc, &icmpdst,
+		    M_GETFIB(m)) != 0) {
+			/* TODO: increment bad redirects here */
+			break;
+		}
+
 		for ( fibnum = 0; fibnum < rt_numfibs; fibnum++) {
-			in_rtredirect((struct sockaddr *)&icmpsrc,
-			  (struct sockaddr *)&icmpdst,
-			  (struct sockaddr *)0, RTF_GATEWAY | RTF_HOST,
-			  (struct sockaddr *)&icmpgw, fibnum);
+			rib_add_redirect(fibnum, (struct sockaddr *)&icmpsrc,
+			    (struct sockaddr *)&icmpdst,
+			    (struct sockaddr *)&icmpgw, m->m_pkthdr.rcvif,
+			    RTF_GATEWAY, V_redirtimeout);
 		}
 		pfctlinput(PRC_REDIRECT_HOST, (struct sockaddr *)&icmpsrc);
 		break;
@@ -740,7 +767,7 @@ icmp_reflect(struct mbuf *m)
 	struct ifnet *ifp;
 	struct in_ifaddr *ia;
 	struct in_addr t;
-	struct nhop4_extended nh_ext;
+	struct nhop_object *nh;
 	struct mbuf *opts = NULL;
 	int optlen = (ip->ip_hl << 2) - sizeof(struct ip);
 
@@ -827,12 +854,13 @@ icmp_reflect(struct mbuf *m)
 	 * When we don't have a route back to the packet source, stop here
 	 * and drop the packet.
 	 */
-	if (fib4_lookup_nh_ext(M_GETFIB(m), ip->ip_dst, 0, 0, &nh_ext) != 0) {
+	nh = fib4_lookup(M_GETFIB(m), ip->ip_dst, 0, NHR_NONE, 0);
+	if (nh == NULL) {
 		m_freem(m);
 		ICMPSTAT_INC(icps_noroute);
 		goto done;
 	}
-	t = nh_ext.nh_src;
+	t = IA_SIN(ifatoia(nh->nh_ifa))->sin_addr;
 match:
 #ifdef MAC
 	mac_netinet_icmp_replyinplace(m);
@@ -907,6 +935,58 @@ match:
 done:
 	if (opts)
 		(void)m_free(opts);
+}
+
+/*
+ * Verifies if redirect message is valid, according to RFC 1122
+ *
+ * @src: sockaddr with address of redirect originator
+ * @dst: sockaddr with destination in question
+ * @gateway: new proposed gateway
+ *
+ * Returns 0 on success.
+ */
+static int
+icmp_verify_redirect_gateway(struct sockaddr_in *src, struct sockaddr_in *dst,
+    struct sockaddr_in *gateway, u_int fibnum)
+{
+	struct nhop_object *nh;
+	struct ifaddr *ifa;
+
+	NET_EPOCH_ASSERT();
+
+	/* Verify the gateway is directly reachable. */
+	if ((ifa = ifa_ifwithnet((struct sockaddr *)gateway, 0, fibnum))==NULL)
+		return (ENETUNREACH);
+
+	/* TODO: fib-aware. */
+	if (ifa_ifwithaddr_check((struct sockaddr *)gateway))
+		return (EHOSTUNREACH);
+
+	nh = fib4_lookup(fibnum, dst->sin_addr, 0, NHR_NONE, 0);
+	if (nh == NULL)
+		return (EINVAL);
+
+	/*
+	 * If the redirect isn't from our current router for this dst,
+	 * it's either old or wrong.  If it redirects us to ourselves,
+	 * we have a routing loop, perhaps as a result of an interface
+	 * going down recently.
+	 */
+	if (!sa_equal((struct sockaddr *)src, &nh->gw_sa))
+		return (EINVAL);
+	if (nh->nh_ifa != ifa && ifa->ifa_addr->sa_family != AF_LINK)
+		return (EINVAL);
+
+	/* If host route already exists, ignore redirect. */
+	if (nh->nh_flags & NHF_HOST)
+		return (EEXIST);
+
+	/* If the prefix is directly reachable, ignore redirect. */
+	if (!(nh->nh_flags & NHF_GATEWAY))
+		return (EEXIST);
+
+	return (0);
 }
 
 /*
@@ -985,7 +1065,6 @@ ip_next_mtu(int mtu, int dir)
 	return 0;
 }
 #endif /* INET */
-
 
 /*
  * badport_bandlim() - check for ICMP bandwidth limit

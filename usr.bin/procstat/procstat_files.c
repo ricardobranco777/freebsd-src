@@ -25,9 +25,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD$
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <sys/capsicum.h>
@@ -94,7 +95,6 @@ addr_to_string(struct sockaddr_storage *ss, char *buffer, int buflen)
 	struct sockaddr_in6 *sin6;
 	struct sockaddr_in *sin;
 	struct sockaddr_un *sun;
-#define IS_INADDR_ANY(x)	((x).s_addr == INADDR_ANY)
 
 	switch (ss->ss_family) {
 	case AF_LOCAL:
@@ -107,7 +107,7 @@ addr_to_string(struct sockaddr_storage *ss, char *buffer, int buflen)
 
 	case AF_INET:
 		sin = (struct sockaddr_in *)ss;
-		if (IS_INADDR_ANY(sin->sin_addr))
+		if (sin->sin_addr.s_addr == INADDR_ANY)
 		    snprintf(buffer, buflen, "%s:%d", "*",
 		        ntohs(sin->sin_port));
 		else if (inet_ntop(AF_INET, &sin->sin_addr, buffer2,
@@ -384,11 +384,6 @@ procstat_files(struct procstat *procstat, struct kinfo_proc *kipp)
 			xo_emit("{eq:fd_type/kqueue}");
 			break;
 
-		case PS_FST_TYPE_CRYPTO:
-			str = "c";
-			xo_emit("{eq:fd_type/crypto}");
-			break;
-
 		case PS_FST_TYPE_MQUEUE:
 			str = "m";
 			xo_emit("{eq:fd_type/mqueue}");
@@ -417,6 +412,11 @@ procstat_files(struct procstat *procstat, struct kinfo_proc *kipp)
 		case PS_FST_TYPE_DEV:
 			str = "D";
 			xo_emit("{eq:fd_type/dev}");
+			break;
+
+		case PS_FST_TYPE_EVENTFD:
+			str = "E";
+			xo_emit("{eq:fd_type/eventfd}");
 			break;
 
 		case PS_FST_TYPE_NONE:

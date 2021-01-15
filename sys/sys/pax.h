@@ -32,7 +32,7 @@
 #ifndef	_SYS_PAX_H
 #define	_SYS_PAX_H
 
-#define	__HardenedBSD_version	1300059UL
+#define	__HardenedBSD_version	1300061UL
 
 #if defined(_KERNEL) || defined(_WANT_PRISON)
 typedef	uint32_t	pax_state_t;
@@ -148,6 +148,7 @@ void pax_aslr_mmap_map_32bit(struct proc *p, vm_offset_t *addr, vm_offset_t orig
 void pax_aslr_rtld(struct proc *p, u_long *addr);
 pax_flag_t pax_aslr_setup_flags(struct image_params *imgp, struct thread *td, pax_flag_t mode);
 void pax_aslr_stack(struct proc *p, vm_offset_t *addr);
+void pax_aslr_thr_stack(struct proc *p, vm_offset_t *addr);
 void pax_aslr_stack_with_gap(struct proc *p, vm_offset_t *addr);
 void pax_aslr_vdso(struct proc *p, vm_offset_t *addr);
 pax_flag_t pax_disallow_map32bit_setup_flags(struct image_params *imgp, struct thread *td, pax_flag_t mode);

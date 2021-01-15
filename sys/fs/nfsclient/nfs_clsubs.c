@@ -185,7 +185,9 @@ ncl_getattrcache(struct vnode *vp, struct vattr *vaper)
 	struct vattr *vap;
 	struct nfsmount *nmp;
 	int timeo, mustflush;
-	
+	u_quad_t nsize;
+	bool setnsize;
+
 	np = VTONFS(vp);
 	vap = &np->n_vattr.na_vattr;
 	nmp = VFSTONFS(vp->v_mount);
@@ -230,6 +232,7 @@ ncl_getattrcache(struct vnode *vp, struct vattr *vaper)
 		return( ENOENT);
 	}
 	nfsstatsv1.attrcache_hits++;
+	setnsize = false;
 	if (vap->va_size != np->n_size) {
 		if (vap->va_type == VREG) {
 			if (np->n_flag & NMODIFIED) {
@@ -240,7 +243,7 @@ ncl_getattrcache(struct vnode *vp, struct vattr *vaper)
 			} else {
 				np->n_size = vap->va_size;
 			}
-			vnode_pager_setsize(vp, np->n_size);
+			setnsize = ncl_pager_setsize(vp, &nsize);
 		} else {
 			np->n_size = vap->va_size;
 		}
@@ -253,6 +256,8 @@ ncl_getattrcache(struct vnode *vp, struct vattr *vaper)
 			vaper->va_mtime = np->n_mtim;
 	}
 	NFSUNLOCKNODE(np);
+	if (setnsize)
+		vnode_pager_setsize(vp, nsize);
 	KDTRACE_NFS_ATTRCACHE_GET_HIT(vp, vap);
 	return (0);
 }
@@ -268,7 +273,7 @@ ncl_getcookie(struct nfsnode *np, off_t off, int add)
 	struct nfsdmap *dp, *dp2;
 	int pos;
 	nfsuint64 *retval = NULL;
-	
+
 	pos = (uoff_t)off / NFS_DIRBLKSIZ;
 	if (pos == 0 || off < 0) {
 		KASSERT(!add, ("nfs getcookie add at <= 0"));
@@ -383,4 +388,3 @@ ncl_init(struct vfsconf *vfsp)
 
 	return (0);
 }
-

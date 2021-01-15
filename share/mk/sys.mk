@@ -13,7 +13,7 @@ unix		?=	We run FreeBSD, not UNIX.
 # and/or endian.  This is called MACHINE_CPU in NetBSD, but that's used
 # for something different in FreeBSD.
 #
-__TO_CPUARCH=C/mips(n32|64)?(el)?(hf)?/mips/:C/arm(v[67])?(eb)?/arm/:C/powerpc(64|spe)/powerpc/:C/riscv64(sf)?/riscv/
+__TO_CPUARCH=C/mips(n32|64)?(el)?(hf)?/mips/:C/arm(v[67])?(eb)?/arm/:C/powerpc(64|64le|spe)/powerpc/:C/riscv64(sf)?/riscv/
 MACHINE_CPUARCH=${MACHINE_ARCH:${__TO_CPUARCH}}
 .endif
 
@@ -158,7 +158,7 @@ ARFLAGS		?=	rcv
 .if defined(%POSIX)
 ARFLAGS		?=	-rv
 .else
-ARFLAGS		?=	-crD
+ARFLAGS		?=	-crsD
 .endif
 .endif
 
@@ -177,7 +177,10 @@ CC		?=	c89
 CFLAGS		?=	-O
 .else
 CC		?=	cc
-.if ${MACHINE_CPUARCH} == "mips"
+.if ${MACHINE_CPUARCH} == "mips" && ${COMPILER_TYPE} == "gcc"
+# Note: there are currently issues generating code gcc-6.x targeting
+# code for at least mips32.  The system hits infinite page faults
+# when starting /sbin/init if -O2 is used.
 CFLAGS		?=	-O -pipe
 .else
 CFLAGS		?=	-O2 -pipe
@@ -245,7 +248,7 @@ FFLAGS		?=	-O
 .endif
 EFLAGS		?=
 
-INSTALL		?=	install
+INSTALL		?=	${INSTALL_CMD:Uinstall}
 
 LEX		?=	lex
 LFLAGS		?=
@@ -255,7 +258,7 @@ LFLAGS		?=
 # compiler driver flags (e.g. -mabi=*) that conflict with flags to LD.
 LD		?=	ld
 LDFLAGS		?=
-_LDFLAGS	=	${LDFLAGS:S/-Wl,//g:N-mabi=*:N-fuse-ld=*}
+_LDFLAGS	=	${LDFLAGS:S/-Wl,//g:N-mabi=*:N-fuse-ld=*:N--ld-path=*}
 
 MAKE		?=	make
 
@@ -286,6 +289,7 @@ SHELL		?=	sh
 
 .if !defined(%POSIX)
 SIZE		?=	size
+STRIPBIN	?=	strip
 .endif
 
 YACC		?=	yacc

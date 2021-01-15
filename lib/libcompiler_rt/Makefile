@@ -4,6 +4,7 @@
 
 PACKAGE=	lib${LIB}
 LIB=		compiler_rt
+MK_SSP=		no
 NO_PIC=
 WARNS?=		2
 
@@ -12,13 +13,9 @@ CFLAGS+=	-fvisibility=hidden
 CFLAGS+=	-DVISIBILITY_HIDDEN
 CFLAGS+=	-I${SRCTOP}/contrib/libcxxrt
 
-.if ${COMPILER_TYPE} == "clang"
-CWARNFLAGS.gcc_personality_v0.c+= -Wno-typedef-redefinition
-.endif
-
 # gcc has incompatible internal declarations for __divtc3 and __multc3, but has
 # no option to silence its warning, so make warnings non-fatal.
-NO_WERROR.gcc=
+MK_WERROR.gcc=	no
 
 .include "Makefile.inc"
 

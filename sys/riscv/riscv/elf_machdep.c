@@ -61,13 +61,13 @@ __FBSDID("$FreeBSD$");
 #include <machine/elf.h>
 #include <machine/md_var.h>
 
+static const char *riscv_machine_arch(struct proc *p);
+
 u_long elf_hwcap;
 
 struct sysentvec elf64_freebsd_sysvec = {
 	.sv_size	= SYS_MAXSYSCALL,
 	.sv_table	= sysent,
-	.sv_errsize	= 0,
-	.sv_errtbl	= NULL,
 	.sv_transtrap	= NULL,
 	.sv_fixup	= __elfN(freebsd_fixup),
 	.sv_sendsig	= sendsig,
@@ -82,11 +82,13 @@ struct sysentvec elf64_freebsd_sysvec = {
 	.sv_usrstack	= USRSTACK,
 	.sv_psstrings	= PS_STRINGS,
 	.sv_stackprot	= VM_PROT_READ | VM_PROT_WRITE,
+	.sv_copyout_auxargs = __elfN(freebsd_copyout_auxargs),
 	.sv_copyout_strings	= exec_copyout_strings,
 	.sv_setregs	= exec_setregs,
 	.sv_fixlimit	= NULL,
 	.sv_maxssiz	= NULL,
-	.sv_flags	= SV_ABI_FREEBSD | SV_LP64 | SV_SHP,
+	.sv_flags	= SV_ABI_FREEBSD | SV_LP64 | SV_SHP |
+	    SV_RNG_SEED_VER,
 	.sv_set_syscall_retval = cpu_set_syscall_retval,
 	.sv_fetch_syscall_args = cpu_fetch_syscall_args,
 	.sv_syscallnames = syscallnames,
@@ -97,8 +99,19 @@ struct sysentvec elf64_freebsd_sysvec = {
 	.sv_trap	= NULL,
 	.sv_pax_aslr_init = pax_aslr_init_vmspace,
 	.sv_hwcap	= &elf_hwcap,
+	.sv_machine_arch = riscv_machine_arch,
 };
 INIT_SYSENTVEC(elf64_sysvec, &elf64_freebsd_sysvec);
+
+static const char *
+riscv_machine_arch(struct proc *p)
+{
+
+	if ((p->p_elf_flags & EF_RISCV_FLOAT_ABI_MASK) ==
+	    EF_RISCV_FLOAT_ABI_SOFT)
+		return (MACHINE_ARCH "sf");
+	return (MACHINE_ARCH);
+}
 
 static Elf64_Brandinfo freebsd_brand_info = {
 	.brand		= ELFOSABI_FREEBSD,
@@ -471,7 +484,8 @@ elf_reloc_internal(linker_file_t lf, Elf_Addr relocbase, const void *data,
 		break;
 
 	default:
-		printf("kldload: unexpected relocation type %ld\n", rtype);
+		printf("kldload: unexpected relocation type %ld, "
+		    "symbol index %ld\n", rtype, symidx);
 		return (-1);
 	}
 
@@ -503,6 +517,13 @@ elf_cpu_load_file(linker_file_t lf __unused)
 
 int
 elf_cpu_unload_file(linker_file_t lf __unused)
+{
+
+	return (0);
+}
+
+int
+elf_cpu_parse_dynamic(caddr_t loadbase __unused, Elf_Dyn *dynamic __unused)
 {
 
 	return (0);

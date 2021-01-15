@@ -11,7 +11,7 @@
         private
             bsdstat
             ..
-            event
+            event1
             ..
             gmock
                 internal
@@ -35,15 +35,21 @@
     ..
     lib
         clang
-            9.0.0
+            11.0.1
                 include
                     cuda_wrappers
+                    ..
+                    fuzzer
                     ..
                     openmp_wrappers
                     ..
                     ppc_wrappers
                     ..
+                    profile
+                    ..
                     sanitizer
+                    ..
+                    xray
                     ..
                 ..
                 lib
@@ -52,9 +58,13 @@
                 ..
             ..
         ..
+        compat
+        ..
         dtrace
         ..
         engines
+        ..
+        flua
         ..
         i18n
         ..
@@ -154,7 +164,7 @@
     sbin
     ..
     share
-        atf
+        atf             tags=package=tests
         ..
         bsdconfig
             media
@@ -195,9 +205,9 @@
             ..
         ..
         certs
-            blacklisted
+            blacklisted tags=package=caroot
             ..
-            trusted
+            trusted tags=package=caroot
             ..
         ..
         dict
@@ -205,7 +215,9 @@
         doc
             IPv6
             ..
-            atf
+            atf             tags=package=tests
+            ..
+            kyua             tags=package=tests
             ..
             legal
             ..
@@ -265,8 +277,10 @@
             ..
             find_interface
             ..
-            hardenedbsd
+            flua
             ..
+            hardenedbsd
+	    ..
             hast
             ..
             hostapd
@@ -302,6 +316,8 @@
                     test
                     ..
                 ..
+            ..
+            kyua             tags=package=tests
             ..
             libusb20
             ..
@@ -355,6 +371,8 @@
             ..
         ..
         firmware
+        ..
+        flua
         ..
         games
             fortune
@@ -444,6 +462,12 @@
                 ..
                 trusted tags=package=runtime
                 ..
+            ..
+        ..
+        kyua             tags=package=tests
+            misc         tags=package=tests
+            ..
+            store        tags=package=tests
             ..
         ..
         locale
@@ -839,6 +863,8 @@
             ..
             man3
             ..
+            man3lua
+            ..
             man4
                 aarch64
                 ..
@@ -849,8 +875,6 @@
                 i386
                 ..
                 powerpc
-                ..
-                sparc64
                 ..
             ..
             man5
@@ -865,8 +889,6 @@
                 i386
                 ..
                 powerpc
-                ..
-                sparc64
                 ..
             ..
             man9
@@ -1180,6 +1202,8 @@
                 ..
                 man5
                 ..
+                man7
+		..
                 man8
                 ..
             ..
@@ -1239,15 +1263,25 @@
             ..
             Australia
             ..
+            Brazil
+            ..
+            Canada
+            ..
+            Chile
+            ..
             Etc
             ..
             Europe
             ..
             Indian
             ..
+            Mexico
+            ..
             Pacific
             ..
             SystemV
+            ..
+            US
             ..
         ..
     ..

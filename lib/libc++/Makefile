@@ -4,14 +4,9 @@
 
 PACKAGE=	clibs
 _LIBCXXRTDIR=	${SRCTOP}/contrib/libcxxrt
-HDRDIR=		${SRCTOP}/contrib/libc++/include
-SRCDIR=		${SRCTOP}/contrib/libc++/src
+HDRDIR=		${SRCTOP}/contrib/llvm-project/libcxx/include
+SRCDIR=		${SRCTOP}/contrib/llvm-project/libcxx/src
 CXXINCLUDEDIR=	${INCLUDEDIR}/c++/v${SHLIB_MAJOR}
-.if ${MACHINE_CPUARCH} == "arm"
-STATIC_CXXFLAGS+= -mlong-calls
-.endif
-
-ALLOW_MIPS_SHARED_TEXTREL=
 
 .PATH: ${SRCDIR}
 
@@ -21,6 +16,8 @@ SHLIB_LDSCRIPT=	libc++.ldscript
 
 SRCS+=		algorithm.cpp
 SRCS+=		any.cpp
+SRCS+=		atomic.cpp
+SRCS+=		barrier.cpp
 SRCS+=		bind.cpp
 SRCS+=		charconv.cpp
 SRCS+=		chrono.cpp
@@ -43,6 +40,7 @@ SRCS+=		mutex_destructor.cpp
 SRCS+=		new.cpp
 SRCS+=		optional.cpp
 SRCS+=		random.cpp
+SRCS+=		random_shuffle.cpp
 SRCS+=		regex.cpp
 SRCS+=		shared_mutex.cpp
 SRCS+=		stdexcept.cpp
@@ -73,14 +71,16 @@ cxxrt_${_S}: ${_LIBCXXRTDIR}/${_S} .NOMETA
 	ln -sf ${.ALLSRC} ${.TARGET}
 .endfor
 
-WARNS=		0
+WARNS?=		0
 CFLAGS+=	-isystem ${HDRDIR}
 CFLAGS+=	-isystem ${_LIBCXXRTDIR}
 CFLAGS+=	-nostdinc++
 CFLAGS+=	-nostdlib
 CFLAGS+=	-D_LIBCPP_BUILDING_LIBRARY
 CFLAGS+=	-DLIBCXXRT
-CXXSTD?=	c++11
+CFLAGS+=	-ffunction-sections
+CFLAGS+=	-fdata-sections
+CXXSTD?=	c++14
 
 LIBADD+=	cxxrt
 INCSGROUPS=	STD EXP EXT

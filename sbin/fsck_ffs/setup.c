@@ -58,7 +58,8 @@ __FBSDID("$FreeBSD$");
 
 #include "fsck.h"
 
-struct uufsd disk;
+struct inoinfo **inphead, **inpsort;	/* info about all inodes */
+
 struct bufarea asblk;
 #define altsblock (*asblk.b_un.b_fs)
 #define POWEROF2(num)	(((num) & ((num) - 1)) == 0)
@@ -126,8 +127,7 @@ setup(char *dev)
 			}
 		}
 	}
-	if ((fsreadfd = open(dev, O_RDONLY)) < 0 ||
-	    ufs_disk_fillout_blank(&disk, dev) < 0) {
+	if ((fsreadfd = open(dev, O_RDONLY)) < 0) {
 		if (bkgrdflag) {
 			unlink(snapname);
 			bkgrdflag = 0;
@@ -172,8 +172,7 @@ setup(char *dev)
 	if (preen == 0)
 		printf("** %s", dev);
 	if (bkgrdflag == 0 &&
-	    (nflag || ufs_disk_write(&disk) < 0 ||
-	     (fswritefd = dup(disk.d_fd)) < 0)) {
+	    (nflag || (fswritefd = open(dev, O_WRONLY)) < 0)) {
 		fswritefd = -1;
 		if (preen)
 			pfatal("NO WRITE ACCESS");
@@ -209,13 +208,6 @@ setup(char *dev)
 		pwarn("USING ALTERNATE SUPERBLOCK AT %jd\n", bflag);
 		bflag = 0;
 	}
-	/* Save copy of things needed by libufs */
-	memcpy(&disk.d_fs, &sblock, sblock.fs_sbsize);
-	disk.d_ufs = (sblock.fs_magic == FS_UFS1_MAGIC) ? 1 : 2;
-	disk.d_bsize = sblock.fs_fsize / fsbtodb(&sblock, 1);
-	disk.d_sblock = sblock.fs_sblockloc / disk.d_bsize;
-	disk.d_sbcsum = sblock.fs_csp;
-
 	if (skipclean && ckclean && sblock.fs_clean) {
 		pwarn("FILE SYSTEM CLEAN; SKIPPING CHECKS\n");
 		return (-1);
@@ -247,7 +239,7 @@ setup(char *dev)
 		pfatal("from before 2002 with the command ``fsck -c 2''\n");
 		exit(EEXIT);
 	}
-	if (asblk.b_dirty && !bflag) {
+	if ((asblk.b_flags & B_DIRTY) != 0 && !bflag) {
 		memmove(&altsblock, &sblock, (size_t)sblock.fs_sbsize);
 		flush(fswritefd, &asblk);
 	}
@@ -328,7 +320,7 @@ readsb(int listerr)
 	int bad, ret;
 	struct fs *fs;
 
-	super = bflag ? bflag * dev_bsize : STDSB;
+	super = bflag ? bflag * dev_bsize : STDSB_NOHASHFAIL;
 	readcnt[sblk.b_type]++;
 	if ((ret = sbget(fsreadfd, &fs, super)) != 0) {
 		switch (ret) {
@@ -337,15 +329,15 @@ readsb(int listerr)
 			return (0);
 		case ENOENT:
 			if (bflag)
-				fprintf(stderr, "%jd is not a file system "
+				printf("%jd is not a file system "
 				    "superblock\n", super / dev_bsize);
 			else
-				fprintf(stderr, "Cannot find file system "
+				printf("Cannot find file system "
 				    "superblock\n");
 			return (0);
 		case EIO:
 		default:
-			fprintf(stderr, "I/O error reading %jd\n",
+			printf("I/O error reading %jd\n",
 			    super / dev_bsize);
 			return (0);
 		}
@@ -474,11 +466,15 @@ calcsb(char *dev, int devfd, struct fs *fs)
 	if (fsrbuf == NULL)
 		errx(EEXIT, "calcsb: cannot allocate recovery buffer");
 	if (blread(devfd, fsrbuf,
-	    (SBLOCK_UFS2 - secsize) / dev_bsize, secsize) != 0)
+	    (SBLOCK_UFS2 - secsize) / dev_bsize, secsize) != 0) {
+		free(fsrbuf);
 		return (0);
+	}
 	fsr = (struct fsrecovery *)&fsrbuf[secsize - sizeof *fsr];
-	if (fsr->fsr_magic != FS_UFS2_MAGIC)
+	if (fsr->fsr_magic != FS_UFS2_MAGIC) {
+		free(fsrbuf);
 		return (0);
+	}
 	memset(fs, 0, sizeof(struct fs));
 	fs->fs_fpg = fsr->fsr_fpg;
 	fs->fs_fsbtodb = fsr->fsr_fsbtodb;
@@ -505,11 +501,14 @@ chkrecovery(int devfd)
 	 * Could not determine if backup material exists, so do not
 	 * offer to create it.
 	 */
+	fsrbuf = NULL;
 	if (ioctl(devfd, DIOCGSECTORSIZE, &secsize) == -1 ||
 	    (fsrbuf = Malloc(secsize)) == NULL ||
 	    blread(devfd, fsrbuf, (SBLOCK_UFS2 - secsize) / dev_bsize,
-	      secsize) != 0)
+	      secsize) != 0) {
+		free(fsrbuf);
 		return (1);
+	}
 	/*
 	 * Recovery material has already been created, so do not
 	 * need to create it again.
@@ -538,12 +537,14 @@ saverecovery(int readfd, int writefd)
 	char *fsrbuf;
 	u_int secsize;
 
+	fsrbuf = NULL;
 	if (sblock.fs_magic != FS_UFS2_MAGIC ||
 	    ioctl(readfd, DIOCGSECTORSIZE, &secsize) == -1 ||
 	    (fsrbuf = Malloc(secsize)) == NULL ||
 	    blread(readfd, fsrbuf, (SBLOCK_UFS2 - secsize) / dev_bsize,
 	      secsize) != 0) {
 		printf("RECOVERY DATA COULD NOT BE CREATED\n");
+		free(fsrbuf);
 		return;
 	}
 	fsr = (struct fsrecovery *)&fsrbuf[secsize - sizeof *fsr];

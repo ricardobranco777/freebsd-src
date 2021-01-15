@@ -57,17 +57,17 @@ struct attribute_group {
 #define	__ATTR_RO(_name)	__ATTR(_name, 0444, _name##_show, NULL)
 #define	__ATTR_WO(_name)	__ATTR(_name, 0200, NULL, _name##_store)
 #define	__ATTR_RW(_name)	__ATTR(_name, 0644, _name##_show, _name##_store)
-
 #define	__ATTR_NULL	{ .attr = { .name = NULL } }
 
 #define	ATTRIBUTE_GROUPS(_name)						\
 	static struct attribute_group _name##_group = {			\
+		.name = __stringify(_name),				\
 		.attrs = _name##_attrs,					\
 	};								\
-	static struct attribute_group *_name##_groups[] = {		\
+	static const struct attribute_group *_name##_groups[] = {	\
 		&_name##_group,						\
 		NULL,							\
-	};
+	}
 
 /*
  * Handle our generic '\0' terminated 'C' string.
@@ -210,12 +210,25 @@ sysfs_create_groups(struct kobject *kobj, const struct attribute_group **grps)
 	int error = 0;
 	int i;
 
+	if (grps == NULL)
+		goto done;
 	for (i = 0; grps[i] && !error; i++)
 		error = sysfs_create_group(kobj, grps[i]);
 	while (error && --i >= 0)
 		sysfs_remove_group(kobj, grps[i]);
-
+done:
 	return (error);
+}
+
+static inline void
+sysfs_remove_groups(struct kobject *kobj, const struct attribute_group **grps)
+{
+	int i;
+
+	if (grps == NULL)
+		return;
+	for (i = 0; grps[i]; i++)
+		sysfs_remove_group(kobj, grps[i]);
 }
 
 static inline int

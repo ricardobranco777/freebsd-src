@@ -19,6 +19,7 @@ INTERNALLIB=
 .endif
 
 .include <src.opts.mk>
+.include <bsd.linker.mk>
 
 WARNS?=		1
 
@@ -30,17 +31,25 @@ FDTSRC=		${BOOTSRC}/fdt
 FICLSRC=	${BOOTSRC}/ficl
 LDRSRC=		${BOOTSRC}/common
 LIBLUASRC=	${BOOTSRC}/liblua
+LIBOFWSRC=	${BOOTSRC}/libofw
 LUASRC=		${SRCTOP}/contrib/lua/src
 SASRC=		${BOOTSRC}/libsa
 SYSDIR=		${SRCTOP}/sys
 UBOOTSRC=	${BOOTSRC}/uboot
 ZFSSRC=		${SASRC}/zfs
+OZFS=		${SRCTOP}/sys/contrib/openzfs
+ZFSOSSRC=	${OZFS}/module/os/freebsd/
+ZFSOSINC=	${OZFS}/include/os/freebsd
 LIBCSRC=	${SRCTOP}/lib/libc
 
 BOOTOBJ=	${OBJTOP}/stand
 
 # BINDIR is where we install
 BINDIR?=	/boot
+
+# LUAPATH is where we search for and install lua scripts.
+LUAPATH?=	/boot/lua
+FLUASRC?=	${SRCTOP}/libexec/flua
 
 MK_SAFESTACK=	no
 MK_CFI=		no
@@ -54,6 +63,11 @@ LIBSA32=	${BOOTOBJ}/libsa32/libsa32.a
 
 # Standard options:
 CFLAGS+=	-nostdinc
+# Allow CFLAGS_EARLY.file/target so that code that needs specific stack
+# of include paths can set them up before our include paths. Normally
+# the only thing that should be there are -I directives, and as few of
+# those as possible.
+CFLAGS+=	${CFLAGS_EARLY} ${CFLAGS_EARLY.${.IMPSRC:T}} ${CFLAGS_EARLY.${.TARGET:T}}
 .if ${MACHINE_ARCH} == "amd64" && ${DO32:U0} == 1
 CFLAGS+=	-I${BOOTOBJ}/libsa32
 .else
@@ -96,10 +110,10 @@ CFLAGS+= -DLOADER_DISK_SUPPORT
 
 # Machine specific flags for all builds here
 
-# All PowerPC builds are 32 bit. We have no 64-bit loaders on powerpc
-# or powerpc64.
-.if ${MACHINE_ARCH} == "powerpc64"
-CFLAGS+=	-m32 -mcpu=powerpc
+# Ensure PowerPC64 and PowerPC64LE boot loaders are compiled as 32 bit
+# and in big endian.
+.if ${MACHINE_ARCH:Mpowerpc64*} != ""
+CFLAGS+=	-m32 -mcpu=powerpc -mbig-endian
 .endif
 
 # For amd64, there's a bit of mixed bag. Some of the tree (i386, lib*32) is
@@ -115,13 +129,14 @@ AFLAGS+=	--32
 SSP_CFLAGS=
 
 # Add in the no float / no SIMD stuff and announce we're freestanding
-# aarch64 and riscv don't have -msoft-float, but all others do. riscv
-# currently has no /boot/loader, but may soon.
+# aarch64 and riscv don't have -msoft-float, but all others do.
 CFLAGS+=	-ffreestanding ${CFLAGS_NO_SIMD}
 .if ${MACHINE_CPUARCH} == "aarch64"
-CFLAGS+=	-mgeneral-regs-only -fPIC
+CFLAGS+=	-mgeneral-regs-only -ffixed-x18 -fPIC
 .elif ${MACHINE_CPUARCH} == "riscv"
-CFLAGS+=	-march=rv64imac -mabi=lp64
+CFLAGS+=	-march=rv64imac -mabi=lp64 -fPIC
+CFLAGS.clang+=	-mcmodel=medium
+CFLAGS.gcc+=	-mcmodel=medany
 .else
 CFLAGS+=	-msoft-float
 .endif
@@ -143,13 +158,15 @@ CFLAGS+=	-fPIC -mno-red-zone
 # Do not generate movt/movw, because the relocation fixup for them does not
 # translate to the -Bsymbolic -pie format required by self_reloc() in loader(8).
 # Also, the fpu is not available in a standalone environment.
-.if ${COMPILER_VERSION} < 30800
-CFLAGS.clang+=	-mllvm -arm-use-movt=0
-.else
 CFLAGS.clang+=	-mno-movt
-.endif
 CFLAGS.clang+=  -mfpu=none
 CFLAGS+=	-fPIC
+.endif
+
+# Some RISC-V linkers have support for relaxations, while some (lld) do not
+# yet. If this is the case we inhibit the compiler from emitting relaxations.
+.if ${LINKER_FEATURES:Mriscv-relaxations} == ""
+CFLAGS+=	-mno-relax
 .endif
 
 # The boot loader build uses dd status=none, where possible, for reproducible
@@ -161,12 +178,6 @@ DD=dd ${DD_NOSTATUS}
 
 .if ${MACHINE_CPUARCH} == "mips"
 CFLAGS+=	-G0 -fno-pic -mno-abicalls
-.endif
-
-.if ${MK_LOADER_FORCE_LE} != "no"
-.if ${MACHINE_ARCH} == "powerpc64"
-CFLAGS+=	-mlittle-endian
-.endif
 .endif
 
 #
@@ -194,14 +205,15 @@ teken_state.h: ${SYSDIR}/teken/sequences
 		${SYSDIR}/teken/sequences > teken_state.h
 
 .if !defined(NO_OBJ)
-_ILINKS=machine
+_ILINKS=include/machine
 .if ${MACHINE} != ${MACHINE_CPUARCH} && ${MACHINE} != "arm64"
-_ILINKS+=${MACHINE_CPUARCH}
+_ILINKS+=include/${MACHINE_CPUARCH}
 .endif
 .if ${MACHINE_CPUARCH} == "i386" || ${MACHINE_CPUARCH} == "amd64"
-_ILINKS+=x86
+_ILINKS+=include/x86
 .endif
-CLEANFILES+=${_ILINKS}
+CFLAGS+= -Iinclude
+CLEANDIRS+= include
 
 beforedepend: ${_ILINKS}
 beforebuild: ${_ILINKS}
@@ -216,8 +228,8 @@ ${OBJS}:       ${_link}
 
 .NOPATH: ${_ILINKS}
 
-${_ILINKS}:
-	@case ${.TARGET} in \
+${_ILINKS}: .NOMETA
+	@case ${.TARGET:T} in \
 	machine) \
 		if [ ${DO32:U0} -eq 0 ]; then \
 			path=${SYSDIR}/${MACHINE}/include ; \
@@ -227,8 +239,11 @@ ${_ILINKS}:
 	*) \
 		path=${SYSDIR}/${.TARGET:T}/include ;; \
 	esac ; \
+	case ${.TARGET} in \
+	*/*) mkdir -p ${.TARGET:H};; \
+	esac ; \
 	path=`(cd $$path && /bin/pwd)` ; \
-	${ECHO} ${.TARGET:T} "->" $$path ; \
-	ln -fhs $$path ${.TARGET:T}
+	${ECHO} ${.TARGET} "->" $$path ; \
+	ln -fns $$path ${.TARGET}
 .endif # !NO_OBJ
 .endif # __BOOT_DEFS_MK__

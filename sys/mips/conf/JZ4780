@@ -12,7 +12,7 @@ cpu		CPU_XBURST
 cpu		CPU_MIPS4KC
 
 makeoptions	KERNLOADADDR=0x80020000
-makeoptions	ARCH_FLAGS="-EL -march=mips32r2"
+makeoptions	ARCH_FLAGS="-march=mips32r2"
 
 # Don't build any modules yet.
 makeoptions	MODULES_OVERRIDE=""
@@ -108,6 +108,10 @@ device		ukbd		# Allow keyboard like HIDs to control console
 #device		ulpt		# Printer
 device		umass		# Disks/Mass storage - Requires scbus and da
 device		ums		# Mouse
+
+# HID support
+options 	HID_DEBUG	# enable debug msgs
+device		hid		# Generic HID support
 
 # FDT support
 options 	FDT

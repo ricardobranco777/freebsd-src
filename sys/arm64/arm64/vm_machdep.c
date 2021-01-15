@@ -91,21 +91,18 @@ cpu_fork(struct thread *td1, struct proc *p2, struct thread *td2, int flags)
 	td2->td_pcb = pcb2;
 	bcopy(td1->td_pcb, pcb2, sizeof(*pcb2));
 
-	td2->td_proc->p_md.md_l0addr =
-	    vtophys(vmspace_pmap(td2->td_proc->p_vmspace)->pm_l0);
-
 	tf = (struct trapframe *)STACKALIGN((struct trapframe *)pcb2 - 1);
 	bcopy(td1->td_frame, tf, sizeof(*tf));
 	tf->tf_x[0] = 0;
 	tf->tf_x[1] = 0;
-	tf->tf_spsr = td1->td_frame->tf_spsr & PSR_M_32;
+	tf->tf_spsr = td1->td_frame->tf_spsr & (PSR_M_32 | PSR_DAIF);
 
 	td2->td_frame = tf;
 
 	/* Set the return value registers for fork() */
 	td2->td_pcb->pcb_x[8] = (uintptr_t)fork_return;
 	td2->td_pcb->pcb_x[9] = (uintptr_t)td2;
-	td2->td_pcb->pcb_x[PCB_LR] = (uintptr_t)fork_trampoline;
+	td2->td_pcb->pcb_lr = (uintptr_t)fork_trampoline;
 	td2->td_pcb->pcb_sp = (uintptr_t)td2->td_frame;
 	td2->td_pcb->pcb_fpusaved = &td2->td_pcb->pcb_fpustate;
 	td2->td_pcb->pcb_vfpcpu = UINT_MAX;
@@ -156,7 +153,7 @@ cpu_set_syscall_retval(struct thread *td, int error)
 		break;
 	default:
 		frame->tf_spsr |= PSR_C;	/* carry bit */
-		frame->tf_x[0] = SV_ABI_ERRNO(td->td_proc, error);
+		frame->tf_x[0] = error;
 		break;
 	}
 }
@@ -176,7 +173,7 @@ cpu_copy_thread(struct thread *td, struct thread *td0)
 
 	td->td_pcb->pcb_x[8] = (uintptr_t)fork_return;
 	td->td_pcb->pcb_x[9] = (uintptr_t)td;
-	td->td_pcb->pcb_x[PCB_LR] = (uintptr_t)fork_trampoline;
+	td->td_pcb->pcb_lr = (uintptr_t)fork_trampoline;
 	td->td_pcb->pcb_sp = (uintptr_t)td->td_frame;
 	td->td_pcb->pcb_fpusaved = &td->td_pcb->pcb_fpustate;
 	td->td_pcb->pcb_vfpcpu = UINT_MAX;
@@ -268,7 +265,7 @@ cpu_fork_kthread_handler(struct thread *td, void (*func)(void *), void *arg)
 
 	td->td_pcb->pcb_x[8] = (uintptr_t)func;
 	td->td_pcb->pcb_x[9] = (uintptr_t)arg;
-	td->td_pcb->pcb_x[PCB_LR] = (uintptr_t)fork_trampoline;
+	td->td_pcb->pcb_lr = (uintptr_t)fork_trampoline;
 	td->td_pcb->pcb_sp = (uintptr_t)td->td_frame;
 	td->td_pcb->pcb_fpusaved = &td->td_pcb->pcb_fpustate;
 	td->td_pcb->pcb_vfpcpu = UINT_MAX;

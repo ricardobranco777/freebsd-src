@@ -119,9 +119,11 @@ typedef	__pid_t		pid_t;
 #if __POSIX_VISIBLE >= 200809
 #define	O_DIRECTORY	0x00020000	/* Fail if not directory */
 #define	O_EXEC		0x00040000	/* Open for execute only */
+#define	O_SEARCH	O_EXEC
 #endif
 #ifdef	_KERNEL
 #define	FEXEC		O_EXEC
+#define	FSEARCH		O_SEARCH
 #endif
 
 #if __POSIX_VISIBLE >= 200809
@@ -134,10 +136,15 @@ typedef	__pid_t		pid_t;
 #if __BSD_VISIBLE
 #define	O_VERIFY	0x00200000	/* open only after verification */
 #define	O_BENEATH	0x00400000	/* Fail if not under cwd */
+#define	O_RESOLVE_BENEATH 0x00800000	/* As O_BENEATH, but do not allow
+					   resolve to walk out of cwd even to
+					   return back */
 #endif
 
+#define	O_DSYNC		0x01000000	/* POSIX data sync */
+
 /*
- * XXX missing O_DSYNC, O_RSYNC.
+ * XXX missing O_RSYNC.
  */
 
 #ifdef _KERNEL
@@ -153,9 +160,9 @@ typedef	__pid_t		pid_t;
 #define	OFLAGS(fflags)	((fflags) & O_EXEC ? (fflags) : (fflags) - 1)
 
 /* bits to save after open */
-#define	FMASK	(FREAD|FWRITE|FAPPEND|FASYNC|FFSYNC|FNONBLOCK|O_DIRECT|FEXEC)
+#define	FMASK	(FREAD|FWRITE|FAPPEND|FASYNC|FFSYNC|FDSYNC|FNONBLOCK|O_DIRECT|FEXEC)
 /* bits settable by fcntl(F_SETFL, ...) */
-#define	FCNTLFLAGS	(FAPPEND|FASYNC|FFSYNC|FNONBLOCK|FRDAHEAD|O_DIRECT)
+#define	FCNTLFLAGS	(FAPPEND|FASYNC|FFSYNC|FDSYNC|FNONBLOCK|FRDAHEAD|O_DIRECT)
 
 #if defined(COMPAT_FREEBSD7) || defined(COMPAT_FREEBSD6) || \
     defined(COMPAT_FREEBSD5) || defined(COMPAT_FREEBSD4)
@@ -180,15 +187,16 @@ typedef	__pid_t		pid_t;
 #define	FAPPEND		O_APPEND	/* kernel/compat */
 #define	FASYNC		O_ASYNC		/* kernel/compat */
 #define	FFSYNC		O_FSYNC		/* kernel */
+#define	FDSYNC		O_DSYNC		/* kernel */
 #define	FNONBLOCK	O_NONBLOCK	/* kernel */
 #define	FNDELAY		O_NONBLOCK	/* compat */
 #define	O_NDELAY	O_NONBLOCK	/* compat */
 #endif
 
 /*
- * We are out of bits in f_flag (which is a short).  However,
- * the flag bits not set in FMASK are only meaningful in the
- * initial open syscall.  Those bits can thus be given a
+ * Historically, we ran out of bits in f_flag (which was once a short).
+ * However, the flag bits not set in FMASK are only meaningful in the
+ * initial open syscall.  Those bits were thus given a
  * different meaning for fcntl(2).
  */
 #if __BSD_VISIBLE
@@ -213,6 +221,9 @@ typedef	__pid_t		pid_t;
 #define	AT_SYMLINK_FOLLOW	0x0400	/* Follow symbolic link */
 #define	AT_REMOVEDIR		0x0800	/* Remove directory instead of file */
 #define	AT_BENEATH		0x1000	/* Fail if not under dirfd */
+#define	AT_RESOLVE_BENEATH	0x2000	/* As AT_BENEATH, but do not allow
+					   resolve to walk out of dirfd even
+					   to return back */
 #endif
 
 /*
@@ -250,6 +261,7 @@ typedef	__pid_t		pid_t;
 #define	F_DUP2FD_CLOEXEC 18		/* Like F_DUP2FD, but FD_CLOEXEC is set */
 #define	F_ADD_SEALS	19
 #define	F_GET_SEALS	20
+#define	F_ISUNIONSTACK	21		/* Kludge for libc, don't use it. */
 
 /* Seals (F_ADD_SEALS, F_GET_SEALS). */
 #define	F_SEAL_SEAL	0x0001		/* Prevent adding sealings */
@@ -323,7 +335,6 @@ struct __oflock {
 #define	POSIX_FADV_DONTNEED	4	/* dont need these pages */
 #define	POSIX_FADV_NOREUSE	5	/* access data only once */
 #endif
-
 
 #ifdef __BSD_VISIBLE
 /*

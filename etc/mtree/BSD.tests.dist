@@ -3,7 +3,7 @@
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
 
-/set type=dir uname=root gname=wheel mode=0755
+/set type=dir uname=root gname=wheel mode=0755 tags=package=tests
 .
     bin
         cat
@@ -11,6 +11,8 @@
         chflags
         ..
         chmod
+        ..
+        cp
         ..
         date
         ..
@@ -384,6 +386,8 @@
         ..
         libdevdctl
         ..
+        libexecinfo
+        ..
         libkvm
         ..
         libmp
@@ -436,13 +440,15 @@
         ..
         mdconfig
         ..
+        nvmecontrol
+        ..
         pfctl
             files
             ..
         ..
         ping
         ..
-        ping6
+        route
         ..
     ..
     secure
@@ -752,6 +758,8 @@
                 ..
                 mirror
                 ..
+                multipath
+                ..
                 nop
                 ..
                 part
@@ -790,14 +798,20 @@
         ..
         net
         ..
+        netgraph
+        ..
         netinet
+        ..
+        netinet6
+            frag6
+            ..
         ..
         netipsec
             tunnel
             ..
         ..
-    netmap
-    ..
+        netmap
+        ..
         netpfil
             common
             ..
@@ -990,6 +1004,8 @@
         ..
         getconf
         ..
+        gh-bc
+        ..
         grep
         ..
         gzip
@@ -1057,6 +1073,8 @@
         uudecode
         ..
         uuencode
+        ..
+        unifdef
         ..
         uniq
         ..

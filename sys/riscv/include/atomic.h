@@ -117,7 +117,6 @@ ATOMIC_FCMPSET_ACQ_REL(16);
 #define	atomic_fcmpset_acq_char		atomic_fcmpset_acq_8
 #define	atomic_fcmpset_rel_char		atomic_fcmpset_rel_8
 
-
 #define	atomic_cmpset_short		atomic_cmpset_16
 #define	atomic_cmpset_acq_short		atomic_cmpset_acq_16
 #define	atomic_cmpset_rel_short		atomic_cmpset_rel_16
@@ -182,7 +181,7 @@ atomic_cmpset_32(volatile uint32_t *p, uint32_t cmpval, uint32_t newval)
 			"bnez %1, 0b\n"
 		"1:"
 			: "=&r" (tmp), "=&r" (res), "+A" (*p)
-			: "rJ" (cmpval), "rJ" (newval)
+			: "rJ" ((long)(int32_t)cmpval), "rJ" (newval)
 			: "memory");
 
 	return (!res);
@@ -207,7 +206,7 @@ atomic_fcmpset_32(volatile uint32_t *p, uint32_t *cmpval, uint32_t newval)
 			"sw   %0, %3\n"		/* Save old value */
 		"2:"
 			: "=&r" (tmp), "=&r" (res), "+A" (*p), "+A" (*cmpval)
-			: "rJ" (*cmpval), "rJ" (newval)
+			: "rJ" ((long)(int32_t)*cmpval), "rJ" (newval)
 			: "memory");
 
 	return (!res);

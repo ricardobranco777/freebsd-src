@@ -114,11 +114,13 @@ struct xprison {
 
 struct iovec;
 
+__BEGIN_DECLS
 int jail(struct jail *);
 int jail_set(struct iovec *, unsigned int, int);
 int jail_get(struct iovec *, unsigned int, int);
 int jail_attach(int);
 int jail_remove(int);
+__END_DECLS
 
 #else /* _KERNEL */
 
@@ -152,15 +154,17 @@ struct prison_racct;
  *
  * Lock key:
  *   (a) allprison_lock
- *   (p) locked by pr_mtx
+ *   (m) locked by pr_mtx
+ *   (p) locked by pr_mtx, and also at least shared allprison_lock required
+ *       to update
  *   (c) set only during creation before the structure is shared, no mutex
  *       required to read
  */
 struct prison {
 	TAILQ_ENTRY(prison) pr_list;			/* (a) all prisons */
 	int		 pr_id;				/* (c) prison id */
-	int		 pr_ref;			/* (p) refcount */
-	int		 pr_uref;			/* (p) user (alive) refcount */
+	int		 pr_ref;			/* (m) refcount */
+	int		 pr_uref;			/* (m) user (alive) refcount */
 	unsigned	 pr_flags;			/* (p) PR_* flags */
 	LIST_HEAD(, prison) pr_children;		/* (a) list of child jails */
 	LIST_ENTRY(prison) pr_sibling;			/* (a) next in parent's list */
@@ -235,15 +239,18 @@ struct prison_racct {
 #define	PR_ALLOW_MLOCK			0x00000080
 #define	PR_ALLOW_READ_MSGBUF		0x00000100
 #define	PR_ALLOW_UNPRIV_DEBUG		0x00000200
+#define	PR_ALLOW_SUSER			0x00000400
 #define	PR_ALLOW_RESERVED_PORTS		0x00008000
 #define	PR_ALLOW_KMEM_ACCESS		0x00010000	/* reserved, not used yet */
-#define	PR_ALLOW_ALL_STATIC		0x000183ff
+#define	PR_ALLOW_EXTATTR		0x00020000
+#define	PR_ALLOW_ALL_STATIC		0x000387ff
 
 /*
  * PR_ALLOW_DIFFERENCES determines which flags are able to be
  * different between the parent and child jail upon creation.
  */
-#define	PR_ALLOW_DIFFERENCES		(PR_ALLOW_UNPRIV_DEBUG)
+#define	PR_ALLOW_DIFFERENCES		(PR_ALLOW_UNPRIV_DEBUG | \
+    PR_ALLOW_EXTATTR)
 
 /*
  * OSD methods
@@ -358,9 +365,11 @@ SYSCTL_DECL(_security_jail_param);
 	CTLTYPE_STRUCT | CTLFLAG_MPSAFE | (access), NULL, len,		\
 	sysctl_jail_param, fmt, descr)
 #define	SYSCTL_JAIL_PARAM_NODE(module, descr)				\
-    SYSCTL_NODE(_security_jail_param, OID_AUTO, module, 0, 0, descr)
+    SYSCTL_NODE(_security_jail_param, OID_AUTO, module, CTLFLAG_MPSAFE,	\
+        0, descr)
 #define	SYSCTL_JAIL_PARAM_SUBNODE(parent, module, descr)		\
-    SYSCTL_NODE(_security_jail_param_##parent, OID_AUTO, module, 0, 0, descr)
+    SYSCTL_NODE(_security_jail_param_##parent, OID_AUTO, module, 	\
+        CTLFLAG_MPSAFE, 0, descr)
 #define	SYSCTL_JAIL_PARAM_SYS_NODE(module, access, descr)		\
     SYSCTL_JAIL_PARAM_NODE(module, descr);				\
     SYSCTL_JAIL_PARAM(_##module, , CTLTYPE_INT | (access), "E,jailsys",	\
@@ -374,12 +383,18 @@ struct mount;
 struct sockaddr;
 struct statfs;
 struct vfsconf;
-int jailed(struct ucred *cred);
+
+/*
+ * Return 1 if the passed credential is in a jail, otherwise 0.
+ */
+#define jailed(cred)	(cred->cr_prison != &prison0)
+
 int jailed_without_vnet(struct ucred *);
 void getcredhostname(struct ucred *, char *, size_t);
 void getcreddomainname(struct ucred *, char *, size_t);
 void getcredhostuuid(struct ucred *, char *, size_t);
 void getcredhostid(struct ucred *, unsigned long *);
+void getjailname(struct ucred *cred, char *name, size_t len);
 void prison0_init(void);
 int prison_allow(struct ucred *, unsigned);
 int prison_check(struct ucred *cred1, struct ucred *cred2);
@@ -397,6 +412,7 @@ void prison_hold(struct prison *pr);
 void prison_hold_locked(struct prison *pr);
 void prison_proc_hold(struct prison *);
 void prison_proc_free(struct prison *);
+void prison_set_allow(struct ucred *cred, unsigned flag, int enable);
 int prison_ischild(struct prison *, struct prison *);
 int prison_equal_ip4(struct prison *, struct prison *);
 int prison_get_ip4(struct ucred *cred, struct in_addr *ia);
@@ -419,7 +435,7 @@ int prison_restrict_ip6(struct prison *, struct in6_addr *);
 int prison_qcmp_v6(const void *, const void *);
 #endif
 int prison_check_af(struct ucred *cred, int af);
-int prison_if(struct ucred *cred, struct sockaddr *sa);
+int prison_if(struct ucred *cred, const struct sockaddr *sa);
 char *prison_name(struct prison *, struct prison *);
 int prison_priv_check(struct ucred *cred, int priv);
 int sysctl_jail_param(SYSCTL_HANDLER_ARGS);

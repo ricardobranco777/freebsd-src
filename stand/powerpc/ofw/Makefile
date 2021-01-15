@@ -18,7 +18,10 @@ INSTALLFLAGS=	-b
 
 # Architecture-specific loader code
 SRCS=		conf.c vers.c main.c elf_freebsd.c ppc64_elf_freebsd.c start.c
-SRCS+=		ucmpdi2.c
+SRCS+=		ucmpdi2.c gfx_fb.c
+
+CFLAGS.gfx_fb.c += -I${SRCTOP}/contrib/pnglite
+CFLAGS.gfx_fb.c += -I${SRCTOP}/sys/teken
 
 .include	"${BOOTSRC}/fdt.mk"
 .if ${MK_FDT} == "yes"
@@ -44,8 +47,8 @@ CFLAGS+=	-DRELOC=${RELOC} -g
 LDFLAGS=	-nostdlib -static -T ${.CURDIR}/ldscript.powerpc
 
 # Open Firmware standalone support library
-LIBOFW=		${BOOTOBJ}/ofw/libofw/libofw.a
-CFLAGS+=	-I${BOOTSRC}/ofw/libofw
+LIBOFW=		${BOOTOBJ}/libofw/libofw.a
+CFLAGS+=	-I${BOOTSRC}/libofw
 
 DPADD=		${LDR_INTERP} ${LIBOFW} ${LIBFDT} ${LIBSA}
 LDADD=		${LDR_INTERP} ${LIBOFW} ${LIBFDT} ${LIBSA}

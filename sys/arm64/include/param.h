@@ -54,16 +54,16 @@
 #define	MACHINE_ARCH32	"armv7"
 #endif
 
-#if defined(SMP) || defined(KLD_MODULE)
+#ifdef SMP
 #ifndef MAXCPU
 #define	MAXCPU		256
 #endif
 #else
 #define	MAXCPU		1
-#endif /* SMP || KLD_MODULE */
+#endif
 
 #ifndef MAXMEMDOM
-#define	MAXMEMDOM	2
+#define	MAXMEMDOM	8
 #endif
 
 #define	ALIGNBYTES	_ALIGNBYTES
@@ -83,9 +83,9 @@
 #define	CACHE_LINE_SHIFT	7
 #define	CACHE_LINE_SIZE		(1 << CACHE_LINE_SHIFT)
 
-#define	PAGE_SHIFT	12
-#define	PAGE_SIZE	(1 << PAGE_SHIFT)	/* Page size */
-#define	PAGE_MASK	(PAGE_SIZE - 1)
+#define	PAGE_SHIFT_4K	12
+#define	PAGE_SIZE_4K	(1 << PAGE_SHIFT_4K)
+#define	PAGE_MASK_4K	(PAGE_SIZE_4K - 1)
 
 #define	PAGE_SHIFT_16K	14
 #define	PAGE_SIZE_16K	(1 << PAGE_SHIFT_16K)
@@ -95,7 +95,11 @@
 #define	PAGE_SIZE_64K	(1 << PAGE_SHIFT_64K)
 #define	PAGE_MASK_64K	(PAGE_SIZE_64K - 1)
 
-#define	MAXPAGESIZES	2		/* maximum number of supported page sizes */
+#define	PAGE_SHIFT	PAGE_SHIFT_4K
+#define	PAGE_SIZE	PAGE_SIZE_4K
+#define	PAGE_MASK	PAGE_MASK_4K
+
+#define	MAXPAGESIZES	3		/* maximum number of supported page sizes */
 
 #ifndef KSTACK_PAGES
 #define	KSTACK_PAGES	4	/* pages of kernel stack (with pcb) */

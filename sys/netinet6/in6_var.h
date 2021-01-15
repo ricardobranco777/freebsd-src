@@ -857,13 +857,12 @@ in6m_rele_locked(struct in6_multi_head *inmh, struct in6_multi *inm)
 struct ip6_moptions;
 struct sockopt;
 struct inpcbinfo;
+struct rib_head;
 
 /* Multicast KPIs. */
 int	im6o_mc_filter(const struct ip6_moptions *, const struct ifnet *,
 	    const struct sockaddr *, const struct sockaddr *);
 int in6_joingroup(struct ifnet *, const struct in6_addr *,
-	    struct in6_mfilter *, struct in6_multi **, int);
-int	in6_joingroup_locked(struct ifnet *, const struct in6_addr *,
 	    struct in6_mfilter *, struct in6_multi **, int);
 int	in6_leavegroup(struct in6_multi *, struct in6_mfilter *);
 int	in6_leavegroup_locked(struct in6_multi *, struct in6_mfilter *);
@@ -872,7 +871,7 @@ void	in6m_commit(struct in6_multi *);
 void	in6m_print(const struct in6_multi *);
 int	in6m_record_source(struct in6_multi *, const struct in6_addr *);
 void	in6m_release_list_deferred(struct in6_multi_head *);
-void	in6m_release_wait(void);
+void	in6m_release_wait(void *);
 void	ip6_freemoptions(struct ip6_moptions *);
 int	ip6_getmoptions(struct inpcb *, struct sockopt *);
 int	ip6_setmoptions(struct inpcb *, struct sockopt *);
@@ -893,6 +892,8 @@ void	in6_savemkludge(struct in6_ifaddr *);
 void	*in6_domifattach(struct ifnet *);
 void	in6_domifdetach(struct ifnet *, void *);
 int	in6_domifmtu(struct ifnet *);
+struct rib_head *in6_inithead(uint32_t fibnum);
+void	in6_detachhead(struct rib_head *rh);
 void	in6_setmaxmtu(void);
 int	in6_if2idlen(struct ifnet *);
 struct in6_ifaddr *in6ifa_ifpforlinklocal(struct ifnet *, int);
@@ -917,13 +918,6 @@ void	in6_newaddrmsg(struct in6_ifaddr *, int);
  * Extended API for IPv6 FIB support.
  */
 struct mbuf *ip6_tryforward(struct mbuf *);
-void	in6_rtredirect(struct sockaddr *, struct sockaddr *, struct sockaddr *,
-	    int, struct sockaddr *, u_int);
-int	in6_rtrequest(int, struct sockaddr *, struct sockaddr *,
-	    struct sockaddr *, int, struct rtentry **, u_int);
-void	in6_rtalloc(struct route_in6 *, u_int);
-void	in6_rtalloc_ign(struct route_in6 *, u_long, u_int);
-struct rtentry *in6_rtalloc1(struct sockaddr *, int, u_long, u_int);
 #endif /* _KERNEL */
 
 #endif /* _NETINET6_IN6_VAR_H_ */

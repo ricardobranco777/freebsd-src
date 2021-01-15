@@ -337,6 +337,7 @@ extern struct env_var	*env_getenv(const char *name);
 extern int		env_setenv(const char *name, int flags,
 				   const void *value, ev_sethook_t sethook,
 				   ev_unsethook_t unsethook);
+extern void		env_discard(struct env_var *);
 extern char		*getenv(const char *name);
 extern int		setenv(const char *name, const char *value,
 			       int overwrite);
@@ -408,6 +409,11 @@ extern struct fs_ops	*exclusive_file_system;
 extern struct devsw	*devsw[];
 
 /*
+ * Time routines
+ */
+time_t time(time_t *);
+
+/*
  * Expose byteorder(3) functions.
  */
 #ifndef _BYTEORDER_PROTOTYPED
@@ -434,7 +440,16 @@ void *Reallocf(void *, size_t, const char *, int);
 void Free(void *, const char *, int);
 extern void	mallocstats(void);
 
-#ifdef DEBUG_MALLOC
+const char *x86_hypervisor(void);
+
+#ifdef USER_MALLOC
+extern void *malloc(size_t);
+extern void *memalign(size_t, size_t);
+extern void *calloc(size_t, size_t);
+extern void free(void *);
+extern void *realloc(void *, size_t);
+extern void *reallocf(void *, size_t);
+#elif defined(DEBUG_MALLOC)
 #define malloc(x)	Malloc(x, __FILE__, __LINE__)
 #define memalign(x, y)	Memalign(x, y, __FILE__, __LINE__)
 #define calloc(x, y)	Calloc(x, y, __FILE__, __LINE__)
@@ -449,5 +464,13 @@ extern void	mallocstats(void);
 #define realloc(x, y)	Realloc(x, y, NULL, 0)
 #define reallocf(x, y)	Reallocf(x, y, NULL, 0)
 #endif
+
+/*
+ * va <-> pa routines. MD code must supply.
+ */
+caddr_t ptov(uintptr_t);
+
+/* hexdump.c */
+void	hexdump(caddr_t region, size_t len);
 
 #endif	/* STAND_H */

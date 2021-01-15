@@ -15,7 +15,9 @@ CFLAGS+=${COPTS}
 
 .if ${MK_ASSERT_DEBUG} == "no"
 CFLAGS+= -DNDEBUG
-NO_WERROR=
+# XXX: shouldn't we ensure that !asserts marks potentially unused variables as
+# __unused instead of disabling -Werror globally?
+MK_WERROR=	no
 .endif
 
 .if defined(DEBUG_FLAGS)
@@ -33,6 +35,10 @@ PROG=	${PROG_CXX}
 
 .if !empty(LDFLAGS:M-Wl,*--oformat,*) || !empty(LDFLAGS:M-static)
 MK_DEBUG_FILES=	no
+.endif
+
+.if ${MACHINE_CPUARCH} == "riscv" && ${LINKER_FEATURES:Mriscv-relaxations} == ""
+CFLAGS += -mno-relax
 .endif
 
 .if defined(CRUNCH_CFLAGS)
@@ -104,9 +110,6 @@ LDFLAGS+=	-fsanitize=cfi -fvisibility=hidden -flto ${CFI_OVERRIDE}
 .if defined(MK_RETPOLINE) && ${MK_RETPOLINE} != "no"
 CFLAGS+=	-mretpoline
 CXXFLAGS+=	-mretpoline
-.if !defined(NOPIE)
-LDFLAGS+=	-Wl,-z,retpolineplt
-.endif
 .endif
 
 .if defined(MK_UNINIT_AUTOINIT) && ${MK_UNINIT_AUTOINIT} != "no"
@@ -124,9 +127,6 @@ LDFLAGS+=	-Wl,-z,now
 CFLAGS+=	-mspeculative-load-hardening
 .endif
 
-.if defined(MK_LIBRESSL) && ${MK_LIBRESSL} != "no"
-CFLAGS+=	-DHAVE_LIBRESSL
-.endif
 #
 # clang currently defaults to dynamic TLS for mips64 binaries
 .if ${MACHINE_ARCH:Mmips64*} && ${COMPILER_TYPE} == "clang"
@@ -312,9 +312,9 @@ _proginstall:
 	    ${_INSTALLFLAGS} ${PROG} ${DESTDIR}${BINDIR}/${PROGNAME}
 .if ${MK_DEBUG_FILES} != "no"
 .if defined(DEBUGMKDIR)
-	${INSTALL} ${TAG_ARGS:D${TAG_ARGS},debug} -d ${DESTDIR}${DEBUGFILEDIR}/
+	${INSTALL} ${TAG_ARGS:D${TAG_ARGS},dbg} -d ${DESTDIR}${DEBUGFILEDIR}/
 .endif
-	${INSTALL} ${TAG_ARGS:D${TAG_ARGS},debug} -o ${BINOWN} -g ${BINGRP} -m ${DEBUGMODE} \
+	${INSTALL} ${TAG_ARGS:D${TAG_ARGS},dbg} -o ${BINOWN} -g ${BINGRP} -m ${DEBUGMODE} \
 	    ${PROGNAME}.debug ${DESTDIR}${DEBUGFILEDIR}/${PROGNAME}.debug
 .endif
 .endif

@@ -41,6 +41,11 @@ __FBSDID("$FreeBSD$");
 
 #include "thr_private.h"
 
+/* DELTA_PAGES: Maximum number of pages to shift the stack address */
+#ifndef DELTA_PAGES
+#define	DELTA_PAGES	 24
+#endif
+
 /* Spare thread stack. */
 struct stack {
 	LIST_ENTRY(stack)	qe;		/* Stack queue linkage. */
@@ -197,6 +202,7 @@ _thr_stack_alloc(struct pthread_attr *attr)
 	size_t stacksize;
 	size_t guardsize;
 	char *stackaddr;
+	uint32_t delta;
 
 	/*
 	 * Round up stack size to nearest multiple of _thr_page_size so
@@ -252,12 +258,26 @@ _thr_stack_alloc(struct pthread_attr *attr)
 		 * Allocate a stack from or below usrstack, depending
 		 * on the LIBPTHREAD_BIGSTACK_MAIN env variable.
 		 */
-		if (last_stack == NULL)
+		if (last_stack == NULL) {
 			last_stack = _usrstack - _thr_stack_initial -
 			    _thr_guard_default;
+			delta = arc4random_uniform(DELTA_PAGES);
+			last_stack -= (getpagesize() * delta);
+		}
 
-		/* Allocate a new stack. */
+		/*
+		 * Allocate a new stack.
+		 *
+		 * HardenedBSD note: Normally, one would subtract the
+		 * delta from the stack address. Doing so here can
+		 * cause the stack to be placed incredibly low. The
+		 * virtual memory subsystem can deal with finding out
+		 * the best place to map this to, so providing a hint
+		 * that may be above another stack is okay.
+		 */
 		stackaddr = last_stack - stacksize - guardsize;
+		delta = arc4random_uniform(DELTA_PAGES);
+		stackaddr += (getpagesize() * delta);
 
 		/*
 		 * Even if stack allocation fails, we don't want to try to
@@ -266,7 +286,7 @@ _thr_stack_alloc(struct pthread_attr *attr)
 		 * likely reason for an mmap() error is a stack overflow of
 		 * the adjacent thread stack.
 		 */
-		last_stack -= (stacksize + guardsize);
+		last_stack = stackaddr;
 
 		/* Release the lock before mmap'ing it. */
 		THREAD_LIST_UNLOCK(curthread);
@@ -278,6 +298,13 @@ _thr_stack_alloc(struct pthread_attr *attr)
 		     -1, 0)) != MAP_FAILED &&
 		    (guardsize == 0 ||
 		     mprotect(stackaddr, guardsize, PROT_NONE) == 0)) {
+			/*
+			 * Update last_stack to be the new stack
+			 * address in order to catch any
+			 * HardenedBSD-provided ASLR delta
+			 * application.
+			 */
+			last_stack = stackaddr;
 			stackaddr += guardsize;
 		} else {
 			if (stackaddr != MAP_FAILED)

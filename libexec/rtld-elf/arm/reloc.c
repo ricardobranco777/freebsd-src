@@ -452,6 +452,15 @@ reloc_iresolve(Obj_Entry *obj __unused,
 }
 
 int
+reloc_iresolve_nonplt(Obj_Entry *obj __unused,
+    struct Struct_RtldLockState *lockstate __unused)
+{
+
+	/* XXX not implemented */
+	return (0);
+}
+
+int
 reloc_gnu_ifunc(Obj_Entry *obj __unused, int flags __unused,
     struct Struct_RtldLockState *lockstate __unused)
 {
@@ -475,12 +484,6 @@ reloc_jmpslot(Elf_Addr *where, Elf_Addr target,
 
 void
 ifunc_init(Elf_Auxinfo aux_info[__min_size(AT_COUNT)] __unused)
-{
-
-}
-
-void
-pre_init(void)
 {
 
 }

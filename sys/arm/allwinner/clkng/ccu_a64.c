@@ -49,8 +49,8 @@ __FBSDID("$FreeBSD$");
 
 #include <arm/allwinner/clkng/aw_ccung.h>
 
-#include <gnu/dts/include/dt-bindings/clock/sun50i-a64-ccu.h>
-#include <gnu/dts/include/dt-bindings/reset/sun50i-a64-ccu.h>
+#include <dt-bindings/clock/sun50i-a64-ccu.h>
+#include <dt-bindings/reset/sun50i-a64-ccu.h>
 
 /* Non-exported clocks */
 
@@ -791,8 +791,6 @@ static struct aw_clk_init a64_init_clks[] = {
 	{"dram", "pll_ddr0", 0, false},
 	{"pll_de", NULL, 432000000, true},
 	{"de", "pll_de", 0, true},
-	{"tcon0", "pll_video0-2x", 0, false},
-	{"tcon1", "pll_video1", 0, false},
 };
 
 static int

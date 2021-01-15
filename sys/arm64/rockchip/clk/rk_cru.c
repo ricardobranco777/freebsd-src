@@ -2,7 +2,6 @@
  * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
  *
  * Copyright (c) 2018 Emmanuel Vadot <manu@freebsd.org>
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,6 +51,8 @@ __FBSDID("$FreeBSD$");
 
 #include <dev/extres/clk/clk.h>
 #include <dev/extres/clk/clk_gate.h>
+#include <dev/extres/clk/clk_fixed.h>
+#include <dev/extres/clk/clk_link.h>
 #include <dev/extres/hwreset/hwreset.h>
 
 #include <arm64/rockchip/clk/rk_clk_composite.h>
@@ -232,11 +233,17 @@ rk_cru_attach(device_t dev)
 		switch (sc->clks[i].type) {
 		case RK_CLK_UNDEFINED:
 			break;
+		case RK3066_CLK_PLL:
+			rk3066_clk_pll_register(sc->clkdom,
+			    sc->clks[i].clk.pll);
+			break;
 		case RK3328_CLK_PLL:
-			rk3328_clk_pll_register(sc->clkdom, sc->clks[i].clk.pll);
+			rk3328_clk_pll_register(sc->clkdom,
+			    sc->clks[i].clk.pll);
 			break;
 		case RK3399_CLK_PLL:
-			rk3399_clk_pll_register(sc->clkdom, sc->clks[i].clk.pll);
+			rk3399_clk_pll_register(sc->clkdom,
+			    sc->clks[i].clk.pll);
 			break;
 		case RK_CLK_COMPOSITE:
 			rk_clk_composite_register(sc->clkdom,
@@ -246,14 +253,27 @@ rk_cru_attach(device_t dev)
 			rk_clk_mux_register(sc->clkdom, sc->clks[i].clk.mux);
 			break;
 		case RK_CLK_ARMCLK:
-			rk_clk_armclk_register(sc->clkdom, sc->clks[i].clk.armclk);
+			rk_clk_armclk_register(sc->clkdom,
+			    sc->clks[i].clk.armclk);
+			break;
+		case RK_CLK_FIXED:
+			clknode_fixed_register(sc->clkdom,
+			    sc->clks[i].clk.fixed);
+			break;
+		case RK_CLK_FRACT:
+			rk_clk_fract_register(sc->clkdom,
+			    sc->clks[i].clk.fract);
+			break;
+		case RK_CLK_LINK:
+			clknode_link_register(sc->clkdom,
+			    sc->clks[i].clk.link);
 			break;
 		default:
 			device_printf(dev, "Unknown clock type\n");
 			return (ENXIO);
-			break;
 		}
 	}
+
 	if (sc->gates)
 		rk_cru_register_gates(sc);
 

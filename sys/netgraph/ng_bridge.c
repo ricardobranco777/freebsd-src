@@ -382,7 +382,6 @@ ng_bridge_reset_link(hook_p hook, void *arg __unused)
 	return (1);
 }
 
-
 static int
 ng_bridge_rcvmsg(node_p node, item_p item, hook_p lasthook)
 {
@@ -393,6 +392,72 @@ ng_bridge_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 	NGI_GET_MSG(item, msg);
 	switch (msg->header.typecookie) {
+#ifdef NGM_BRIDGE_TABLE_ABI
+	case NGM_BRIDGE_COOKIE_TBL:
+		switch (msg->header.cmd) {
+		case NGM_BRIDGE_GET_CONFIG:
+		    {
+			struct ng_bridge_config_tbl *conf;
+
+			NG_MKRESPONSE(resp, msg, sizeof(*conf),
+			    M_NOWAIT|M_ZERO);
+			if (resp == NULL) {
+				error = ENOMEM;
+				break;
+			}
+			conf = (struct ng_bridge_config_tbl *)resp->data;
+			conf->cfg = priv->conf;
+			break;
+		    }
+		case NGM_BRIDGE_SET_CONFIG:
+		    {
+			struct ng_bridge_config_tbl *conf;
+
+			if (msg->header.arglen != sizeof(*conf)) {
+				error = EINVAL;
+				break;
+			}
+			conf = (struct ng_bridge_config_tbl *)msg->data;
+			priv->conf = conf->cfg;
+			break;
+		    }
+		case NGM_BRIDGE_GET_TABLE:
+		    {
+			struct ng_bridge_host_tbl_ary *ary;
+			struct ng_bridge_hent *hent;
+			int i, bucket;
+
+			NG_MKRESPONSE(resp, msg, sizeof(*ary) +
+			    (priv->numHosts * sizeof(*ary->hosts)), M_NOWAIT);
+			if (resp == NULL) {
+				error = ENOMEM;
+				break;
+			}
+			ary = (struct ng_bridge_host_tbl_ary *)resp->data;
+			ary->numHosts = priv->numHosts;
+			i = 0;
+			for (bucket = 0; bucket < priv->numBuckets; bucket++) {
+				SLIST_FOREACH(hent, &priv->tab[bucket], next) {
+					memcpy(ary->hosts[i].addr,
+					    hent->host.addr,
+					    sizeof(ary->hosts[i].addr));
+					ary->hosts[i].age = hent->host.age;
+					ary->hosts[i].staleness =
+					     hent->host.staleness;
+				        ary->hosts[i].linkNum = strtol(
+					    NG_HOOK_NAME(hent->host.link->hook) +
+					    strlen(NG_BRIDGE_HOOK_LINK_PREFIX),
+					    NULL, 10);
+					i++;
+				}
+			}
+			break;
+		    }
+		}
+		/* If already handled break, otherwise use new ABI. */
+		if (resp != NULL || error != 0)
+		    break;
+#endif /* NGM_BRIDGE_TABLE_ABI */
 	case NGM_BRIDGE_COOKIE:
 		switch (msg->header.cmd) {
 		case NGM_BRIDGE_GET_CONFIG:
@@ -565,7 +630,6 @@ ng_bridge_send_ctx(hook_p dst, void *arg)
 		return (0);	       /* abort loop */
 	}
 
-
 	/* Update stats */
 	destLink->stats.xmitPackets++;
 	destLink->stats.xmitOctets += m2->m_pkthdr.len;
@@ -641,20 +705,17 @@ ng_bridge_rcvdata(hook_p hook, item_p item)
 
 	/* Look up packet's source Ethernet address in hashtable */
 	if ((host = ng_bridge_get(priv, eh->ether_shost)) != NULL) {
-
 		/* Update time since last heard from this host */
 		host->staleness = 0;
 
 		/* Did host jump to a different link? */
 		if (host->link != ctx.incoming) {
-
 			/*
 			 * If the host's old link was recently established
 			 * on the old link and it's already jumped to a new
 			 * link, declare a loopback condition.
 			 */
 			if (host->age < priv->conf.minStableAge) {
-
 				/* Log the problem */
 				if (priv->conf.debugLevel >= 2) {
 					struct ifnet *ifp = ctx.m->m_pkthdr.rcvif;
@@ -710,7 +771,6 @@ ng_bridge_rcvdata(hook_p hook, item_p item)
 	 * unless it is the same link as the packet came in on.
 	 */
 	if (!ctx.manycast) {
-
 		/* Determine packet destination link */
 		if ((host = ng_bridge_get(priv, eh->ether_dhost)) != NULL) {
 			link_p destLink = host->link;
@@ -742,7 +802,7 @@ ng_bridge_rcvdata(hook_p hook, item_p item)
 		NG_FREE_M(ctx.m);
 		return (ctx.error);
 	}
-	
+
 	/*
 	 * If we've sent all the others, send the original
 	 * on the first link we found.
@@ -929,7 +989,6 @@ ng_bridge_rehash(priv_p priv)
 		    MISC FUNCTIONS
 ******************************************************************/
 
-
 /*
  * Remove all hosts associated with a specific link from the hashtable.
  * If linkNum == -1, then remove all hosts in the table.
@@ -977,7 +1036,7 @@ ng_bridge_unmute(hook_p hook, void *arg)
 			    ng_bridge_nodename(node), NG_HOOK_NAME(hook));
 		}
 	}
-	counter++;
+	(*counter)++;
 	return (1);
 }
 
@@ -1039,4 +1098,3 @@ ng_bridge_nodename(node_p node)
 		snprintf(name, sizeof(name), "[%x]", ng_node2ID(node));
 	return name;
 }
-

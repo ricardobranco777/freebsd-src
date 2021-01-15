@@ -64,6 +64,7 @@ tegra_bo_destruct(struct tegra_bo *bo)
 	VM_OBJECT_WLOCK(bo->cdev_pager);
 	for (i = 0; i < bo->npages; i++) {
 		m = bo->m[i];
+		vm_page_busy_acquire(m, 0);
 		cdev_pager_free_page(bo->cdev_pager, m);
 		m->flags &= ~PG_FICTITIOUS;
 		vm_page_unwire_noq(m);
@@ -230,8 +231,6 @@ tegra_bo_create(struct drm_device *drm, size_t size, struct tegra_bo **res_bo)
 	*res_bo = bo;
 	return (0);
 }
-
-
 
 static int
 tegra_bo_create_with_handle(struct drm_file *file, struct drm_device *drm,
