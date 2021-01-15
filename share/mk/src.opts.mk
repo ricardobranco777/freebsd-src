@@ -189,6 +189,7 @@ __DEFAULT_YES_OPTIONS = \
     TEXTPROC \
     TFTP \
     UNBOUND \
+    UNINIT_AUTOINIT \
     USB \
     UTMPX \
     VI \
@@ -224,7 +225,6 @@ __DEFAULT_NO_OPTIONS = \
     SORT_THREADS \
     SPECTREV1_FIX \
     SVN \
-    UNINIT_AUTOINIT \
     ZONEINFO_LEAPSECONDS_SUPPORT \
 
 # LEFT/RIGHT. Left options which default to "yes" unless their corresponding
