@@ -364,13 +364,8 @@ udom_open(const char *path, int flags)
 {
 	struct addrinfo hints, *res, *res0;
 	char rpath[PATH_MAX];
-<<<<<<< HEAD
 	int fd = -1;
 	int error;
-=======
-	int error, fd, serrno;
-	cap_rights_t rights;
->>>>>>> origin/freebsd/current/main
 
 	/*
 	 * Construct the unix domain socket address and attempt to connect.
