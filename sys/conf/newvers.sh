@@ -222,6 +222,10 @@ if findvcs .git; then
 	done
 fi
 
+if findvcs .gituprevision; then
+	gituprevision="${VCSTOP}/.gituprevision"
+fi
+
 if findvcs .hg; then
 	for dir in /usr/bin /usr/local/bin; do
 		if [ -x "${dir}/hg" ] ; then
@@ -249,19 +253,21 @@ fi
 
 if [ -n "$git_cmd" ] ; then
 	git=$($git_cmd rev-parse --verify --short HEAD 2>/dev/null)
-	git_cnt=$($git_cmd rev-list --count HEAD 2>/dev/null)
-	if [ -n "$git_cnt" ] ; then
-		git="c${git_cnt}-g${git}"
-	fi
-	git_b=$($git_cmd rev-parse --abbrev-ref HEAD)
-	if [ -n "$git_b" -a "$git_b" != "HEAD" ] ; then
-		git="${git_b}-${git}"
+	if [ "$(git rev-parse --is-shallow-repository)" = false ] ; then
+		git_cnt=$($git_cmd rev-list --count HEAD 2>/dev/null)
+		if [ -n "$git_cnt" ] ; then
+			git="c${git_cnt}-g${git}"
+		fi
 	fi
 	if git_tree_modified; then
 		git="${git}-dirty"
 		modified=yes
 	fi
 	git=" ${git}"
+fi
+
+if [ -n "$gituprevision" ] ; then
+	gitup=" $(awk -F: '{print $2}' $gituprevision)"
 fi
 
 if [ -n "$hg_cmd" ] ; then
@@ -284,10 +290,17 @@ fi
 
 [ ${include_metadata} = "if-modified" -a ${modified} = "yes" ] && include_metadata=yes
 if [ ${include_metadata} != "yes" ]; then
+<<<<<<< HEAD
 	VERINFO="${VERSION}${hbsdv}${svn}${git}${hg} ${i}"
 	VERSTR="${VERINFO}\\n"
 else
 	VERINFO="${VERSION} #${v}${hbsdv}${svn}${git}${hg}: ${t}"
+=======
+	VERINFO="${VERSION}${svn}${git}${gitup}${hg} ${i}"
+	VERSTR="${VERINFO}\\n"
+else
+	VERINFO="${VERSION} #${v}${svn}${git}${gitup}${hg}: ${t}"
+>>>>>>> origin/freebsd/current/main
 	VERSTR="${VERINFO}\\n    ${u}@${h}:${d}\\n"
 fi
 
