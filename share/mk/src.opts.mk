@@ -203,11 +203,8 @@ __DEFAULT_NO_OPTIONS = \
     CLANG_FORMAT \
     DTRACE_TESTS \
     EXPERIMENTAL \
-<<<<<<< HEAD
-    FREEBSD_UPDATE \
-=======
     FMTREE \
->>>>>>> origin/freebsd/current/main
+    FREEBSD_UPDATE \
     HESIOD \
     LIB32 \
     LIBSOFT \
