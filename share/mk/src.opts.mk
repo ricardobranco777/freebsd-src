@@ -100,7 +100,6 @@ __DEFAULT_YES_OPTIONS = \
     FILE \
     FINGER \
     FLOPPY \
-    FMTREE \
     FORTH \
     FP_LIBC \
     FTP \
@@ -204,7 +203,11 @@ __DEFAULT_NO_OPTIONS = \
     CLANG_FORMAT \
     DTRACE_TESTS \
     EXPERIMENTAL \
+<<<<<<< HEAD
     FREEBSD_UPDATE \
+=======
+    FMTREE \
+>>>>>>> origin/freebsd/current/main
     HESIOD \
     LIB32 \
     LIBSOFT \
