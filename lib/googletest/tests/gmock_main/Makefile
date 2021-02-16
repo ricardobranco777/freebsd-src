@@ -33,5 +33,6 @@ LIBADD=		gmock_main gmock gtest
 
 # The next release will resolve a number of build warnings issues.
 MK_WERROR=	no
+MK_CFI=		no
 
 .include <bsd.test.mk>
