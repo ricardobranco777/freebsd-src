@@ -1176,7 +1176,9 @@ exec_new_vmspace(struct image_params *imgp, struct sysentvec *sv)
 	stack_addr = sv->sv_usrstack;
 #ifdef PAX_ASLR
 	/* Randomize the stack top. */
+	PROC_LOCK(p);
 	pax_aslr_stack(p, &stack_addr);
+	PROC_UNLOCK(p);
 #endif
 	/* Save the process specific randomized stack top. */
 	p->p_usrstack = stack_addr;
@@ -1185,7 +1187,9 @@ exec_new_vmspace(struct image_params *imgp, struct sysentvec *sv)
 	stackprot = obj != NULL && imgp->stack_prot != 0 ? imgp->stack_prot : sv->sv_stackprot;
 	stackmaxprot = VM_PROT_ALL;
 #ifdef PAX_NOEXEC
+	PROC_LOCK(p);
 	pax_noexec_nx(p, &stackprot, &stackmaxprot);
+	PROC_UNLOCK(p);
 #endif
 	imgp->eff_stack_sz = lim_cur(curthread, RLIMIT_STACK);
 	if (ssiz < imgp->eff_stack_sz)
