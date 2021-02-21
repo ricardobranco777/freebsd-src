@@ -1221,7 +1221,7 @@ link_elf_load_file(linker_class_t cls, const char* filename,
 		if ((segs[i]->p_flags & PF_X) != 0)
 			prot |= VM_PROT_EXECUTE;
 		segbase = mapbase + segs[i]->p_vaddr - base_vaddr;
-		error = vm_map_protect(kernel_map,
+		error = vm_map_protect(NULL, kernel_map,
 		    (vm_offset_t)segbase,
 		    (vm_offset_t)segbase + round_page(segs[i]->p_memsz),
 		    prot, FALSE);
