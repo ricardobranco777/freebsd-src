@@ -724,12 +724,14 @@ kern_mprotect(struct thread *td, uintptr_t addr0, size_t size, int prot)
 	if (max_prot != 0) {
 		if ((max_prot & prot) != prot)
 			return (ENOTSUP);
-		vm_error = vm_map_protect(&td->td_proc->p_vmspace->vm_map,
-		    addr, addr + size, max_prot, TRUE);
+		vm_error = vm_map_protect(td->td_proc,
+		    &td->td_proc->p_vmspace->vm_map, addr, addr + size,
+		    max_prot, TRUE);
 	}
 	if (vm_error == KERN_SUCCESS)
-		vm_error = vm_map_protect(&td->td_proc->p_vmspace->vm_map,
-		    addr, addr + size, prot, FALSE);
+		vm_error = vm_map_protect(td->td_proc,
+		    &td->td_proc->p_vmspace->vm_map, addr, addr + size,
+		    prot, FALSE);
 
 	switch (vm_error) {
 	case KERN_SUCCESS:

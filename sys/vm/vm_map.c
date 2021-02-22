@@ -2755,8 +2755,8 @@ vm_map_pmap_enter(vm_map_t map, vm_offset_t addr, vm_prot_t prot,
  *	otherwise, only the current protection is affected.
  */
 int
-vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
-	       vm_prot_t new_prot, boolean_t set_max)
+vm_map_protect(struct proc *p, vm_map_t map, vm_offset_t start,
+	       vm_offset_t end, vm_prot_t new_prot, boolean_t set_max)
 {
 	vm_map_entry_t entry, first_entry, in_tran, prev_entry;
 	vm_object_t obj;
@@ -2905,9 +2905,12 @@ again:
 
 		old_prot = entry->protection;
 #ifdef PAX_NOEXEC
-		ret = pax_mprotect_enforce(curthread->td_proc, map, old_prot, new_prot);
-		if (ret != 0) {
-			return (ret);
+		if (p != NULL) {
+			ret = pax_mprotect_enforce(p, map, old_prot,
+			    new_prot);
+			if (ret != 0) {
+				return (ret);
+			}
 		}
 #endif
 
