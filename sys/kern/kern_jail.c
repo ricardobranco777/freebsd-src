@@ -2321,72 +2321,6 @@ sys_jail_remove(struct thread *td, struct jail_remove_args *uap)
 	return (0);
 }
 
-<<<<<<< HEAD
-static void
-prison_remove_one(struct prison *pr)
-{
-	struct proc *p;
-	int was_alive, drflags;
-
-	drflags = PD_DEREF | PD_LOCKED | PD_LIST_XLOCKED;
-	/*
-	 * Mark the prison as doomed, so it doesn't accidentally come back
-	 * to life.  It may still be explicitly brought back by jail_set(2).
-	 */
-	was_alive = pr->pr_state == PRISON_STATE_ALIVE;
-	pr->pr_state = PRISON_STATE_DYING;
-
-#ifdef MAC
-#ifdef PAX_CONTROL_ACL
-	mac_prison_destroy(pr);
-#endif
-#endif
-
-	/* If the prison was persistent, it is not anymore. */
-	if (pr->pr_flags & PR_PERSIST) {
-		drflags |= PD_DEUREF;
-		prison_free_not_last(pr);
-		pr->pr_flags &= ~PR_PERSIST;
-	}
-
-	/*
-	 * jail_remove added a reference.  If that's the only one, remove
-	 * the prison now.  refcount(9) doesn't guarantee the cache coherence
-	 * of non-zero counters, so force it here.
-	 */
-	KASSERT(refcount_load(&pr->pr_ref) > 0,
-	    ("prison_remove_one removing a dead prison (jid=%d)", pr->pr_id));
-	if (atomic_load_acq_int(&pr->pr_ref) == 1) {
-		prison_deref(pr, drflags);
-		return;
-	}
-
-	/* Tell modules this prison has died. */
-	mtx_unlock(&pr->pr_mtx);
-	drflags &= ~PD_LOCKED;
-	if (was_alive)
-		(void)osd_jail_call(pr, PR_METHOD_REMOVE, NULL);
-
-	sx_xunlock(&allprison_lock);
-	drflags &= ~PD_LIST_XLOCKED;
-	/*
-	 * Kill all processes unfortunate enough to be attached to this prison.
-	 */
-	sx_slock(&allproc_lock);
-	FOREACH_PROC_IN_SYSTEM(p) {
-		PROC_LOCK(p);
-		if (p->p_state != PRS_NEW && p->p_ucred &&
-		    p->p_ucred->cr_prison == pr)
-			kern_psignal(p, SIGKILL);
-		PROC_UNLOCK(p);
-	}
-	sx_sunlock(&allproc_lock);
-	/* Remove the temporary reference added by jail_remove. */
-	prison_deref(pr, drflags);
-}
-
-=======
->>>>>>> origin/freebsd/current/main
 /*
  * struct jail_attach_args {
  *	int jid;
@@ -2968,6 +2902,12 @@ prison_deref_kill(struct prison *pr, struct prisonlist *freeprison)
 	refcount_acquire(&pr->pr_uref);
 	pr->pr_state = PRISON_STATE_DYING;
 	mtx_unlock(&pr->pr_mtx);
+
+#ifdef MAC
+#ifdef PAX_CONTROL_ACL
+	mac_prison_destroy(pr);
+#endif
+#endif
 
 	rpr = NULL;
 	FOREACH_PRISON_DESCENDANT_PRE_POST(pr, cpr, descend) {
