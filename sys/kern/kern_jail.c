@@ -998,7 +998,6 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 	 * This abuses the file error codes ENOENT and EEXIST.
 	 */
 	pr = NULL;
-	ppr = mypr;
 	inspr = NULL;
 	if (cuflags == JAIL_CREATE && jid == 0 && name != NULL) {
 		namelc = strrchr(name, '.');
@@ -1007,6 +1006,12 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 			jid = 0;
 	}
 	sx_xlock(&allprison_lock);
+	ppr = mypr;
+	if (!prison_isalive(ppr)) {
+		/* This jail is dying.  This process will surely follow. */
+		error = EAGAIN;
+		goto done_deref;
+	}
 	drflags = PD_LIST_XLOCKED;
 	if (jid != 0) {
 		if (jid < 0) {
@@ -1030,7 +1035,6 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 			break;
 		}
 		if (pr != NULL) {
-			ppr = pr->pr_parent;
 			/* Create: jid must not exist. */
 			if (cuflags == JAIL_CREATE) {
 				/*
@@ -1050,6 +1054,13 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 				 */
 				error = ENOENT;
 				vfs_opterror(opts, "jail %d not found", jid);
+				goto done_deref;
+			}
+			ppr = pr->pr_parent;
+			if (!prison_isalive(ppr)) {
+				error = ENOENT;
+				vfs_opterror(opts, "jail %d is dying",
+				    ppr->pr_id);
 				goto done_deref;
 			}
 			if (!prison_isalive(pr)) {
@@ -1117,15 +1128,13 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 					    "jail \"%s\" not found", name);
 					goto done_deref;
 				}
-				if (!(flags & JAIL_DYING) &&
-				    !prison_isalive(ppr)) {
-					mtx_unlock(&ppr->pr_mtx);
+				mtx_unlock(&ppr->pr_mtx);
+				if (!prison_isalive(ppr)) {
 					error = ENOENT;
 					vfs_opterror(opts,
 					    "jail \"%s\" is dying", name);
 					goto done_deref;
 				}
-				mtx_unlock(&ppr->pr_mtx);
 				*namelc = '.';
 			}
 			namelc++;
@@ -1204,26 +1213,9 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 				vfs_opterror(opts, "prison limit exceeded");
 				goto done_deref;
 			}
-		prison_hold(ppr);
-		if (!refcount_acquire_if_not_zero(&ppr->pr_uref)) {
-			/* This brings the parent back to life. */
-			mtx_lock(&ppr->pr_mtx);
-			refcount_acquire(&ppr->pr_uref);
-			ppr->pr_state = PRISON_STATE_ALIVE;
-			mtx_unlock(&ppr->pr_mtx);
-			error = osd_jail_call(ppr, PR_METHOD_CREATE, opts);
-			if (error) {
-				pr = ppr;
-				drflags |= PD_DEREF | PD_DEUREF;
-				goto done_deref;
-			}
-		}
-
 		if (jid == 0 && (jid = get_next_prid(&inspr)) == 0) {
 			error = EAGAIN;
 			vfs_opterror(opts, "no available jail IDs");
-			pr = ppr;
-			drflags |= PD_DEREF | PD_DEUREF;
 			goto done_deref;
 		}
 
@@ -1243,6 +1235,8 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 			TAILQ_INSERT_TAIL(&allprison, pr, pr_list);
 
 		pr->pr_parent = ppr;
+		prison_hold(ppr);
+		prison_proc_hold(ppr);
 		LIST_INSERT_HEAD(&ppr->pr_children, pr, pr_sibling);
 		for (tpr = ppr; tpr != NULL; tpr = tpr->pr_parent)
 			tpr->pr_childcount++;
@@ -1866,6 +1860,10 @@ kern_jail_set(struct thread *td, struct uio *optuio, int flags)
 
 #ifdef RACCT
 	if (racct_enable && !created) {
+		if (drflags & PD_LOCKED) {
+			mtx_unlock(&pr->pr_mtx);
+			drflags &= ~PD_LOCKED;
+		}
 		if (drflags & PD_LIST_XLOCKED) {
 			sx_xunlock(&allprison_lock);
 			drflags &= ~PD_LIST_XLOCKED;
