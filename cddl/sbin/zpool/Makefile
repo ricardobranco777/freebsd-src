@@ -74,6 +74,6 @@ CFLAGS+= \
 	-DSYSCONFDIR=\"/etc\" \
 	-DPKGDATADIR=\"/usr/share/zfs\"
 
-LIBADD=	geom nvpair uutil zfs zutil avl spl tpool zfs_core m
+LIBADD=	geom jail nvpair uutil zfs zutil avl spl tpool zfs_core m
 LDADD+= 	-pthread
 .include <bsd.prog.mk>
