@@ -17,6 +17,7 @@ LIBADD= \
 	bsdxml \
 	crypto \
 	geom \
+	jail \
 	m \
 	md \
 	nvpair \
@@ -105,6 +106,5 @@ CFLAGS+= -DHAVE_ISSETUGID
 CFLAGS+= -include ${SRCTOP}/sys/modules/zfs/zfs_config.h
 CFLAGS+= -DSYSCONFDIR=\"/etc\"
 CFLAGS+= -DPKGDATADIR=\"/usr/share/zfs\"
-
 
 .include <bsd.lib.mk>
