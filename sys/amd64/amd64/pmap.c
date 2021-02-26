@@ -11357,9 +11357,6 @@ restart:
 				continue;
 			}
 			pa = pdpe & PG_FRAME;
-			if (PMAP_ADDRESS_IN_LARGEMAP(sva) &&
-			    vm_phys_paddr_to_vm_page(pa) == NULL)
-				goto restart;
 			if ((pdpe & PG_PS) != 0) {
 				sva = rounddown2(sva, NBPDP);
 				sysctl_kmaps_check(sb, &range, sva, pml4e, pdpe,
@@ -11367,6 +11364,15 @@ restart:
 				range.pdpes++;
 				sva += NBPDP;
 				continue;
+			}
+			if (PMAP_ADDRESS_IN_LARGEMAP(sva) &&
+			    vm_phys_paddr_to_vm_page(pa) == NULL) {
+				/*
+				 * Page table pages for the large map may be
+				 * freed.  Validate the next-level address
+				 * before descending.
+				 */
+				goto restart;
 			}
 			pd = (pd_entry_t *)PHYS_TO_DMAP(pa);
 
@@ -11379,9 +11385,6 @@ restart:
 					continue;
 				}
 				pa = pde & PG_FRAME;
-				if (PMAP_ADDRESS_IN_LARGEMAP(sva) &&
-				    vm_phys_paddr_to_vm_page(pa) == NULL)
-					goto restart;
 				if ((pde & PG_PS) != 0) {
 					sva = rounddown2(sva, NBPDR);
 					sysctl_kmaps_check(sb, &range, sva,
@@ -11389,6 +11392,15 @@ restart:
 					range.pdes++;
 					sva += NBPDR;
 					continue;
+				}
+				if (PMAP_ADDRESS_IN_LARGEMAP(sva) &&
+				    vm_phys_paddr_to_vm_page(pa) == NULL) {
+					/*
+					 * Page table pages for the large map
+					 * may be freed.  Validate the
+					 * next-level address before descending.
+					 */
+					goto restart;
 				}
 				pt = (pt_entry_t *)PHYS_TO_DMAP(pa);
 
