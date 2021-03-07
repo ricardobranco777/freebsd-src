@@ -1290,11 +1290,13 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 		map->anon_loc = __CONCAT(rnd_, __elfN(base))(map, addr, maxv1,
 		    (MAXPAGESIZES > 1 && pagesizes[1] != 0) ?
 		    pagesizes[1] : pagesizes[0]);
-	}
+	} else {
 #ifdef PAX_ASLR
-	else
 		pax_aslr_rtld(imgp->proc, &addr);
 #endif
+		map->anon_loc = addr;
+	}
+
 	map->anon_loc = addr;
 	PROC_UNLOCK(imgp->proc);
 
