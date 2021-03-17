@@ -212,8 +212,11 @@ __DEFAULT_NO_OPTIONS = \
     LOADER_VERBOSE \
     LOADER_VERIEXEC_PASS_MANIFEST \
     MALLOC_PRODUCTION \
+<<<<<<< HEAD
     MANSPLITPKG \
     OFED \
+=======
+>>>>>>> origin/freebsd/current/main
     OFED_EXTRA \
     OPENLDAP \
     PORTSNAP \
