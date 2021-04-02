@@ -32,6 +32,7 @@ nooptions	COMPAT_FREEBSD7
 nooptions	COMPAT_FREEBSD9
 nooptions	COMPAT_FREEBSD10
 nooptions	COMPAT_FREEBSD32
+nooptions	QUEUE_MACRO_DEBUG_TRASH
 
 # HardenedBSD hardening options
 options 	HARDEN_KLD		# Harden the kernel module interface
