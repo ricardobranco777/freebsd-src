@@ -28,20 +28,6 @@
 
 : ${DIALOG_OK=0}
 
-set_aslr_sysctls()
-{
-	for bit in 32 64; do
-		if ! sysctl -Nq kern.elf$bit.aslr.enable >/dev/null; then
-			continue
-		fi
-		cat >> $BSDINSTALL_TMPETC/sysctl.conf.hardening <<-EOF
-			kern.elf$bit.aslr.enable=1
-			kern.elf$bit.aslr.pie_enable=1
-			kern.elf$bit.aslr.honor_sbrk=0
-		EOF
-	done
-}
-
 echo -n > $BSDINSTALL_TMPETC/rc.conf.hardening
 echo -n > $BSDINSTALL_TMPETC/sysctl.conf.hardening
 echo -n > $BSDINSTALL_TMPBOOT/loader.conf.hardening
