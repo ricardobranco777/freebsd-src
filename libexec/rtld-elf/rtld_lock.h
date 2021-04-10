@@ -30,7 +30,9 @@
 #ifndef _RTLD_LOCK_H_
 #define	_RTLD_LOCK_H_
 
-#define	RTLI_VERSION	0x01
+#define	RTLI_VERSION_ONE	0x01
+#define	RTLI_VERSION		0x02
+
 #define	MAX_RTLD_LOCKS	8
 
 struct RtldLockInfo
@@ -44,6 +46,9 @@ struct RtldLockInfo
 	int   (*thread_set_flag)(int);
 	int   (*thread_clr_flag)(int);
 	void  (*at_fork)(void);
+	char *(*dlerror_loc)(void);
+	int  *(*dlerror_seen)(void);
+	int   dlerror_loc_sz;
 };
 
 #if defined(IN_RTLD) || defined(PTHREAD_KERNEL)
@@ -63,6 +68,8 @@ extern rtld_lock_t	rtld_bind_lock;
 extern rtld_lock_t	rtld_libc_lock;
 extern rtld_lock_t	rtld_phdr_lock;
 
+extern struct RtldLockInfo lockinfo;
+
 #define	RTLD_LOCK_UNLOCKED	0
 #define	RTLD_LOCK_RLOCKED	1
 #define	RTLD_LOCK_WLOCKED	2
@@ -75,6 +82,8 @@ void 	wlock_acquire(rtld_lock_t, RtldLockState *);
 void	lock_release(rtld_lock_t, RtldLockState *);
 void	lock_upgrade(rtld_lock_t, RtldLockState *);
 void	lock_restart_for_upgrade(RtldLockState *);
+
+void	dlerror_dflt_init(void);
 
 #endif	/* IN_RTLD */
 
