@@ -5,12 +5,11 @@ SHLIBDIR?= /lib
 .include <src.opts.mk>
 
 PACKAGE=	runtime
-LIB=	nv
+SHLIB=	nv
 SHLIB_MAJOR= 0
 
 .PATH: ${SRCTOP}/sys/contrib/libnv ${SRCTOP}/sys/sys
 CFLAGS+=-I${.CURDIR}
-CFLAGS+=${PICFLAG}
 
 SRCS=	cnvlist.c
 SRCS+=	dnvlist.c
