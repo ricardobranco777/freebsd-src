@@ -174,7 +174,7 @@ void pax_db_printf_flags(struct proc *p, pax_log_settings_t flags);
 void pax_db_printf_flags_td(struct thread *td, pax_log_settings_t flags);
 int hbsd_uprintf(const char *fmt, ...) __printflike(1, 2);
 void pax_log_internal(struct proc *, pax_log_settings_t flags, const char *fmt, ...) __printflike(3, 4);
-void pax_log_internal_imgp(struct image_params *imgp, pax_log_settings_t flags, const char* fmt, ...) __printflike(3, 4);
+void pax_log_internal_imgp(struct image_params *imgp, pax_log_settings_t flags, const char *fmt, ...) __printflike(3, 4);
 void pax_ulog_internal(const char *fmt, ...) __printflike(1, 2);
 void pax_log_aslr(struct proc *, pax_log_settings_t flags, const char *fmt, ...) __printflike(3, 4);
 void pax_ulog_aslr(const char *fmt, ...) __printflike(1, 2);
