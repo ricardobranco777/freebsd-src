@@ -739,9 +739,9 @@ pax_aslr_setup_flags(struct image_params *imgp, struct thread *td, pax_flag_t mo
 	}
 
 	/*
-	* Default shlibrandom to disabled regardless of ASLR
-	* opt-in/opt-out.
-	*/
+	 * Default shlibrandom to disabled regardless of ASLR
+	 * opt-in/opt-out.
+	 */
 	if (mode & PAX_NOTE_SHLIBRANDOM) {
 		flags |= PAX_NOTE_SHLIBRANDOM;
 		flags &= ~PAX_NOTE_NOSHLIBRANDOM;

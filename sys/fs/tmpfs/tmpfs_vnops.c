@@ -2092,14 +2092,14 @@ tmpfs_extattr_delete(struct vnode *vp, int attrnamespace, const char *name,
 static int
 tmpfs_deleteextattr(struct vop_deleteextattr_args *ap)
 /*
-vop_deleteextattr {
-	IN struct vnode *a_vp;
-	IN int a_attrnamespace;
-	IN const char *a_name;
-	IN struct ucred *a_cred;
-	IN struct thread *a_td;
-}
-*/
+ * vop_deleteextattr {
+ *	IN struct vnode *a_vp;
+ *	IN int a_attrnamespace;
+ *	IN const char *a_name;
+ *	IN struct ucred *a_cred;
+ *	IN struct thread *a_td;
+ * }
+ */
 {
 
 	return (tmpfs_extattr_delete(ap->a_vp, ap->a_attrnamespace, ap->a_name,

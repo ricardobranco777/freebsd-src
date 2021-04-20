@@ -576,7 +576,7 @@ pax_segvguard_sysinit(void)
 		malloc(pax_segvguard_hashsize * sizeof(struct pax_segvguard_entryhead),
 		M_PAX, M_WAITOK | M_ZERO);
 
-	for(i = 0; i < pax_segvguard_hashsize; i++)
+	for (i = 0; i < pax_segvguard_hashsize; i++)
 		PAX_SEGVGUARD_LOCK_INIT(&pax_segvguard_hashtbl[i]);
 }
 
