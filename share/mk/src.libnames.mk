@@ -582,14 +582,7 @@ LIBFIFOLOG?=	${LIBFIFOLOGDIR}/libfifolog.a
 LIBBSNMPTOOLSDIR=	${_LIB_OBJTOP}/usr.sbin/bsnmpd/tools/libbsnmptools
 LIBBSNMPTOOLS?=	${LIBBSNMPTOOLSDIR}/libbsnmptools.a
 
-<<<<<<< HEAD
-LIBAMUDIR=	${_LIB_OBJTOP}/usr.sbin/amd/libamu
-LIBAMU?=	${LIBAMUDIR}/libamu.a
-
 LIBBE?=		${LIBBEDIR}/libbe.a
-=======
-LIBBE?=		${LIBBEDIR}/libbe${PIE_SUFFIX}.a
->>>>>>> origin/freebsd/current/main
 
 LIBPMCSTATDIR=	${_LIB_OBJTOP}/lib/libpmcstat
 LIBPMCSTAT?=	${LIBPMCSTATDIR}/libpmcstat.a
