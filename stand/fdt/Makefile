@@ -17,8 +17,12 @@ CFLAGS+=	-I${SYSDIR}/contrib/libfdt/ -I${LDRSRC}
 
 CFLAGS+=	-Wformat -Wall
 
+<<<<<<< HEAD
 .if ${MACHINE_CPUARCH} == "aarch64"
 NOPIE=		1
 .endif
+=======
+.include "${BOOTSRC}/veriexec.mk"
+>>>>>>> origin/freebsd/current/main
 
 .include <bsd.lib.mk>
