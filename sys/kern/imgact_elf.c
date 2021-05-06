@@ -1829,6 +1829,10 @@ each_dumpable_segment(struct thread *td, segment_callback func, void *closure,
 	vm_object_t backing_object, object;
 	bool ignore_entry;
 
+#ifdef PAX_HARDENING
+	flags &= ~(SVC_ALL);
+#endif
+
 	vm_map_lock_read(map);
 	VM_MAP_ENTRY_FOREACH(entry, map) {
 		/*
