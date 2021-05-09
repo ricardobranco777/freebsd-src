@@ -48,10 +48,6 @@ if [ `sysctl -n security.bsd.unprivileged_proc_debug` -eq 0 ]; then
 	proc_debug=on
 fi
 
-if [ `sysctl -n security.bsd.stack_guard_page` -gt 0 ]; then
-	stack_guard=on
-fi
-
 exec 3>&1
 FEATURES=$( dialog --backtitle "HardenedBSD Installer" \
     --title "System Hardening" --nocancel --separate-output \
