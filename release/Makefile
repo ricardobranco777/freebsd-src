@@ -36,11 +36,7 @@
 
 WORLDDIR?=	${.CURDIR}/..
 PORTSDIR?=	/usr/ports
-<<<<<<< HEAD
-RELNOTES_LANG?= en_US.ISO8859-1
 KERNCONF?=	HARDENEDBSD
-=======
->>>>>>> origin/freebsd/current/main
 
 .if !defined(TARGET) || empty(TARGET)
 TARGET=		${MACHINE}
