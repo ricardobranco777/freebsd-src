@@ -267,9 +267,18 @@ struct ktr_struct_array {
 #ifdef	_KERNEL
 struct ktr_io_params;
 
+#ifdef	KTRACE
 struct vnode *ktr_get_tracevp(struct proc *, bool);
+#else
+static inline struct vnode *
+ktr_get_tracevp(struct proc *p, bool ref)
+{
+
+	return (NULL);
+}
+#endif
 void	ktr_io_params_free(struct ktr_io_params *);
-void	ktrnamei(char *);
+void	ktrnamei(const char *);
 void	ktrcsw(int, int, const char *);
 void	ktrpsig(int, sig_t, sigset_t *, int);
 void	ktrfault(vm_offset_t, int);
@@ -299,7 +308,11 @@ void	ktrcapfail(enum ktr_cap_fail_type, const cap_rights_t *,
 #define ktrstat_error(s, error) \
 	ktrstruct_error("stat", (s), sizeof(struct stat), error)
 extern u_int ktr_geniosize;
+#ifdef	KTRACE
 extern int ktr_filesize_limit_signal;
+#else
+#define	ktr_filesize_limit_signal 0
+#endif
 #else
 
 #include <sys/cdefs.h>
