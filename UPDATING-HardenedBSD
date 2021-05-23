@@ -18,7 +18,7 @@ __HardenedBSD_version = 1300060
 	system-level filesystem extended attributes. This change now
 	enables that ability by default.
 
-	This is iin preparation for hbsdcontrol integration with
+	This is in preparation for hbsdcontrol integration with
 	ports/packages.
 
 [20191019] FreeBSD ASR with HardenedBSD ASLR
