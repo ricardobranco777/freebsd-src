@@ -1,17 +1,19 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (c) 2020 Vladimir Kondratyev <wulf@FreeBSD.org>
+ * Copyright (c) 2020 The FreeBSD Foundation
+ *
+ * This software was developed by Björn Zeeb under sponsorship from
+ * the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
+ * modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -28,20 +30,22 @@
  * $FreeBSD$
  */
 
-#ifndef _LINUX_ACPI_H_
-#define _LINUX_ACPI_H_
+#ifndef	__LKPI_NET_ADDRCONF_H
+#define	__LKPI_NET_ADDRCONF_H
 
-#include <linux/device.h>
-#include <linux/uuid.h>
+#include <sys/types.h>
+#include <netinet/in.h>
 
-#if defined(__aarch64__) || defined(__amd64__) || defined(__i386__)
+static __inline void
+addrconf_addr_solict_mult(struct in6_addr *ia6, struct in6_addr *sol)
+{
 
-#include <acpi/acpi.h>
-#include <acpi/acpi_bus.h>
+	sol->s6_addr16[0] = IPV6_ADDR_INT16_MLL;
+	sol->s6_addr16[1] = 0;
+	sol->s6_addr32[1] = 0;
+	sol->s6_addr32[2] = IPV6_ADDR_INT32_ONE;
+	sol->s6_addr32[3] = ia6->s6_addr32[3];
+	sol->s6_addr8[12] = 0xff;
+}
 
-#define	ACPI_HANDLE(dev)	\
-    ((dev)->bsddev != NULL ? bsd_acpi_get_handle((dev)->bsddev) : NULL)
-
-#endif
-
-#endif /* _LINUX_ACPI_H_ */
+#endif	/* __LKPI_NET_ADDRCONF_H */

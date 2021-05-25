@@ -1,8 +1,5 @@
 /*-
- * Copyright (c) 2010 Isilon Systems, Inc.
- * Copyright (c) 2010 iX Systems, Inc.
- * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2013-2016 Mellanox Technologies, Ltd.
+ * Copyright (c) 2017 Mellanox Technologies, Ltd.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,53 +26,12 @@
  * $FreeBSD$
  */
 
-#ifndef _LINUX_RANDOM_H_
-#define	_LINUX_RANDOM_H_
+#ifndef	__LKPI_LINUX_STRINGIFY_H_
+#define	__LKPI_LINUX_STRINGIFY_H_
 
-#include <linux/types.h>
-#include <sys/random.h>
-#include <sys/libkern.h>
+#include <sys/cdefs.h>
 
-#define	get_random_u32() get_random_int()
+#define	___stringify(...)		#__VA_ARGS__
+#define	__stringify(...)		___stringify(__VA_ARGS__)
 
-static inline void
-get_random_bytes(void *buf, int nbytes)
-{
-
-	arc4random_buf(buf, nbytes);
-}
-
-static inline u_int
-get_random_int(void)
-{
-	u_int val;
-
-	get_random_bytes(&val, sizeof(val));
-	return (val);
-}
-
-static inline u_long
-get_random_long(void)
-{
-	u_long val;
-
-	get_random_bytes(&val, sizeof(val));
-	return (val);
-}
-
-static __inline uint32_t
-prandom_u32(void)
-{
-	uint32_t val;
-
-	get_random_bytes(&val, sizeof(val));
-	return (val);
-}
-
-static inline u32
-prandom_u32_max(u32 max)
-{
-	return (arc4random_uniform(max));
-}
-
-#endif /* _LINUX_RANDOM_H_ */
+#endif	/* __LKPI_LINUX_STRINGIFY_H_ */
