@@ -38,6 +38,8 @@
 #include "util.h"
 #include <alias.h>
 
+static void usage(void);
+
 #define	timevalcmp(tv, uv, cmp)			\
 	(((tv).tv_sec == (uv).tv_sec)		\
 	 ? ((tv).tv_usec cmp (uv).tv_usec)	\
@@ -56,7 +58,7 @@
 	} } while(0)
 
 static void
-usage() {
+usage(void) {
 	printf("Usage: perf [max_seconds [batch_size [random_size [attack_size [redir_size]]]]]\n");
 	exit(1);
 }
