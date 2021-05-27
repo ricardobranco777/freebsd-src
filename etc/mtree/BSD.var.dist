@@ -65,7 +65,7 @@
     ..
     heimdal         mode=0700
     ..
-    log
+    log             mode=0660
     ..
     mail            gname=mail mode=0775
     ..
