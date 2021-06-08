@@ -23,12 +23,8 @@
  * Copyright (c) 2013 Martin Matuska <mm@FreeBSD.org>. All rights reserved.
  */
 #include <os/freebsd/zfs/sys/zfs_ioctl_compat.h>
-<<<<<<< HEAD
 #include <jail.h>
-#include <libzfs_impl.h>
-=======
 #include "../../libzfs_impl.h"
->>>>>>> origin/freebsd/current/main
 #include <libzfs.h>
 #include <libzutil.h>
 #include <sys/sysctl.h>
