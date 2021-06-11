@@ -218,12 +218,7 @@ __DEFAULT_NO_OPTIONS = \
     REPRODUCIBLE_BUILD \
     RPCBIND_WARMSTART_SUPPORT \
     SORT_THREADS \
-<<<<<<< HEAD
     SPECTREV1_FIX \
-    SVN \
-    SVNLITE \
-=======
->>>>>>> origin/freebsd/current/main
     ZONEINFO_LEAPSECONDS_SUPPORT \
 
 # LEFT/RIGHT. Left options which default to "yes" unless their corresponding
