@@ -39,7 +39,11 @@ SUBDIR=	\
 	${_amdsmn} \
 	${_amdtemp} \
 	amr \
+<<<<<<< HEAD
 	${_an} \
+=======
+	${_aout} \
+>>>>>>> origin/freebsd/current/main
 	${_arcmsr} \
 	${_allwinner} \
 	${_armv8crypto} \
@@ -620,7 +624,11 @@ _sdhci_fdt=	sdhci_fdt
 
 .if ${MACHINE_CPUARCH} == "i386" || ${MACHINE_CPUARCH} == "amd64"
 _agp=		agp
+<<<<<<< HEAD
 _an=		an
+=======
+_aout=		aout
+>>>>>>> origin/freebsd/current/main
 _bios=		bios
 .if ${MK_SOURCELESS_UCODE} != "no"
 _bxe=		bxe
