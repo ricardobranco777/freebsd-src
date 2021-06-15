@@ -224,6 +224,16 @@ bool MCELFStreamer::emitSymbolAttribute(MCSymbol *S, MCSymbolAttr Attribute) {
     break;
 
   case MCSA_Global:
+#ifdef HBSD_NOTYET
+    /* XXX shawn.webb@hardenedbsd.org:
+     *
+     * FreeBSD's libc contains some weakly-binded symbols that trigger
+     * the error below when building the rescue binaries. One such
+     * symbol is getprogname.
+     *
+     * So that we can keep building world functional, we need to
+     * disable this sanity checking.
+     */
     // For `.weak x; .global x`, GNU as sets the binding to STB_WEAK while we
     // traditionally set the binding to STB_GLOBAL. This is error-prone, so we
     // error on such cases. Note, we also disallow changed binding from .local.
@@ -231,6 +241,7 @@ bool MCELFStreamer::emitSymbolAttribute(MCSymbol *S, MCSymbolAttr Attribute) {
       getContext().reportError(getStartTokLoc(),
                                Symbol->getName() +
                                    " changed binding to STB_GLOBAL");
+#endif
     Symbol->setBinding(ELF::STB_GLOBAL);
     break;
 
