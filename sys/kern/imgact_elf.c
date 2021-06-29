@@ -1229,11 +1229,8 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	map = &vmspace->vm_map;
 
 	imgp->proc->p_sysent = sv;
-<<<<<<< HEAD
-=======
 	imgp->proc->p_elf_brandinfo = brand_info;
 
->>>>>>> origin/freebsd/current/main
 	maxv = vm_map_max(map) - lim_max(td, RLIMIT_STACK);
 
 #ifdef PAX_ASLR
