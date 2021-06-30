@@ -6313,8 +6313,8 @@ pmap_remove_all(vm_page_t m)
 	lock = VM_PAGE_TO_PV_LIST_LOCK(m);
 	pvh = (m->flags & PG_FICTITIOUS) != 0 ? &pv_dummy :
 	    pa_to_pvh(VM_PAGE_TO_PHYS(m));
-retry:
 	rw_wlock(lock);
+retry:
 	while ((pv = TAILQ_FIRST(&pvh->pv_list)) != NULL) {
 		pmap = PV_PMAP(pv);
 		if (!PMAP_TRYLOCK(pmap)) {
@@ -6323,7 +6323,6 @@ retry:
 			PMAP_LOCK(pmap);
 			rw_wlock(lock);
 			if (pvh_gen != pvh->pv_gen) {
-				rw_wunlock(lock);
 				PMAP_UNLOCK(pmap);
 				goto retry;
 			}
@@ -6342,7 +6341,6 @@ retry:
 			PMAP_LOCK(pmap);
 			rw_wlock(lock);
 			if (pvh_gen != pvh->pv_gen || md_gen != m->md.pv_gen) {
-				rw_wunlock(lock);
 				PMAP_UNLOCK(pmap);
 				goto retry;
 			}
@@ -8466,8 +8464,8 @@ pmap_remove_write(vm_page_t m)
 	lock = VM_PAGE_TO_PV_LIST_LOCK(m);
 	pvh = (m->flags & PG_FICTITIOUS) != 0 ? &pv_dummy :
 	    pa_to_pvh(VM_PAGE_TO_PHYS(m));
-retry_pv_loop:
 	rw_wlock(lock);
+retry_pv_loop:
 	TAILQ_FOREACH_SAFE(pv, &pvh->pv_list, pv_next, next_pv) {
 		pmap = PV_PMAP(pv);
 		if (!PMAP_TRYLOCK(pmap)) {
@@ -8477,7 +8475,6 @@ retry_pv_loop:
 			rw_wlock(lock);
 			if (pvh_gen != pvh->pv_gen) {
 				PMAP_UNLOCK(pmap);
-				rw_wunlock(lock);
 				goto retry_pv_loop;
 			}
 		}
@@ -8502,7 +8499,6 @@ retry_pv_loop:
 			if (pvh_gen != pvh->pv_gen ||
 			    md_gen != m->md.pv_gen) {
 				PMAP_UNLOCK(pmap);
-				rw_wunlock(lock);
 				goto retry_pv_loop;
 			}
 		}
