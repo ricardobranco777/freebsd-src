@@ -94,12 +94,9 @@ static struct sysentvec elf_freebsd_sysvec = {
 	.sv_schedtail	= NULL,
 	.sv_thread_detach = NULL,
 	.sv_trap	= NULL,
-<<<<<<< HEAD
 	.sv_pax_aslr_init = pax_aslr_init_vmspace,
-=======
 	.sv_onexec_old	= exec_onexec_old,
 	.sv_onexit	= exit_onexit,
->>>>>>> origin/freebsd/current/main
 };
 
 static __ElfN(Brandinfo) freebsd_brand_info = {
