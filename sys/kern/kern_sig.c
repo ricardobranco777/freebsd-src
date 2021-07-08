@@ -193,7 +193,11 @@ static int	capmode_coredump;
 SYSCTL_INT(_kern, OID_AUTO, capmode_coredump, CTLFLAG_RWTUN,
     &capmode_coredump, 0, "Allow processes in capability mode to dump core");
 
+#ifdef PAX_HARDENING
+static int	do_coredump = 0;
+#else
 static int	do_coredump = 1;
+#endif
 SYSCTL_INT(_kern, OID_AUTO, coredump, CTLFLAG_RW,
 	&do_coredump, 0, "Enable/Disable coredumps");
 
