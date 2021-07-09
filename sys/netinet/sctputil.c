@@ -3163,6 +3163,8 @@ sctp_notify_assoc_change(uint16_t state, struct sctp_tcb *stcb,
 	uint16_t abort_len;
 	unsigned int i;
 
+	KASSERT((abort == NULL) || (from_peer != 0),
+	    ("sctp_notify_assoc_change: ABORT chunk provided for local termination"));
 	if (stcb == NULL) {
 		return;
 	}
@@ -3202,9 +3204,13 @@ sctp_notify_assoc_change(uint16_t state, struct sctp_tcb *stcb,
 		sac->sac_length = sizeof(struct sctp_assoc_change);
 		sac->sac_state = state;
 		sac->sac_error = error;
-		/* XXX verify these stream counts */
-		sac->sac_outbound_streams = stcb->asoc.streamoutcnt;
-		sac->sac_inbound_streams = stcb->asoc.streamincnt;
+		if (state == SCTP_CANT_STR_ASSOC) {
+			sac->sac_outbound_streams = 0;
+			sac->sac_inbound_streams = 0;
+		} else {
+			sac->sac_outbound_streams = stcb->asoc.streamoutcnt;
+			sac->sac_inbound_streams = stcb->asoc.streamincnt;
+		}
 		sac->sac_assoc_id = sctp_get_associd(stcb);
 		if (notif_len > sizeof(struct sctp_assoc_change)) {
 			if ((state == SCTP_COMM_UP) || (state == SCTP_RESTART)) {
@@ -4367,19 +4373,29 @@ sctp_abort_association(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
     uint8_t mflowtype, uint32_t mflowid,
     uint32_t vrf_id, uint16_t port)
 {
+	struct sctp_gen_error_cause *cause;
 	uint32_t vtag;
+	uint16_t cause_code;
 
-	vtag = 0;
 	if (stcb != NULL) {
 		vtag = stcb->asoc.peer_vtag;
 		vrf_id = stcb->asoc.vrf_id;
+		if (op_err != NULL) {
+			/* Read the cause code from the error cause. */
+			cause = mtod(op_err, struct sctp_gen_error_cause *);
+			cause_code = ntohs(cause->code);
+		} else {
+			cause_code = 0;
+		}
+	} else {
+		vtag = 0;
 	}
 	sctp_send_abort(m, iphlen, src, dst, sh, vtag, op_err,
 	    mflowtype, mflowid, inp->fibnum,
 	    vrf_id, port);
 	if (stcb != NULL) {
 		/* We have a TCB to abort, send notification too */
-		sctp_abort_notification(stcb, 0, 0, NULL, SCTP_SO_NOT_LOCKED);
+		sctp_abort_notification(stcb, 0, cause_code, NULL, SCTP_SO_NOT_LOCKED);
 		/* Ok, now lets free it */
 		SCTP_STAT_INCR_COUNTER32(sctps_aborted);
 		if ((SCTP_GET_STATE(stcb) == SCTP_STATE_OPEN) ||
@@ -4458,6 +4474,8 @@ sctp_abort_an_association(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
     struct mbuf *op_err,
     int so_locked)
 {
+	struct sctp_gen_error_cause *cause;
+	uint16_t cause_code;
 
 	if (stcb == NULL) {
 		/* Got to have a TCB */
@@ -4469,6 +4487,13 @@ sctp_abort_an_association(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 		}
 		return;
 	}
+	if (op_err != NULL) {
+		/* Read the cause code from the error cause. */
+		cause = mtod(op_err, struct sctp_gen_error_cause *);
+		cause_code = ntohs(cause->code);
+	} else {
+		cause_code = 0;
+	}
 	/* notify the peer */
 	sctp_send_abort_tcb(stcb, op_err, so_locked);
 	SCTP_STAT_INCR_COUNTER32(sctps_aborted);
@@ -4478,7 +4503,7 @@ sctp_abort_an_association(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	}
 	/* notify the ulp */
 	if ((inp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE) == 0) {
-		sctp_abort_notification(stcb, 0, 0, NULL, so_locked);
+		sctp_abort_notification(stcb, 0, cause_code, NULL, so_locked);
 	}
 	/* now free the asoc */
 #ifdef SCTP_ASOCLOG_OF_TSNS
