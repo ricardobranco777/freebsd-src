@@ -89,7 +89,6 @@ static void	linux_set_syscall_retval(struct thread *td, int error);
 static int	linux_fetch_syscall_args(struct thread *td);
 static void	linux_exec_setregs(struct thread *td, struct image_params *imgp,
 		    uintptr_t stack);
-static int	linux_vsyscall(struct thread *td);
 
 /* DTrace init */
 LIN_SDT_PROVIDER_DECLARE(LINUX_DTRACE);
@@ -101,7 +100,6 @@ LIN_SDT_PROBE_DEFINE0(sysvec, linux_copyout_auxargs, todo);
 LIN_SDT_PROBE_DEFINE0(sysvec, linux_elf_fixup, todo);
 LIN_SDT_PROBE_DEFINE0(sysvec, linux_rt_sigreturn, todo);
 LIN_SDT_PROBE_DEFINE0(sysvec, linux_rt_sendsig, todo);
-LIN_SDT_PROBE_DEFINE0(sysvec, linux_vsyscall, todo);
 LIN_SDT_PROBE_DEFINE0(sysvec, linux_vdso_install, todo);
 LIN_SDT_PROBE_DEFINE0(sysvec, linux_vdso_deinstall, todo);
 
@@ -400,15 +398,6 @@ linux_rt_sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 	LIN_SDT_PROBE0(sysvec, linux_rt_sendsig, todo);
 }
 
-static int
-linux_vsyscall(struct thread *td)
-{
-
-	/* LINUXTODO: implement */
-	LIN_SDT_PROBE0(sysvec, linux_vsyscall, todo);
-	return (EDOOFUS);
-}
-
 struct sysentvec elf_linux_sysvec = {
 	.sv_size	= LINUX_SYS_MAXSYSCALL,
 	.sv_table	= linux_sysent,
@@ -443,8 +432,12 @@ struct sysentvec elf_linux_sysvec = {
 	.sv_shared_page_len = PAGE_SIZE,
 	.sv_schedtail	= linux_schedtail,
 	.sv_thread_detach = linux_thread_detach,
+<<<<<<< HEAD
 	.sv_trap	= linux_vsyscall,
 	.sv_pax_aslr_init = pax_aslr_init_vmspace,
+=======
+	.sv_trap	= NULL,
+>>>>>>> origin/freebsd/current/main
 	.sv_hwcap	= &elf_hwcap,
 	.sv_hwcap2	= &elf_hwcap2,
 	.sv_onexec	= linux_on_exec,
