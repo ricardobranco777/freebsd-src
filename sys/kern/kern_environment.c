@@ -39,6 +39,8 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 
+#include "opt_pax.h"
+
 #include <sys/param.h>
 #include <sys/proc.h>
 #include <sys/queue.h>
@@ -165,6 +167,19 @@ sys_kenv(struct thread *td, struct kenv_args *uap)
 
 	KASSERT(dynamic_kenv, ("kenv: dynamic_kenv = false"));
 
+	error = 0;
+
+#ifdef PAX_HARDENING
+	/*
+	 * 2021-07-19 shawn.webb:
+	 *
+	 * In git commit fbf71763951da25dc0a92686a61f7b5de6db269d, I
+	 * hardened the kenv interface. However, I didn't gate this
+	 * code.
+	 *
+	 * Even though we do the same exact switch as below, we want
+	 * to do this one just as a permissions check.
+	 */
 	switch (uap->what) {
 	case KENV_DUMP:
 		error = priv_check(td, PRIV_KENV_DUMP);
@@ -181,15 +196,13 @@ sys_kenv(struct thread *td, struct kenv_args *uap)
 		if (error)
 			return (error);
 		break;
-
 	case KENV_UNSET:
 		error = priv_check(td, PRIV_KENV_UNSET);
 		if (error)
 			return (error);
 		break;
 	}
-
-	error = 0;
+#endif
 
 	switch (uap->what) {
 	case KENV_DUMP:
