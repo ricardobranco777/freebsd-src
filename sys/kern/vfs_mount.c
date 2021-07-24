@@ -2553,6 +2553,7 @@ static struct mntoptnames optnames[] = {
 	MNTOPT_NAMES
 };
 
+<<<<<<< HEAD
 static void
 mount_devctl_event_mntopt(struct sbuf *sb, const char *what, struct vfsoptlist *opts)
 {
@@ -2580,6 +2581,8 @@ mount_devctl_event_mntopt(struct sbuf *sb, const char *what, struct vfsoptlist *
 	sbuf_putc(sb, '"');
 }
 
+=======
+>>>>>>> origin/freebsd/current/main
 #define DEVCTL_LEN 1024
 static void
 mount_devctl_event(const char *type, struct mount *mp, bool donew)
@@ -2631,6 +2634,7 @@ mount_devctl_event(const char *type, struct mount *mp, bool donew)
 			}
 		}
 	}
+<<<<<<< HEAD
 	if (sbuf_putc(&sb, '"') == -1) {
 		goto err;
 	}
@@ -2642,6 +2646,19 @@ mount_devctl_event(const char *type, struct mount *mp, bool donew)
 	}
 
 	if (sbuf_error(&sb) == 0) {
+=======
+	sbuf_putc(&sb, '"');
+	sbuf_finish(&sb);
+
+	/*
+	 * Options are not published because the form of the options depends on
+	 * the file system and may include binary data. In addition, they don't
+	 * necessarily provide enough useful information to be actionable when
+	 * devd processes them.
+	 */
+
+	if (sbuf_error(&sb) == 0)
+>>>>>>> origin/freebsd/current/main
 		devctl_notify("VFS", "FS", type, sbuf_data(&sb));
 	}
 err:
