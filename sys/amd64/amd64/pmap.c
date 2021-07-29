@@ -11484,6 +11484,10 @@ sysctl_kmaps(SYSCTL_HANDLER_ARGS)
 	vm_paddr_t pa;
 	int error, i, j, k, l;
 
+#ifdef PAX_HARDENING
+	return (EPERM);
+#endif
+
 	error = sysctl_wire_old_buffer(req, 0);
 	if (error != 0)
 		return (error);
@@ -11615,13 +11619,11 @@ restart:
 	return (error);
 }
 
-#ifndef PAX_HARDENING
 SYSCTL_OID(_vm_pmap, OID_AUTO, kernel_maps,
     CTLTYPE_STRING | CTLFLAG_RD | CTLFLAG_MPSAFE | CTLFLAG_SKIP |
     CTLFLAG_ROOTONLY,
     NULL, 0, sysctl_kmaps, "A",
     "Dump kernel address layout");
-#endif /* !PAX_HARDENING */
 
 #ifdef DDB
 DB_SHOW_COMMAND(pte, pmap_print_pte)
