@@ -40,11 +40,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
-<<<<<<< HEAD
-#include <sys/mutex.h>
 #include <sys/pax.h>
-=======
->>>>>>> origin/freebsd/current/main
 #include <sys/proc.h>
 #include <sys/stddef.h>
 #include <sys/signalvar.h>
