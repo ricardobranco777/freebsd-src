@@ -69,11 +69,22 @@ __DEFAULT_YES_OPTIONS = \
     WERROR
 
 __DEFAULT_NO_OPTIONS = \
+<<<<<<< HEAD
+=======
+    ASAN \
+    BIND_NOW \
+>>>>>>> origin/freebsd/current/main
     CCACHE_BUILD \
     CTF \
     INSTALL_AS_USER \
     MANSPLITPKG \
+<<<<<<< HEAD
     STALE_STAGED
+=======
+    RETPOLINE \
+    STALE_STAGED \
+    UBSAN
+>>>>>>> origin/freebsd/current/main
 
 __DEFAULT_DEPENDENT_OPTIONS = \
     MAKE_CHECK_USE_SANDBOX/TESTS \

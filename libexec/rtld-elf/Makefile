@@ -8,8 +8,16 @@ RTLD_ELF_DIR:=	${.PARSEDIR}
 
 .include <src.opts.mk>
 PACKAGE=	clibs
+<<<<<<< HEAD
 MK_SSP=		no
 MK_CFI=		no
+=======
+MK_PIE=		no # Always position independent using local rules
+# Not compatible with sanitizer instrumentation or SSP.
+MK_ASAN=	no
+MK_SSP=		no
+MK_UBSAN=	no
+>>>>>>> origin/freebsd/current/main
 
 CONFS=		libmap.conf
 PROG?=		ld-elf.so.1

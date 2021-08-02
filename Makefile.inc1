@@ -717,10 +717,17 @@ BSARGS= 	DESTDIR= \
 		MK_HTML=no NO_LINT=yes MK_MAN=no MK_MAN_UTILS=yes \
 		-DNO_PIC MK_PROFILE=no -DNO_SHARED \
 		-DNO_CPU_CFLAGS MK_WERROR=no MK_CTF=no \
+<<<<<<< HEAD
 		MK_CLANG_EXTRAS=yes MK_CLANG_FULL=no \
 		MK_LLDB=no MK_TESTS=no \
 		MK_INCLUDES=yes MK_CFI=no MK_RETPOLINE=no \
 		MK_CLANG_FORMAT=no MK_LTOLIB=no
+=======
+		MK_ASAN=no MK_UBSAN=no \
+		MK_CLANG_EXTRAS=no MK_CLANG_FORMAT=no MK_CLANG_FULL=no \
+		MK_LLDB=no MK_RETPOLINE=no MK_TESTS=no \
+		MK_INCLUDES=yes
+>>>>>>> origin/freebsd/current/main
 
 BMAKE=		\
 		${TIME_ENV} ${BMAKEENV} ${MAKE} ${WORLD_FLAGS} -f Makefile.inc1 \
@@ -739,9 +746,15 @@ TMAKE=		\
 		SSP_CFLAGS= \
 		-DNO_LINT \
 		-DNO_CPU_CFLAGS MK_WERROR=no MK_CTF=no \
+<<<<<<< HEAD
 		MK_CLANG_EXTRAS=yes MK_CLANG_FULL=no \
 		MK_LLDB=no MK_TESTS=no MK_CFI=no MK_RETPOLINE=no \
 		MK_CLANG_FORMAT=no MK_LTOLIB=no
+=======
+		MK_ASAN=no MK_UBSAN=no \
+		MK_CLANG_EXTRAS=no MK_CLANG_FORMAT=no MK_CLANG_FULL=no \
+		MK_LLDB=no MK_RETPOLINE=no MK_TESTS=no
+>>>>>>> origin/freebsd/current/main
 
 # cross-tools stage
 # TOOLS_PREFIX set in BMAKE
@@ -2325,6 +2338,11 @@ _localedef=	usr.bin/localedef
 ${_bt}-usr.bin/localedef: ${_bt}-usr.bin/yacc ${_bt_lex_depend}
 .endif
 
+.if ${MK_ICONV} != "no"
+_mkesdb=	usr.bin/mkesdb
+_mkcsmapper=	usr.bin/mkcsmapper
+.endif
+
 .if ${MK_KERBEROS} != "no"
 _kerberos5_bootstrap_tools= \
 	kerberos5/tools/make-roken \
@@ -2476,6 +2494,8 @@ bootstrap-tools: ${_bt}-links .PHONY
     ${_nmtree} \
     ${_vtfontcvt} \
     ${_localedef} \
+    ${_mkcsmapper} \
+    ${_mkesdb} \
     ${LOCAL_BSTOOL_DIRS}
 ${_bt}-${_tool}: ${_bt}-links .PHONY .MAKE
 	${_+_}@${ECHODIR} "===> ${_tool} (obj,all,install)"; \
@@ -2537,8 +2557,6 @@ _bt_clean=	${CLEANDIR}
     ${_share} \
     usr.bin/awk \
     ${_libmagic} \
-    usr.bin/mkesdb_static \
-    usr.bin/mkcsmapper_static \
     usr.bin/vi/catalog
 build-tools_${_tool}: .PHONY
 	${_+_}@${ECHODIR} "===> ${_tool} (${_bt_clean:D${_bt_clean},}obj,build-tools)"; \
@@ -2837,6 +2855,16 @@ libraries: .MAKE .PHONY
 _prereq_libs= lib/libcompiler_rt
 .if ${MK_SSP} != "no"
 _prereq_libs+= lib/libssp_nonshared
+.endif
+.if ${MK_ASAN} != "no"
+_prereq_libs+=	lib/libclang_rt/asan
+_prereq_libs+=	lib/libclang_rt/asan-preinit
+_prereq_libs+=	lib/libclang_rt/asan_cxx
+.endif
+.if ${MK_UBSAN} != "no"
+_prereq_libs+=	lib/libclang_rt/ubsan_minimal
+_prereq_libs+=	lib/libclang_rt/ubsan_standalone
+_prereq_libs+=	lib/libclang_rt/ubsan_standalone_cxx
 .endif
 
 # These dependencies are not automatically generated:
