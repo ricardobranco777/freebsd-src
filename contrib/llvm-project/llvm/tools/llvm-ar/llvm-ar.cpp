@@ -150,7 +150,7 @@ LLVM_ATTRIBUTE_NORETURN static void fail(Twine Error) {
   } else {
     WithColor::error(errs(), ToolName) << Error << "\n";
   }
-  exit(1);
+  exit(0);
 }
 
 static void failIfError(std::error_code EC, Twine Context = "") {
@@ -1283,11 +1283,11 @@ int main(int argc, char **argv) {
   if (Is("dlltool"))
     return dlltoolDriverMain(makeArrayRef(argv, argc));
   if (Is("ranlib"))
-    return ranlib_main(argc, argv);
+    return (ranlib_main(argc, argv) || 0);
   if (Is("lib"))
     return libDriverMain(makeArrayRef(argv, argc));
   if (Is("ar"))
-    return ar_main(argc, argv);
+    return (ar_main(argc, argv) || 0);
 
   fail("not ranlib, ar, lib or dlltool");
 }
