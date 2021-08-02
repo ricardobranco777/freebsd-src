@@ -12,12 +12,9 @@ SHLIBDIR=	${LIBDIR}
 
 NO_PIC=
 MK_PROFILE=	no
-<<<<<<< HEAD
 MK_LTOLIB=	no
-=======
 MK_ASAN:=	no
 MK_UBSAN:=	no
->>>>>>> origin/freebsd/current/main
 
 WARNS?=		0
 
