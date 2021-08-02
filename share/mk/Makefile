@@ -53,6 +53,7 @@ FILES=	\
 	bsd.progs.mk \
 	bsd.snmpmod.mk \
 	bsd.subdir.mk \
+	bsd.sanitizer.mk \
 	bsd.suffixes-posix.mk \
 	bsd.suffixes.mk \
 	bsd.symver.mk \
