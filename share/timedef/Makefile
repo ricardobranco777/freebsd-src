@@ -1,5 +1,6 @@
 # $FreeBSD$
 
+PACKAGE=	locales
 LOCALEDIR=	${SHAREDIR}/locale
 FILESNAME=	LC_TIME
 .SUFFIXES:	.src .out
@@ -208,9 +209,10 @@ SAME+=		ko_KR.eucKR ko_KR.CP949	# legacy (same charset)
 FILES=		${LOCALES:S/$/.out/}
 CLEANFILES=	${FILES}
 
-DIRS+=	SAMEDIRS
 .for f t in ${SAME}
-SAMEDIRS+=	${LOCALEDIR}/$t
+DIRS+=		LOCALEDIR_$t
+LOCALEDIR_$t=	${LOCALEDIR}/$t
+LOCALEDIR_$tPACKAGE=	locales
 SYMLINKS+=	../$f/${FILESNAME} \
     ${LOCALEDIR}/$t/${FILESNAME}
 .endfor
