@@ -234,11 +234,7 @@ ${X_}COMPILER_FEATURES+=		c++11 c++14
 ${X_}COMPILER_FEATURES+=	c++17
 .endif
 .if ${${X_}COMPILER_TYPE} == "clang"
-<<<<<<< HEAD
-${X_}COMPILER_FEATURES+=	retpoline
-=======
 ${X_}COMPILER_FEATURES+=	compressed-debug retpoline init-all
->>>>>>> freebsd/current/main
 .endif
 .if ${${X_}COMPILER_TYPE} == "clang" && ${${X_}COMPILER_VERSION} >= 100000 || \
 	(${${X_}COMPILER_TYPE} == "gcc" && ${${X_}COMPILER_VERSION} >= 80100)
