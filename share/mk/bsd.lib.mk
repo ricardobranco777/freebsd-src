@@ -80,8 +80,13 @@ TAG_ARGS=	-T ${TAGS:[*]:S/ /,/g}
 
 .if ${MK_DEBUG_FILES} != "no" && empty(DEBUG_FLAGS:M-g) && \
     empty(DEBUG_FLAGS:M-gdwarf*)
+.if !${COMPILER_FEATURES:Mcompressed-debug}
+CFLAGS+= ${DEBUG_FILES_CFLAGS:N-gz*}
+CXXFLAGS+= ${DEBUG_FILES_CFLAGS:N-gz*}
+.else
 CFLAGS+= ${DEBUG_FILES_CFLAGS}
 CXXFLAGS+= ${DEBUG_FILES_CFLAGS}
+.endif
 CTFFLAGS+= -g
 .endif
 
