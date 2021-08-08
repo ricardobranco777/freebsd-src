@@ -73,11 +73,7 @@ __DEFAULT_NO_OPTIONS = \
     CTF \
     INSTALL_AS_USER \
     MANSPLITPKG \
-<<<<<<< HEAD
-=======
     PROFILE \
-    RETPOLINE \
->>>>>>> origin/freebsd/current/main
     STALE_STAGED \
     UBSAN
 
