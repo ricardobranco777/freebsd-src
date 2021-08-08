@@ -61,7 +61,6 @@ __DEFAULT_YES_OPTIONS = \
     NIS \
     NLS \
     OPENSSH \
-    PROFILE \
     SSP \
     TESTS \
     TOOLCHAIN \
@@ -74,6 +73,11 @@ __DEFAULT_NO_OPTIONS = \
     CTF \
     INSTALL_AS_USER \
     MANSPLITPKG \
+<<<<<<< HEAD
+=======
+    PROFILE \
+    RETPOLINE \
+>>>>>>> origin/freebsd/current/main
     STALE_STAGED \
     UBSAN
 
