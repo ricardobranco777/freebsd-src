@@ -68,6 +68,7 @@ __FBSDID("$FreeBSD$");
 #include <i386/linux/linux.h>
 #include <i386/linux/linux_proto.h>
 #include <compat/linux/linux_emul.h>
+#include <compat/linux/linux_fork.h>
 #include <compat/linux/linux_ioctl.h>
 #include <compat/linux/linux_mib.h>
 #include <compat/linux/linux_misc.h>
@@ -110,6 +111,7 @@ static int	linux_on_exec_vmspace(struct proc *p,
 		    struct image_params *imgp);
 static int	linux_copyout_strings(struct image_params *imgp,
 		    uintptr_t *stack_base);
+static void	linux_set_fork_retval(struct thread *td);
 static bool	linux_trans_osrel(const Elf_Note *note, int32_t *osrel);
 static void	linux_vdso_install(const void *param);
 static void	linux_vdso_deinstall(const void *param);
@@ -805,6 +807,14 @@ linux_set_syscall_retval(struct thread *td, int error)
 	}
 }
 
+static void
+linux_set_fork_retval(struct thread *td)
+{
+	struct trapframe *frame = td->td_frame;
+
+	frame->tf_eax = 0;
+}
+
 /*
  * exec_setregs may initialize some registers differently than Linux
  * does, thus potentially confusing Linux binaries. If necessary, we
@@ -825,6 +835,45 @@ linux_exec_setregs(struct thread *td, struct image_params *imgp,
 	pcb->pcb_initial_npxcw = __LINUX_NPXCW__;
 }
 
+<<<<<<< HEAD
+=======
+struct sysentvec linux_sysvec = {
+	.sv_size	= LINUX_SYS_MAXSYSCALL,
+	.sv_table	= linux_sysent,
+	.sv_transtrap	= linux_translate_traps,
+	.sv_fixup	= linux_fixup,
+	.sv_sendsig	= linux_sendsig,
+	.sv_sigcode	= &_binary_linux_vdso_so_o_start,
+	.sv_szsigcode	= &linux_szsigcode,
+	.sv_name	= "Linux a.out",
+	.sv_coredump	= NULL,
+	.sv_imgact_try	= linux_exec_imgact_try,
+	.sv_minsigstksz	= LINUX_MINSIGSTKSZ,
+	.sv_minuser	= VM_MIN_ADDRESS,
+	.sv_maxuser	= VM_MAXUSER_ADDRESS,
+	.sv_usrstack	= LINUX_USRSTACK,
+	.sv_psstrings	= PS_STRINGS,
+	.sv_stackprot	= VM_PROT_ALL,
+	.sv_copyout_strings = exec_copyout_strings,
+	.sv_setregs	= linux_exec_setregs,
+	.sv_fixlimit	= NULL,
+	.sv_maxssiz	= NULL,
+	.sv_flags	= SV_ABI_LINUX | SV_AOUT | SV_IA32 | SV_ILP32 |
+	    SV_SIG_DISCIGN | SV_SIG_WAITNDQ,
+	.sv_set_syscall_retval = linux_set_syscall_retval,
+	.sv_fetch_syscall_args = linux_fetch_syscall_args,
+	.sv_syscallnames = NULL,
+	.sv_schedtail	= linux_schedtail,
+	.sv_thread_detach = linux_thread_detach,
+	.sv_trap	= NULL,
+	.sv_onexec	= linux_on_exec_vmspace,
+	.sv_onexit	= linux_on_exit,
+	.sv_ontdexit	= linux_thread_dtor,
+	.sv_setid_allowed = &linux_setid_allowed_query,
+	.sv_set_fork_retval = linux_set_fork_retval,
+};
+INIT_SYSENTVEC(aout_sysvec, &linux_sysvec);
+>>>>>>> origin/freebsd/current/main
 
 struct sysentvec elf_linux_sysvec = {
 	.sv_size	= LINUX_SYS_MAXSYSCALL,
@@ -866,6 +915,7 @@ struct sysentvec elf_linux_sysvec = {
 	.sv_onexit	= linux_on_exit,
 	.sv_ontdexit	= linux_thread_dtor,
 	.sv_setid_allowed = &linux_setid_allowed_query,
+	.sv_set_fork_retval = linux_set_fork_retval,
 };
 
 static int
