@@ -40,26 +40,6 @@
 
 	.text
 
-/*
- * bcopy family
- * void bzero(void *buf, u_int len)
- */
-ENTRY(bzero)
-	pushl	%edi
-	movl	8(%esp),%edi
-	movl	12(%esp),%ecx
-	xorl	%eax,%eax
-	shrl	$2,%ecx
-	rep
-	stosl
-	movl	12(%esp),%ecx
-	andl	$3,%ecx
-	rep
-	stosb
-	popl	%edi
-	ret
-END(bzero)
-
 ENTRY(sse2_pagezero)
 	pushl	%ebx
 	movl	8(%esp),%ecx
@@ -231,31 +211,6 @@ ENTRY(memcpy)
 	popl	%edi
 	ret
 END(memcpy)
-
-ENTRY(bcmp)
-	pushl	%edi
-	pushl	%esi
-	movl	12(%esp),%edi
-	movl	16(%esp),%esi
-	movl	20(%esp),%edx
-
-	movl	%edx,%ecx
-	shrl	$2,%ecx
-	repe
-	cmpsl
-	jne	1f
-
-	movl	%edx,%ecx
-	andl	$3,%ecx
-	repe
-	cmpsb
-1:
-	setne	%al
-	movsbl	%al,%eax
-	popl	%esi
-	popl	%edi
-	ret
-END(bcmp)
 
 /*
  * Handling of special 386 registers and descriptor tables etc
