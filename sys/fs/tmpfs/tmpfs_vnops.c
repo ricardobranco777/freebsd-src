@@ -826,7 +826,7 @@ tmpfs_link(struct vop_link_args *v)
 	error = 0;
 
 out:
-	return (0);
+	return (error);
 }
 
 /*
