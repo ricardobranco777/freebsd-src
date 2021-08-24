@@ -727,11 +727,7 @@ BSARGS= 	DESTDIR= \
 		MK_CLANG_FORMAT=no \
 		MK_CLANG_FULL=no \
 		MK_HTML=no \
-<<<<<<< HEAD
-		MK_LLDB=no \
 		MK_LTOLIB=no \
-=======
->>>>>>> origin/freebsd/current/main
 		MK_MAN=no \
 		MK_PROFILE=no \
 		MK_RETPOLINE=no \
