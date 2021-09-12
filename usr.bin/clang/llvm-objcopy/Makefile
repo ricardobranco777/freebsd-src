@@ -46,6 +46,7 @@ LIBADD+=	z
 
 .if ${MK_LLVM_BINUTILS} != "no"
 LINKS=		${BINDIR}/llvm-objcopy ${BINDIR}/objcopy
+LINKS+=		${BINDIR}/llvm-objcopy ${BINDIR}/strip
 MLINKS=		llvm-objcopy.1 objcopy.1
 .endif
 
