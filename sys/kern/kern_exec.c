@@ -702,6 +702,7 @@ interpret:
 		goto exec_fail_dealloc;
 	}
 
+<<<<<<< HEAD
 	p->p_psstrings = p->p_sysent->sv_psstrings;
 #ifdef PAX_ASLR
 	pax_aslr_stack_with_gap(p, &(p->p_psstrings));
@@ -711,6 +712,8 @@ interpret:
 	if (SV_PROC_FLAG(p, SV_CAPSICUM))
 		sys_cap_enter(td, NULL);
 
+=======
+>>>>>>> origin/freebsd/current/main
 	/*
 	 * Copy out strings (args and env) and initialize stack base.
 	 */

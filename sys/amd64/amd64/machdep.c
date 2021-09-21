@@ -166,14 +166,7 @@ CTASSERT(PC_PTI_STACK_SZ * sizeof(register_t) >= 2 * sizeof(struct pti_frame) -
 
 extern u_int64_t hammer_time(u_int64_t, u_int64_t);
 
-#define	CS_SECURE(cs)		(ISPL(cs) == SEL_UPL)
-#define	EFL_SECURE(ef, oef)	((((ef) ^ (oef)) & ~PSL_USERCHANGE) == 0)
-
 static void cpu_startup(void *);
-static void get_fpcontext(struct thread *td, mcontext_t *mcp,
-    char *xfpusave, size_t xfpusave_len);
-static int  set_fpcontext(struct thread *td, mcontext_t *mcp,
-    char *xfpustate, size_t xfpustate_len);
 SYSINIT(cpu, SI_SUB_CPU, SI_ORDER_FIRST, cpu_startup, NULL);
 
 /* Preload data parse function */
@@ -325,6 +318,7 @@ late_ifunc_resolve(void *dummy __unused)
 }
 SYSINIT(late_ifunc_resolve, SI_SUB_CPU, SI_ORDER_ANY, late_ifunc_resolve, NULL);
 
+<<<<<<< HEAD
 /*
  * Send an interrupt to process.
  *
@@ -650,6 +644,8 @@ exec_setregs(struct thread *td, struct image_params *imgp, uintptr_t stack)
 	 */
 	fpstate_drop(td);
 }
+=======
+>>>>>>> origin/freebsd/current/main
 
 void
 cpu_setregs(void)
@@ -1590,7 +1586,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	caddr_t kmdp;
 	int gsel_tss, x;
 	struct pcpu *pc;
-	struct xstate_hdr *xhdr;
 	uint64_t cr3, rsp0;
 	pml4_entry_t *pml4e;
 	pdp_entry_t *pdpe;
@@ -1896,19 +1891,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	msgbufinit(msgbufp, msgbufsize);
 	fpuinit();
 
-	/*
-	 * Reinitialize thread0's stack base now that the xsave area size is
-	 * known.  Set up thread0's pcb save area after fpuinit calculated fpu
-	 * save area size.  Zero out the extended state header in fpu save area.
-	 */
-	set_top_of_stack_td(&thread0);
-	thread0.td_pcb->pcb_save = get_pcb_user_save_td(&thread0);
-	bzero(thread0.td_pcb->pcb_save, cpu_max_ext_state_size);
-	if (use_xsave) {
-		xhdr = (struct xstate_hdr *)(get_pcb_user_save_td(&thread0) +
-		    1);
-		xhdr->xstate_bv = xsave_mask;
-	}
 	/* make an initial tss so cpu can get interrupt stack on syscall! */
 	rsp0 = thread0.td_md.md_stack_base;
 	/* Ensure the stack is aligned to 16 bytes */
@@ -2071,6 +2053,7 @@ makectx(struct trapframe *tf, struct pcb *pcb)
 	pcb->pcb_rsp = tf->tf_rsp;
 }
 
+<<<<<<< HEAD
 int
 ptrace_set_pc(struct thread *td, unsigned long addr)
 {
@@ -2675,6 +2658,8 @@ user_dbreg_trap(register_t dr6)
         return 0;
 }
 
+=======
+>>>>>>> origin/freebsd/current/main
 /*
  * The pcb_flags is only modified by current thread, or by other threads
  * when current thread is stopped.  However, current thread may change it

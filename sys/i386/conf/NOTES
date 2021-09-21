@@ -874,8 +874,13 @@ options 	IICHID_SAMPLING	# Workaround missing GPIO INTR support
 #####################################################################
 # ABI Emulation
 
+<<<<<<< HEAD
 # Enable 32-bit runtime support for CloudABI binaries.
 options 	COMPAT_CLOUDABI32
+=======
+# Enable (32-bit) a.out binary support
+options 	COMPAT_AOUT
+>>>>>>> origin/freebsd/current/main
 
 #####################################################################
 # VM OPTIONS
