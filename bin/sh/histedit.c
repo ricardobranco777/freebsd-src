@@ -203,8 +203,6 @@ bad:
 				el_set(el, EL_EDITOR, "vi");
 			else if (Eflag) {
 				el_set(el, EL_EDITOR, "emacs");
-				el_set(el, EL_BIND, "^R", "em-inc-search-prev", NULL);
-				el_set(el, EL_BIND, "^W", "ed-delete-prev-word", NULL);
 			}
 			el_set(el, EL_BIND, "^I", "sh-complete", NULL);
 			el_source(el, NULL);
@@ -560,6 +558,13 @@ bindcmd(int argc, char **argv)
 	el_set(el, EL_SETFP, 1, old);
 
 	fclose(out);
+
+	if (argc > 1 && argv[1][0] == '-' &&
+	    memchr("ve", argv[1][1], 2) != NULL) {
+		Vflag = argv[1][1] == 'v';
+		Eflag = !Vflag;
+		histedit();
+	}
 
 	INTON;
 
