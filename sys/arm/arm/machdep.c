@@ -335,6 +335,7 @@ spinlock_exit(void)
 }
 
 /*
+<<<<<<< HEAD
  * Clear registers on exec
  */
 void
@@ -657,6 +658,8 @@ sys_sigreturn(td, uap)
 }
 
 /*
+=======
+>>>>>>> origin/freebsd/current/main
  * Construct a PCB from a trapframe. This is called from kdb_trap() where
  * we want to start a backtrace from the function that caused us to enter
  * the debugger. We have the context in the trapframe, but base the trace

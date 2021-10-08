@@ -1168,7 +1168,7 @@ int	cpu_idle_wakeup(int);
 extern	void (*cpu_idle_hook)(sbintime_t);	/* Hook to machdep CPU idler. */
 void	cpu_switch(struct thread *, struct thread *, struct mtx *);
 void	cpu_throw(struct thread *, struct thread *) __dead2;
-void	unsleep(struct thread *);
+bool	curproc_sigkilled(void);
 void	userret(struct thread *, struct trapframe *);
 
 void	cpu_exit(struct thread *);
