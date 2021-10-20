@@ -1,6 +1,11 @@
 # $FreeBSD$
 #
+<<<<<<< HEAD
 root::0:0::0:0:Root &:/root:/bin/csh
+=======
+root::0:0::0:0:Charlie &:/root:/bin/sh
+toor:*:0:0::0:0:Bourne-again Superuser:/root:
+>>>>>>> origin/freebsd/current/main
 daemon:*:1:1::0:0:Owner of many system processes:/root:/usr/sbin/nologin
 operator:*:2:5::0:0:System &:/:/usr/sbin/nologin
 bin:*:3:7::0:0:Binaries Commands and Source:/:/usr/sbin/nologin
