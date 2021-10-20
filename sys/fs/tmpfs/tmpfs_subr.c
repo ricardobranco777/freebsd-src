@@ -454,7 +454,6 @@ tmpfs_alloc_node(struct mount *mp, struct tmpfs_mount *tmp, enum vtype type,
     const char *target, dev_t rdev, struct tmpfs_node **node)
 {
 	struct tmpfs_node *nnode;
-	vm_object_t obj;
 	char *symlink;
 	char symlink_smr;
 
@@ -566,8 +565,12 @@ tmpfs_alloc_node(struct mount *mp, struct tmpfs_mount *tmp, enum vtype type,
 		break;
 
 	case VREG:
+<<<<<<< HEAD
 		LIST_INIT(&(nnode->tn_reg.tn_extattr_list));
 		obj = nnode->tn_reg.tn_aobj =
+=======
+		nnode->tn_reg.tn_aobj =
+>>>>>>> origin/freebsd/current/main
 		    vm_pager_allocate(tmpfs_pager_type, NULL, 0,
 			VM_PROT_DEFAULT, 0,
 			NULL /* XXXKIB - tmpfs needs swap reservation */);
@@ -1792,7 +1795,6 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, boolean_t ignerr)
 int
 tmpfs_reg_punch_hole(struct vnode *vp, off_t *offset, off_t *length)
 {
-	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
 	vm_object_t object;
 	vm_pindex_t pistart, pi, piend;
@@ -1806,7 +1808,6 @@ tmpfs_reg_punch_hole(struct vnode *vp, off_t *offset, off_t *length)
 	KASSERT(node->tn_type == VREG, ("%s: node is not regular file",
 	    __func__));
 	object = node->tn_reg.tn_aobj;
-	tmp = VFS_TO_TMPFS(vp->v_mount);
 	off = *offset;
 	len = omin(node->tn_size - off, *length);
 	startofs = off & PAGE_MASK;
