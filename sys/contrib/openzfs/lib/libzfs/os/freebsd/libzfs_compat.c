@@ -22,11 +22,6 @@
 /*
  * Copyright (c) 2013 Martin Matuska <mm@FreeBSD.org>. All rights reserved.
  */
-<<<<<<< HEAD
-#include <os/freebsd/zfs/sys/zfs_ioctl_compat.h>
-#include <jail.h>
-=======
->>>>>>> origin/freebsd/current/main
 #include "../../libzfs_impl.h"
 #include <libzfs.h>
 #include <libzutil.h>
@@ -36,6 +31,7 @@
 #include <sys/module.h>
 #include <sys/stat.h>
 #include <sys/param.h>
+#include <jail.h>
 
 #ifdef IN_BASE
 #define	ZFS_KMOD	"zfs"
