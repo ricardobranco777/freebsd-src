@@ -50,7 +50,11 @@ MAN=	aac.4 \
 	${_aout.4} \
 	${_apic.4} \
 	arcmsr.4 \
+<<<<<<< HEAD
 	aslr.4 \
+=======
+	arswitch.4 \
+>>>>>>> origin/freebsd/current/main
 	${_asmc.4} \
 	at45d.4 \
 	ata.4 \
