@@ -352,7 +352,6 @@ SUBDIR=	\
 	${_speaker} \
 	spi \
 	${_splash} \
-	${_sppp} \
 	ste \
 	stge \
 	${_sume} \
@@ -663,7 +662,6 @@ _rdma=		rdma
 _safe=		safe
 _speaker=	speaker
 _splash=	splash
-_sppp=		sppp
 _p2sb=		p2sb
 _wbwd=		wbwd
 

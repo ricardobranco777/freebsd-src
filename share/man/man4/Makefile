@@ -381,7 +381,6 @@ MAN=	aac.4 \
 	ng_socket.4 \
 	ng_source.4 \
 	ng_split.4 \
-	ng_sppp.4 \
 	ng_sscfu.4 \
 	ng_sscop.4 \
 	ng_tag.4 \
@@ -531,7 +530,6 @@ MAN=	aac.4 \
 	spigen.4 \
 	${_spkr.4} \
 	splash.4 \
-	sppp.4 \
 	ste.4 \
 	stf.4 \
 	stge.4 \
