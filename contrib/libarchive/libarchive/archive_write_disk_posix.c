@@ -4556,7 +4556,6 @@ set_xattrs(struct archive_write_disk *a)
 				if (errno != ENOTSUP && errno != ENOSYS)
 					fail = 1;
 			}
-
 		}
 	}
 
