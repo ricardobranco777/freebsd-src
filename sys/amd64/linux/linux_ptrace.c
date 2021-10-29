@@ -44,6 +44,7 @@ __FBSDID("$FreeBSD$");
 #include <amd64/linux/linux.h>
 #include <amd64/linux/linux_proto.h>
 #include <compat/linux/linux_emul.h>
+#include <compat/linux/linux_errno.h>
 #include <compat/linux/linux_misc.h>
 #include <compat/linux/linux_signal.h>
 #include <compat/linux/linux_util.h>
@@ -539,7 +540,7 @@ linux_ptrace_getregset_prstatus(struct thread *td, pid_t pid, l_ulong data)
 		return (error);
 	}
 
-	iov.iov_len -= len;
+	iov.iov_len = len;
 	error = copyout(&iov, (void *)data, sizeof(iov));
 	if (error != 0) {
 		linux_msg(td, "iov copyout error %d", error);
@@ -639,6 +640,9 @@ linux_ptrace_get_syscall_info(struct thread *td, pid_t pid,
 			 * the ptracing process fall back to another method.
 			 */
 			si.op = LINUX_PTRACE_SYSCALL_INFO_NONE;
+		} else if (sr.sr_error == ERESTART) {
+			si.exit.rval = -LINUX_ERESTARTSYS;
+			si.exit.is_error = 1;
 		} else {
 			si.exit.rval = bsd_to_linux_errno(sr.sr_error);
 			si.exit.is_error = 1;
