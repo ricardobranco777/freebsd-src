@@ -27,19 +27,15 @@
  * $FreeBSD$
  */
 
-#ifndef	IPQ4018_REG_H
-#define	IPQ4018_REG_H
+#ifndef	__QCOM_SCM_LEGACY_H__
+#define	__QCOM_SCM_LEGACY_H__
 
-#define	IPQ4018_MEM_SMEM_START		0x87e00000
-#define	IPQ4018_MEM_SMEM_SIZE		0x00080000
+/*
+ * These functions are specific to the 32 bit legacy SCM interface
+ * used by the IPQ806x and IPQ401x SoCs.
+ */
 
-#define	IPQ4018_MEM_TZ_START		0x87e80000
-#define	IPQ4018_MEM_TZ_SIZE		0x00180000
+extern	uint32_t qcom_scm_legacy_mp_set_cold_boot_address(
+	    vm_offset_t mp_entry_func);
 
-#define	IPQ4018_MEM_UART1_START		0x078af000
-#define	IPQ4018_MEM_UART1_SIZE		0x00001000
-
-#define	IPQ4018_MEM_PSHOLD_START	0x004ab000
-#define	IPQ4018_MEM_PSHOLD_SIZE		0x00001000
-
-#endif
+#endif	/* __QCOM_SCM_LEGACY_H__ */

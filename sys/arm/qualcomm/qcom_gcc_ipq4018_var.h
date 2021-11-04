@@ -27,19 +27,24 @@
  * $FreeBSD$
  */
 
-#ifndef	IPQ4018_REG_H
-#define	IPQ4018_REG_H
+#ifndef	__QCOM_GCC_IPQ4018_VAR_H__
+#define	__QCOM_GCC_IPQ4018_VAR_H__
 
-#define	IPQ4018_MEM_SMEM_START		0x87e00000
-#define	IPQ4018_MEM_SMEM_SIZE		0x00080000
+struct qcom_gcc_ipq4018_reset_entry {
+	uint32_t	reg;
+	uint32_t	bit;
+};
 
-#define	IPQ4018_MEM_TZ_START		0x87e80000
-#define	IPQ4018_MEM_TZ_SIZE		0x00180000
+struct qcom_gcc_ipq4018_softc {
+	device_t		dev;
+	int			reg_rid;
+	struct resource		*reg;
+	struct mtx		mtx;
+};
 
-#define	IPQ4018_MEM_UART1_START		0x078af000
-#define	IPQ4018_MEM_UART1_SIZE		0x00001000
+extern	int qcom_gcc_ipq4018_hwreset_assert(device_t dev, intptr_t id,
+	    bool reset);
+extern	int qcom_gcc_ipq4018_hwreset_is_asserted(device_t dev, intptr_t id,
+	    bool *reset);
 
-#define	IPQ4018_MEM_PSHOLD_START	0x004ab000
-#define	IPQ4018_MEM_PSHOLD_SIZE		0x00001000
-
-#endif
+#endif	/* __QCOM_GCC_IPQ4018_VAR_H__ */

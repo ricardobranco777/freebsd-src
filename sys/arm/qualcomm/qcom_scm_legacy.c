@@ -38,79 +38,51 @@ __FBSDID("$FreeBSD$");
 #include <sys/smp.h>
 
 #include <vm/vm.h>
+#include <vm/pmap.h>
 
 #include <machine/cpu.h>
 #include <machine/bus.h>
 #include <machine/intr.h>
 #include <machine/machdep.h>
-#include <machine/platformvar.h>
 #include <machine/smp.h>
 
-#include <dev/fdt/fdt_common.h>
-#include <dev/ofw/openfirm.h>
-#include <dev/ofw/ofw_cpu.h>
-
-#include <arm/qualcomm/ipq4018_machdep.h>
+#include <arm/qualcomm/qcom_scm_defs.h>
+#include <arm/qualcomm/qcom_scm_legacy_defs.h>
 #include <arm/qualcomm/qcom_scm_legacy.h>
-#include <arm/qualcomm/qcom_cpu_kpssv2.h>
 
-#include "platform_if.h"
+#include <dev/psci/smccc.h>
 
-void
-ipq4018_mp_setmaxid(platform_t plat)
+/*
+ * Set the cold boot address for (later) a mask of CPUs.
+ *
+ * Don't set it for CPU0, that CPU is the boot CPU and is already alive.
+ *
+ * For now it sets it on CPU1..3.
+ *
+ * This works on the IPQ4019 as tested; the retval is 0x0.
+ */
+uint32_t
+qcom_scm_legacy_mp_set_cold_boot_address(vm_offset_t mp_entry_func)
 {
-	int ncpu;
-
-	/* If we've already set the global vars don't bother to do it again. */
-	if (mp_ncpus != 0)
-		return;
-
-	/* Read current CP15 Cache Size ID Register */
-	ncpu = cp15_l2ctlr_get();
-	ncpu = CPUV7_L2CTLR_NPROC(ncpu);
-
-	mp_ncpus = ncpu;
-	mp_maxid = ncpu - 1;
-
-	printf("SMP: ncpu=%d\n", ncpu);
-}
-
-static boolean_t
-ipq4018_start_ap(u_int id, phandle_t node, u_int addr_cells, pcell_t *arg)
-{
-
-	/*
-	 * For the IPQ401x we assume the enable method is
-	 * "qcom,kpss-acc-v2".  If this path gets turned into
-	 * something more generic for other 32 bit qualcomm
-	 * SoCs then we'll likely want to turn this into a
-	 * switch based on "enable-method".
-	 */
-	return qcom_cpu_kpssv2_regulator_start(id, node);
-}
-
-void
-ipq4018_mp_start_ap(platform_t plat)
-{
+	struct arm_smccc_res res;
 	int ret;
+	int context_id;
 
-	/*
-	 * First step - SCM call to set the cold boot address to mpentry, so
-	 * CPUs hopefully start in the MP path.
-	 */
-	ret = qcom_scm_legacy_mp_set_cold_boot_address((vm_offset_t) mpentry);
-	if (ret != 0)
-		panic("%s: Couldn't set cold boot address via SCM "
-		    "(error 0x%08x)", __func__, ret);
+	uint32_t scm_arg0 = QCOM_SCM_LEGACY_ATOMIC_ID(QCOM_SCM_SVC_BOOT,
+	    QCOM_SCM_BOOT_SET_ADDR, 2);
 
-	/*
-	 * Next step - loop over the CPU nodes and do the per-CPU setup
-	 * required to power on the CPUs themselves.
-	 */
-	ofw_cpu_early_foreach(ipq4018_start_ap, true);
+	uint32_t scm_arg1 = QCOM_SCM_FLAG_COLDBOOT_CPU1
+	    | QCOM_SCM_FLAG_COLDBOOT_CPU2
+	    | QCOM_SCM_FLAG_COLDBOOT_CPU3;
+	uint32_t scm_arg2 = pmap_kextract((vm_offset_t)mp_entry_func);
 
-	/*
-	 * The next set of IPIs to the CPUs will wake them up and enter
-	 * mpentry.
-	 */
+	ret = arm_smccc_smc(scm_arg0, (uint32_t) &context_id, scm_arg1,
+	    scm_arg2, 0, 0, 0, 0, &res);
+
+	if (ret == 0 && res.a0 == 0)
+		return (0);
+	printf("%s: called; error; ret=0x%08x; retval[0]=0x%08x\n",
+	    __func__, ret, res.a0);
+
+	return (0);
 }
