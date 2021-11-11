@@ -337,10 +337,10 @@ KERN_DEBUGDIR?=	${DEBUGDIR}
 realinstall: _kmodinstall
 .ORDER: beforeinstall _kmodinstall
 _kmodinstall: .PHONY
-	${INSTALL} -T release -o ${KMODOWN} -g ${KMODGRP} -m ${KMODMODE} \
+	${INSTALL} -T release -o ${KMODOWN} -g ${KMODGRP} -m 500 \
 	    ${_INSTALLFLAGS} ${PROG} ${DESTDIR}${KMODDIR}/
 .if defined(DEBUG_FLAGS) && !defined(INSTALL_NODEBUG) && ${MK_KERNEL_SYMBOLS} != "no"
-	${INSTALL} -T dbg -o ${KMODOWN} -g ${KMODGRP} -m ${KMODMODE} \
+	${INSTALL} -T dbg -o ${KMODOWN} -g ${KMODGRP} -m 500 \
 	    ${_INSTALLFLAGS} ${PROG}.debug ${DESTDIR}${KERN_DEBUGDIR}${KMODDIR}/
 .endif
 
