@@ -4028,6 +4028,7 @@ OLD_FILES+=usr/tests/sbin/ping6/ping6_test
 OLD_DIRS+=usr/tests/sbin/ping6
 
 # 20201025: Remove cal data files
+OLD_FILES+=usr/share/calendar/calendar.all
 OLD_FILES+=usr/share/calendar/calendar.australia
 OLD_FILES+=usr/share/calendar/calendar.birthday
 OLD_FILES+=usr/share/calendar/calendar.brazilian
@@ -4050,7 +4051,6 @@ OLD_FILES+=usr/share/calendar/calendar.ukrainian
 OLD_FILES+=usr/share/calendar/calendar.usholiday
 OLD_FILES+=usr/share/calendar/calendar.world
 OLD_FILES+=usr/share/calendar/de_AT.ISO_8859-15/calendar.feiertag
-OLD_DIRS+=usr/share/calendar/de_AT.ISO_8859-15
 OLD_FILES+=usr/share/calendar/de_DE.ISO8859-1/calendar.all
 OLD_FILES+=usr/share/calendar/de_DE.ISO8859-1/calendar.feiertag
 OLD_FILES+=usr/share/calendar/de_DE.ISO8859-1/calendar.geschichte
@@ -4058,51 +4058,40 @@ OLD_FILES+=usr/share/calendar/de_DE.ISO8859-1/calendar.kirche
 OLD_FILES+=usr/share/calendar/de_DE.ISO8859-1/calendar.literatur
 OLD_FILES+=usr/share/calendar/de_DE.ISO8859-1/calendar.musik
 OLD_FILES+=usr/share/calendar/de_DE.ISO8859-1/calendar.wissenschaft
-OLD_DIRS+=usr/share/calendar/de_DE.ISO8859-1
-OLD_FILES+=usr/share/calendar/de_DE.ISO8859-15
 OLD_FILES+=usr/share/calendar/fr_FR.ISO8859-1/calendar.all
 OLD_FILES+=usr/share/calendar/fr_FR.ISO8859-1/calendar.fetes
 OLD_FILES+=usr/share/calendar/fr_FR.ISO8859-1/calendar.french
 OLD_FILES+=usr/share/calendar/fr_FR.ISO8859-1/calendar.jferies
 OLD_FILES+=usr/share/calendar/fr_FR.ISO8859-1/calendar.proverbes
-OLD_DIRS+=usr/share/calendar/fr_FR.ISO8859-1
-OLD_FILES+=usr/share/calendar/fr_FR.ISO8859-15
 OLD_FILES+=usr/share/calendar/hr_HR.ISO8859-2/calendar.all
 OLD_FILES+=usr/share/calendar/hr_HR.ISO8859-2/calendar.praznici
-OLD_DIRS+=usr/share/calendar/hr_HR.ISO8859-2
 OLD_FILES+=usr/share/calendar/hu_HU.ISO8859-2/calendar.all
 OLD_FILES+=usr/share/calendar/hu_HU.ISO8859-2/calendar.nevnapok
 OLD_FILES+=usr/share/calendar/hu_HU.ISO8859-2/calendar.unnepek
-OLD_DIRS+=usr/share/calendar/hu_HU.ISO8859-2
 OLD_FILES+=usr/share/calendar/pt_BR.ISO8859-1/calendar.all
 OLD_FILES+=usr/share/calendar/pt_BR.ISO8859-1/calendar.commemorative
 OLD_FILES+=usr/share/calendar/pt_BR.ISO8859-1/calendar.holidays
 OLD_FILES+=usr/share/calendar/pt_BR.ISO8859-1/calendar.mcommemorative
-OLD_DIRS+=usr/share/calendar/pt_BR.ISO8859-1
 OLD_FILES+=usr/share/calendar/pt_BR.UTF-8/calendar.all
 OLD_FILES+=usr/share/calendar/pt_BR.UTF-8/calendar.commemorative
 OLD_FILES+=usr/share/calendar/pt_BR.UTF-8/calendar.holidays
 OLD_FILES+=usr/share/calendar/pt_BR.UTF-8/calendar.mcommemorative
-OLD_DIRS+=usr/share/calendar/pt_BR.UTF-8
 OLD_FILES+=usr/share/calendar/ru_RU.KOI8-R/calendar.all
 OLD_FILES+=usr/share/calendar/ru_RU.KOI8-R/calendar.common
 OLD_FILES+=usr/share/calendar/ru_RU.KOI8-R/calendar.holiday
 OLD_FILES+=usr/share/calendar/ru_RU.KOI8-R/calendar.military
 OLD_FILES+=usr/share/calendar/ru_RU.KOI8-R/calendar.orthodox
 OLD_FILES+=usr/share/calendar/ru_RU.KOI8-R/calendar.pagan
-OLD_DIRS+=usr/share/calendar/ru_RU.KOI8-R
 OLD_FILES+=usr/share/calendar/ru_RU.UTF-8/calendar.all
 OLD_FILES+=usr/share/calendar/ru_RU.UTF-8/calendar.common
 OLD_FILES+=usr/share/calendar/ru_RU.UTF-8/calendar.holiday
 OLD_FILES+=usr/share/calendar/ru_RU.UTF-8/calendar.military
 OLD_FILES+=usr/share/calendar/ru_RU.UTF-8/calendar.orthodox
 OLD_FILES+=usr/share/calendar/ru_RU.UTF-8/calendar.pagan
-OLD_DIRS+=usr/share/calendar/ru_RU.UTF-8
 OLD_FILES+=usr/share/calendar/uk_UA.KOI8-U/calendar.all
 OLD_FILES+=usr/share/calendar/uk_UA.KOI8-U/calendar.holiday
 OLD_FILES+=usr/share/calendar/uk_UA.KOI8-U/calendar.misc
 OLD_FILES+=usr/share/calendar/uk_UA.KOI8-U/calendar.orthodox
-OLD_DIRS+=usr/share/calendar/uk_UA.KOI8-U
 
 # 20201004: logo files renamed to type-agnostic gfx-*.lua
 OLD_FILES+=boot/lua/logo-beastie.lua
@@ -10952,11 +10941,7 @@ OLD_FILES+=usr/tests/usr.sbin/pw/pw_delete
 OLD_FILES+=usr/tests/usr.sbin/pw/pw_modify
 # 20141202: update to mandoc CVS 20141201
 OLD_FILES+=usr.bin/preconv
-OLD_FILES+=share/man/man1/preconv.1.gz
-# 20141204 ibcs support removal
-OLD_FILES+=etc/rc.d/archdep
-OLD_FILES+=shate/examples/ibcs2/README
-OLD_FILES+=shate/examples/ibcs2/hello.uu
+OLD_FILES+=usr/share/man/man1/preconv.1.gz
 # 20141129: mrouted rc.d scripts removed from base
 OLD_FILES+=etc/rc.d/mrouted
 # 20141126: convert sbin/mdconfig/tests to ATF format tests
