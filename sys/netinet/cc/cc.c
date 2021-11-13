@@ -77,6 +77,13 @@ __FBSDID("$FreeBSD$");
 #include <netinet/cc/cc.h>
 #include <netinet/cc/cc_module.h>
 
+/*
+ * Have a sane default if no CC_DEFAULT is specified in the kernel config file.
+ */
+#ifndef CC_DEFAULT
+#define CC_DEFAULT "newreno"
+#endif
+
 MALLOC_DEFINE(M_CC_MEM, "CC Mem", "Congestion Control State memory");
 
 /*
@@ -308,6 +315,23 @@ cc_register_algo(struct cc_algo *add_cc)
 
 	return (err);
 }
+
+static void
+vnet_cc_sysinit(void *arg)
+{
+	struct cc_algo *cc;
+
+	if (IS_DEFAULT_VNET(curvnet))
+		return;
+
+	CURVNET_SET(vnet0);
+	cc = V_default_cc_ptr;
+	CURVNET_RESTORE();
+
+	V_default_cc_ptr = cc;
+}
+VNET_SYSINIT(vnet_cc_sysinit, SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_ANY,
+    vnet_cc_sysinit, NULL);
 
 /*
  * Perform any necessary tasks before we exit congestion recovery.
