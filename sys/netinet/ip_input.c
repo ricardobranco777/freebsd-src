@@ -119,31 +119,6 @@ SYSCTL_INT(_net_inet_ip, IPCTL_SENDREDIRECTS, redirect, CTLFLAG_VNET | CTLFLAG_R
     &VNET_NAME(ipsendredirects), 0,
     "Enable sending IP redirects");
 
-<<<<<<< HEAD
-/*
- * XXX - Setting ip_checkinterface mostly implements the receive side of
- * the Strong ES model described in RFC 1122, but since the routing table
- * and transmit implementation do not implement the Strong ES model,
- * setting this to 1 results in an odd hybrid.
- *
- * XXX - ip_checkinterface currently must be disabled if you use ipnat
- * to translate the destination address to another local interface.
- *
- * XXX - ip_checkinterface must be disabled if you add IP aliases
- * to the loopback interface instead of the interface where the
- * packets for those addresses are received.
- */
-
-#ifdef PAX_HARDENING
-VNET_DEFINE_STATIC(int, ip_checkinterface) = 1;
-#else
-VNET_DEFINE_STATIC(int, ip_checkinterface);
-#endif
-#define	V_ip_checkinterface	VNET(ip_checkinterface)
-SYSCTL_INT(_net_inet_ip, OID_AUTO, check_interface, CTLFLAG_VNET | CTLFLAG_RW,
-    &VNET_NAME(ip_checkinterface), 0,
-    "Verify packet arrives on correct interface");
-=======
 VNET_DEFINE_STATIC(bool, ip_strong_es) = false;
 #define	V_ip_strong_es	VNET(ip_strong_es)
 SYSCTL_BOOL(_net_inet_ip, OID_AUTO, rfc1122_strong_es,
@@ -155,7 +130,6 @@ VNET_DEFINE_STATIC(bool, ip_sav) = true;
 SYSCTL_BOOL(_net_inet_ip, OID_AUTO, source_address_validation,
     CTLFLAG_VNET | CTLFLAG_RW, &VNET_NAME(ip_sav), true,
     "Drop incoming packets with source address that is a local address");
->>>>>>> origin/freebsd/current/main
 
 VNET_DEFINE(pfil_head_t, inet_pfil_head);	/* Packet filter hooks */
 
