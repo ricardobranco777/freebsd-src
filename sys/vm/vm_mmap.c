@@ -537,16 +537,7 @@ kern_ommap(struct thread *td, uintptr_t hint, int len, int oprot,
 #define	OMAP_SHARED	0x0010
 #define	OMAP_FIXED	0x0100
 
-<<<<<<< HEAD
-	prot = cvtbsdprot[uap->prot & 0x7];
-=======
 	prot = cvtbsdprot[oprot & 0x7];
-#if (defined(COMPAT_FREEBSD32) && defined(__amd64__)) || defined(__i386__)
-	if (i386_read_exec && SV_PROC_FLAG(td->td_proc, SV_ILP32) &&
-	    prot != 0)
-		prot |= PROT_EXEC;
-#endif
->>>>>>> origin/freebsd/current/main
 	flags = 0;
 	if (oflags & OMAP_ANON)
 		flags |= MAP_ANON;
