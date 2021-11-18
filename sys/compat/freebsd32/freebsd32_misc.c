@@ -63,11 +63,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/mount.h>
 #include <sys/mutex.h>
 #include <sys/namei.h>
-<<<<<<< HEAD
 #include <sys/pax.h>
-=======
 #include <sys/priv.h>
->>>>>>> origin/freebsd/current/main
 #include <sys/proc.h>
 #include <sys/procctl.h>
 #include <sys/ptrace.h>
