@@ -510,11 +510,7 @@ worlds: .PHONY
 # powerpcspe excluded from main list until clang fixed
 EXTRA_ARCHES_powerpc=	powerpcspe powerpc64le
 .endif
-<<<<<<< HEAD
-TARGETS?=amd64 arm arm64 mips powerpc riscv
-=======
-TARGETS?=amd64 arm arm64 i386 powerpc riscv
->>>>>>> origin/freebsd/current/main
+TARGETS?=amd64 arm arm64 powerpc riscv
 _UNIVERSE_TARGETS=	${TARGETS}
 TARGET_ARCHES_arm?=	armv6 armv7
 TARGET_ARCHES_arm64?=	aarch64
