@@ -1,7 +1,7 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
  *
- * Copyright (c) 2009 Konstantin Belousov
+ * Copyright (c) 2005 Wojciech A. Koszek
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,42 +30,40 @@
 __FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
-#include <sys/mount.h>
 #include <sys/proc.h>
-#include <sys/socket.h>
-#include <sys/sysent.h>
-#include <sys/sysproto.h>
-#include <sys/systm.h>
-#include <sys/uio.h>
+#include <sys/sbuf.h>
+#include <sys/syscallsubr.h>
+#include <sys/syslog.h>
 
-#include <machine/cpu.h>
-#include <machine/sysarch.h>
-
-#include <compat/freebsd32/freebsd32_util.h>
-#include <compat/freebsd32/freebsd32.h>
 #include <compat/freebsd32/freebsd32_proto.h>
 
 int
-freebsd32_sysarch(struct thread *td, struct freebsd32_sysarch_args *uap)
+freebsd32_abort2(struct thread *td, struct freebsd32_abort2_args *uap)
 {
-	struct sysarch_args uap1;
-	struct i386_ldt_args uapl;
-	struct i386_ldt_args32 uapl32;
-	int error;
+	void *uargs[16];
+	void *uargsp;
+	uint32_t *uargsptr;
+	uint32_t ptr;
+	int i, nargs;
 
-	if (uap->op == I386_SET_LDT || uap->op == I386_GET_LDT) {
-		if ((error = copyin(uap->parms, &uapl32, sizeof(uapl32))) != 0)
-			return (error);
-		uap1.op = uap->op;
-		uap1.parms = (char *)&uapl;
-		uapl.start = uapl32.start;
-		uapl.descs = (struct user_segment_descriptor *)(uintptr_t)
-		    uapl32.descs;
-		uapl.num = uapl32.num;
-		return (sysarch_ldt(td, &uap1, UIO_SYSSPACE));
-	} else {
-		uap1.op = uap->op;
-		uap1.parms = uap->parms;
-		return (sysarch(td, &uap1));
+	nargs = uap->nargs;
+	if (nargs < 0 || nargs > nitems(uargs))
+		nargs = -1;
+	uargsp = NULL;
+	if (nargs > 0) {
+		if (uap->args != NULL) {
+			uargsptr = uap->args;
+			for (i = 0; i < nargs; i++) {
+				if (fueword32(uargsptr + i, &ptr) != 0) {
+					nargs = -1;
+					break;
+				} else
+					uargs[i] = (void *)(uintptr_t)ptr;
+			}
+			if (nargs > 0)
+				uargsp = &uargs;
+		} else
+			nargs = -1;
 	}
+	return (kern_abort2(td, uap->why, nargs, uargsp));
 }
