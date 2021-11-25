@@ -38,11 +38,6 @@ SUBDIR=	\
 	${_amdsbwd} \
 	${_amdsmn} \
 	${_amdtemp} \
-<<<<<<< HEAD
-	amr \
-=======
-	${_aout} \
->>>>>>> origin/freebsd/current/main
 	${_arcmsr} \
 	${_allwinner} \
 	${_armv8crypto} \
