@@ -329,7 +329,7 @@ When set, it enforces these options:
 Set to build without Control-Flow Integrity (CFI)
 .Pp
 This is a default setting on
-arm/armv6, arm/armv7, mips/mips, mips/mips64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
+arm/armv6, arm/armv7, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
 .It Va WITH_CFI
 Set to build with Control-Flow Integrity (CFI)
 .Pp
@@ -741,20 +741,6 @@ Neither build nor install
 .Lb libgmock ,
 .Lb libgtest ,
 and dependent tests.
-<<<<<<< HEAD
-.Pp
-This is a default setting on
-mips/mips and mips/mips64.
-.It Va WITH_GOOGLETEST
-Build and install
-.Lb libgmock ,
-.Lb libgtest ,
-and dependent tests.
-.Pp
-This is a default setting on
-amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
-=======
->>>>>>> origin/freebsd/current/main
 .It Va WITHOUT_GPIO
 Do not build
 .Xr gpioctl 8
@@ -931,12 +917,6 @@ and
 On 64-bit platforms, set to build 32-bit library set and a
 .Nm ld-elf32.so.1
 runtime linker.
-<<<<<<< HEAD
-=======
-.Pp
-This is a default setting on
-arm/armv6, arm/armv7, arm64/aarch64, i386/i386, powerpc/powerpc, riscv/riscv64 and riscv/riscv64sf.
->>>>>>> origin/freebsd/current/main
 .It Va WITH_LIBSOFT
 On armv6 only, enable soft float ABI compatibility libraries.
 This option is for transitioning to the new hard float ABI.
@@ -1066,11 +1046,7 @@ powerpc/powerpc and powerpc/powerpc64.
 Build GELI bootloader support.
 .Pp
 This is a default setting on
-<<<<<<< HEAD
-amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, mips/mips, mips/mips64, riscv/riscv64 and riscv/riscv64sf.
-=======
-amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, i386/i386, riscv/riscv64 and riscv/riscv64sf.
->>>>>>> origin/freebsd/current/main
+amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, riscv/riscv64 and riscv/riscv64sf.
 .It Va WITHOUT_LOADER_LUA
 Do not build LUA bindings for the boot loader.
 .Pp
@@ -1080,20 +1056,12 @@ powerpc/powerpc and powerpc/powerpc64.
 Build LUA bindings for the boot loader.
 .Pp
 This is a default setting on
-<<<<<<< HEAD
-amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, mips/mips, mips/mips64, riscv/riscv64 and riscv/riscv64sf.
-=======
-amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, i386/i386, riscv/riscv64 and riscv/riscv64sf.
->>>>>>> origin/freebsd/current/main
+amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, riscv/riscv64 and riscv/riscv64sf.
 .It Va WITHOUT_LOADER_OFW
 Disable building of openfirmware bootloader components.
 .Pp
 This is a default setting on
-<<<<<<< HEAD
-amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, mips/mips, mips/mips64, riscv/riscv64 and riscv/riscv64sf.
-=======
-amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, i386/i386, riscv/riscv64 and riscv/riscv64sf.
->>>>>>> origin/freebsd/current/main
+amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, riscv/riscv64 and riscv/riscv64sf.
 .It Va WITH_LOADER_OFW
 Build openfirmware bootloader components.
 .Pp
@@ -1161,7 +1129,7 @@ without support for colors to distinguish file types.
 Set to not build static and shared libraries with LTO.
 .Pp
 This is a default setting on
-arm/armv6, arm/armv7, arm64/aarch64, mips/mips, mips/mips64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
+arm/armv6, arm/armv7, arm64/aarch64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
 .It Va WITH_LTOLIB
 Set to build static and shared libraries with LTO.
 .Pp
@@ -1416,11 +1384,7 @@ is set explicitly)
 Do not include kernel TLS support in OpenSSL.
 .Pp
 This is a default setting on
-<<<<<<< HEAD
-arm/armv6, arm/armv7, mips/mips, mips/mips64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
-=======
-arm/armv6, arm/armv7, i386/i386, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
->>>>>>> origin/freebsd/current/main
+arm/armv6, arm/armv7, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
 .It Va WITH_OPENSSL_KTLS
 Include kernel TLS support in OpenSSL.
 .Pp
@@ -1509,7 +1473,7 @@ Do not build the base system with the retpoline speculative execution
 vulnerability mitigation.
 .Pp
 This is a default setting on
-arm/armv6, arm/armv7, arm64/aarch64, mips/mips, mips/mips64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
+arm/armv6, arm/armv7, arm64/aarch64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
 .It Va WITH_RETPOLINE
 Build the base system with the retpoline speculative execution
 vulnerability mitigation for CVE-2017-5715.
@@ -1528,7 +1492,7 @@ with warmstart support.
 Set to compile world without SafeStack.
 .Pp
 This is a default setting on
-arm/armv6, arm/armv7, arm64/aarch64, mips/mips, mips/mips64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
+arm/armv6, arm/armv7, arm64/aarch64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
 .It Va WITH_SAFESTACK
 Set to compile with SafeStack.
 .Pp
@@ -1577,17 +1541,6 @@ Build the base system with speculative load hardening, a SpectreV1
 vulnerability mitigation.
 .It Va WITHOUT_SSP
 Do not build world with propolice stack smashing protection.
-<<<<<<< HEAD
-.Pp
-This is a default setting on
-mips/mips and mips/mips64.
-.It Va WITH_SSP
-Build world with propolice stack smashing protection.
-.Pp
-This is a default setting on
-amd64/amd64, arm/armv6, arm/armv7, arm64/aarch64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
-=======
->>>>>>> origin/freebsd/current/main
 .It Va WITH_STAGING
 Enable staging of files to a stage tree.
 This can be best thought of as auto-install to
