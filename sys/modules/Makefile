@@ -120,6 +120,7 @@ SUBDIR=	\
 	filemon \
 	firewire \
 	firmware \
+	flash \
 	${_ftwd} \
 	fusefs \
 	${_fxp} \
