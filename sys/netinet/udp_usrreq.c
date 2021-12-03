@@ -426,7 +426,9 @@ udp_multi_input(struct mbuf *m, int proto, struct sockaddr_in *udp_in)
 	struct ip *ip = mtod(m, struct ip *);
 	struct inpcb_iterator inpi = INP_ITERATOR(udp_get_inpcbinfo(proto),
 	    INPLOOKUP_RLOCKPCB, udp_multi_match, ip);
+#ifdef KDTRACE_HOOKS
 	struct udphdr *uh = (struct udphdr *)(ip + 1);
+#endif
 	struct inpcb *inp;
 	struct mbuf *n;
 	int appends = 0;
@@ -1698,10 +1700,8 @@ static void
 udp_detach(struct socket *so)
 {
 	struct inpcb *inp;
-	struct inpcbinfo *pcbinfo;
 	struct udpcb *up;
 
-	pcbinfo = udp_get_inpcbinfo(so->so_proto->pr_protocol);
 	inp = sotoinpcb(so);
 	KASSERT(inp != NULL, ("udp_detach: inp == NULL"));
 	KASSERT(inp->inp_faddr.s_addr == INADDR_ANY,
