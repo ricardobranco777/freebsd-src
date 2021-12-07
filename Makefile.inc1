@@ -2631,11 +2631,6 @@ _dtrace_tools= cddl/lib/libctf cddl/lib/libspl cddl/usr.bin/ctfconvert \
 .if ${MK_ELFTOOLCHAIN_BOOTSTRAP} != "no"
 _elftctools=	lib/libelftc \
 		lib/libpe \
-<<<<<<< HEAD
-=======
-		usr.bin/elfctl \
-		usr.bin/elfdump \
->>>>>>> origin/freebsd/current/main
 		usr.bin/objcopy \
 		usr.bin/nm \
 		usr.bin/size \
@@ -2649,11 +2644,6 @@ _elftctools+=	usr.bin/addr2line
 # the target (for at least crunchide).
 _elftctools=	lib/libelftc \
 		lib/libpe \
-<<<<<<< HEAD
-=======
-		usr.bin/elfctl \
-		usr.bin/elfdump \
->>>>>>> origin/freebsd/current/main
 		usr.bin/objcopy
 .endif
 
