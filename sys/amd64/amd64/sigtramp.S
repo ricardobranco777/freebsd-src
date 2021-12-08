@@ -27,15 +27,18 @@
  */
 
 #include <sys/syscall.h>
+
 #include <machine/asmacros.h>
 
 #include "assym.inc"
 
 	.text
-/*
- * Signal trampoline, mapped as vdso into shared page.
+/**********************************************************************
+ *
+ * Signal trampoline, copied to top of user stack
+ *
  */
-ENTRY(__vdso_sigcode)
+ENTRY(sigcode)
 	call	*SIGF_HANDLER(%rsp)	/* call signal handler */
 	lea	SIGF_UC(%rsp),%rdi	/* get ucontext_t */
 	pushq	$0			/* junk to fake return addr. */
@@ -43,6 +46,11 @@ ENTRY(__vdso_sigcode)
 	syscall				/* enter kernel with args */
 0:	hlt				/* trap priviliged instruction */
 	jmp	0b
-END(__vdso_sigcode)
 
-	.section .note.GNU-stack,"",%progbits
+	ALIGN_TEXT
+esigcode:
+
+	.data
+	.globl	szsigcode
+szsigcode:
+	.long	esigcode-sigcode
