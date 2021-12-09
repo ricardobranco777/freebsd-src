@@ -12,21 +12,6 @@ include 	"conf/files.x86"
 # dependency lines other than the first are silently ignored.
 #
 #
-<<<<<<< HEAD
-=======
-elf-vdso.so.o			standard				\
-	dependency	"$S/amd64/amd64/sigtramp.S assym.inc $S/tools/amd64_vdso.sh" \
-	compile-with	"env AWK='${AWK}' NM='${NM}' LD='${LD}' CC='${CC}' DEBUG='${DEBUG}' OBJCOPY='${OBJCOPY}' ELFDUMP='${ELFDUMP}' S='${S}' sh $S/tools/amd64_vdso.sh" \
-	no-implicit-rule before-depend	\
-	clean		"elf-vdso.so.o elf-vdso.so.1 vdso_offsets.h sigtramp.pico"
-#
-elf-vdso32.so.o			optional	compat_freebsd32		\
-	dependency	"$S/amd64/ia32/ia32_sigtramp.S ia32_assym.h $S/tools/amd64_ia32_vdso.sh" \
-	compile-with	"env AWK='${AWK}' NM='${NM}' LD='${LD}' CC='${CC}' DEBUG='${DEBUG}' OBJCOPY='${OBJCOPY}' ELFDUMP='${ELFDUMP}' S='${S}' sh $S/tools/amd64_ia32_vdso.sh" \
-	no-implicit-rule before-depend	\
-	clean		"elf-vdso32.so.o elf-vdso32.so.1 vdso_ia32_offsets.h ia32_sigtramp.pico"
-#
->>>>>>> origin/freebsd/current/main
 ia32_genassym.o			standard				\
 	dependency 	"$S/compat/ia32/ia32_genassym.c offset.inc"		\
 	compile-with	"${CC} ${CFLAGS:N-flto:N-fno-common} -fcommon -c ${.IMPSRC}" \
