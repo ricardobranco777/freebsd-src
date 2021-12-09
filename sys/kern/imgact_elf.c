@@ -128,10 +128,6 @@ int __elfN(nxstack) =
 #else
 	0;
 #endif
-SYSCTL_INT(__CONCAT(_kern_elf, __ELF_WORD_SIZE), OID_AUTO,
-    nxstack, CTLFLAG_RW, &__elfN(nxstack), 0,
-    __XSTRING(__CONCAT(ELF, __ELF_WORD_SIZE)) ": enable non-executable stack");
-
 static u_long __elfN(pie_base) = ET_DYN_LOAD_ADDR;
 static int
 sysctl_pie_base(SYSCTL_HANDLER_ARGS)
