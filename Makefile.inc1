@@ -145,20 +145,6 @@ KNOWN_ARCHES?=	aarch64/arm64 \
 		amd64 \
 		armv6/arm \
 		armv7/arm \
-<<<<<<< HEAD
-		mips \
-		mipsel/mips \
-		mips64el/mips \
-		mipsn32el/mips \
-		mips64/mips \
-		mipsn32/mips \
-		mipshf/mips \
-		mipselhf/mips \
-		mips64elhf/mips \
-		mips64hf/mips \
-=======
-		i386 \
->>>>>>> origin/freebsd/current/main
 		powerpc \
 		powerpc64/powerpc \
 		powerpc64le/powerpc \
