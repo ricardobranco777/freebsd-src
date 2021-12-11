@@ -43,6 +43,7 @@ CFLAGS+=	-fno-pic
 .if ${MACHINE_CPUARCH} == "amd64"
 CFLAGS+=	-m32
 .endif
+<<<<<<< HEAD
 .if ${MACHINE_CPUARCH} == "mips"
 CFLAGS+=	-mno-abicalls
 .endif
@@ -50,6 +51,8 @@ CFLAGS+=	-mno-abicalls
 NOPIE=		1
 .endif
 
+=======
+>>>>>>> origin/freebsd/current/main
 
 .include "usbcore.mk"
 .include "../kshim/kshim.mk"
