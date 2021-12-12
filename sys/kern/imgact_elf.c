@@ -1270,7 +1270,6 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	imgp->proc->p_elf_brandinfo = brand_info;
 
 	maxv = vm_map_max(map) - lim_max(td, RLIMIT_STACK);
-<<<<<<< HEAD
 
 #ifdef PAX_ASLR
 	/*
@@ -1282,21 +1281,15 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	}
 #endif
 
-	if (do_asr) {
-		KASSERT((map->flags & MAP_ASLR) != 0,
-		    ("do_asr but !MAP_ASLR"));
-		et_dyn_addr = __CONCAT(rnd_, __elfN(base))(map,
-=======
 	if (mapsz >= maxv - vm_map_min(map)) {
 		uprintf("Excessive mapping size\n");
 		error = ENOEXEC;
 	}
 
-	if (error == 0 && et_dyn_addr == ET_DYN_ADDR_RAND) {
+	if (do_asr) {
 		KASSERT((map->flags & MAP_ASLR) != 0,
-		    ("ET_DYN_ADDR_RAND but !MAP_ASLR"));
+		    ("do_asr but !MAP_ASLR"));
 		error = __CONCAT(rnd_, __elfN(base))(map,
->>>>>>> origin/freebsd/current/main
 		    vm_map_min(map) + mapsz + lim_max(td, RLIMIT_DATA),
 		    /* reserve half of the address space to interpreter */
 		    maxv / 2, maxalign, &et_dyn_addr);
