@@ -351,8 +351,8 @@ __DEFAULT_NO_OPTIONS+=CLANG_EXTRAS
 .if ${__T:Mpowerpc*} == ""
 BROKEN_OPTIONS+=LOADER_OFW
 .endif
-# UBOOT is only for arm, mips and powerpc, exclude others
-.if ${__T:Marm*} == "" && ${__T:Mmips*} == "" && ${__T:Mpowerpc*} == ""
+# UBOOT is only for arm, and big-endian powerpc
+.if (${__T:Marm*} == "" && ${__T:Mpowerpc*} == "") || ${__T} == "powerpc64le"
 BROKEN_OPTIONS+=LOADER_UBOOT
 .endif
 # GELI and Lua in loader currently cause boot failures on powerpc.
