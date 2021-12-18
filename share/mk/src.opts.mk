@@ -333,7 +333,7 @@ __DEFAULT_NO_OPTIONS+=SAFESTACK
 __DEFAULT_NO_OPTIONS+=RETPOLINE
 .endif
 
-.if ${__T} == "amd64"
+.if ${__T} == "amd64" || ${__T} == "aarch64"
 __DEFAULT_YES_OPTIONS+=LTOLIB
 .else
 __DEFAULT_NO_OPTIONS+=LTOLIB
