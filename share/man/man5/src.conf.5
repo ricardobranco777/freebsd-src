@@ -1117,12 +1117,12 @@ without support for colors to distinguish file types.
 Set to not build static and shared libraries with LTO.
 .Pp
 This is a default setting on
-arm/armv6, arm/armv7, arm64/aarch64, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
+arm/armv6, arm/armv7, powerpc/powerpc, powerpc/powerpc64, riscv/riscv64 and riscv/riscv64sf.
 .It Va WITH_LTOLIB
 Set to build static and shared libraries with LTO.
 .Pp
 This is a default setting on
-amd64/amd64.
+amd64/amd64 and arm64/aarch64.
 .It Va WITHOUT_MAIL
 Do not build any mail support (MUA or MTA).
 When set, it enforces these options:
@@ -1314,21 +1314,7 @@ arm/armv6, arm/armv7, powerpc/powerpc, riscv/riscv64 and riscv/riscv64sf.
 Build nvme related tools and kernel modules.
 .Pp
 This is a default setting on
-<<<<<<< HEAD
 amd64/amd64, arm64/aarch64 and powerpc/powerpc64.
-=======
-amd64/amd64, arm64/aarch64, i386/i386 and powerpc/powerpc64.
-.It Va WITHOUT_OFED
-Disable the build of the
-.Dq "OpenFabrics Enterprise Distribution"
-Infiniband software stack, including kernel modules and userspace libraries.
-When set, it enforces these options:
-.Pp
-.Bl -item -compact
-.It
-.Va WITHOUT_OFED_EXTRA
-.El
->>>>>>> origin/freebsd/current/main
 .It Va WITH_OFED_EXTRA
 Build the non-essential components of the
 .Dq "OpenFabrics Enterprise Distribution"
