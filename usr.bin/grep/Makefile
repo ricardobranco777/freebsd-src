@@ -4,11 +4,7 @@
 
 .include <src.opts.mk>
 
-<<<<<<< HEAD
-NOCFI=	yes
-=======
 PACKAGE=	runtime
->>>>>>> origin/freebsd/current/main
 
 PROG=	grep
 MAN1=	grep.1 zgrep.1
@@ -62,5 +58,7 @@ LIBADD+=	regex
 
 HAS_TESTS=
 SUBDIR.${MK_TESTS}+= tests
+
+NOCFI=	yes
 
 .include <bsd.prog.mk>
