@@ -1,8 +1,7 @@
 /*-
- * Copyright (c) 2020-2021 The FreeBSD Foundation
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
  *
- * This software was developed by Björn Zeeb under sponsorship from
- * the FreeBSD Foundation.
+ * Copyright (c) 2021 Adrian Chadd <adrian@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,26 +27,32 @@
  * $FreeBSD$
  */
 
-#ifndef	__LKPI_NET_IEEE80211_RADIOTAP_H
-#define	__LKPI_NET_IEEE80211_RADIOTAP_H
+#ifndef	__QCOM_CLK_RCG2_REG_H__
+#define	__QCOM_CLK_RCG2_REG_H__
 
-/* Any possibly duplicate content is only maintained in one place now. */
-#include <net80211/ieee80211_radiotap.h>
+#define	QCOM_CLK_RCG2_CMD_REG				0x0
+#define		QCOM_CLK_RCG2_CMD_UPDATE		(1U << 0)
+#define		QCOM_CLK_RCG2_CMD_ROOT_EN		(1U << 1)
+#define		QCOM_CLK_RCG2_CMD_DIRTY_CFG		(1U << 4)
+#define		QCOM_CLK_RCG2_CMD_DIRTY_N		(1U << 5)
+#define		QCOM_CLK_RCG2_CMD_DIRTY_M		(1U << 6)
+#define		QCOM_CLK_RCG2_CMD_DIRTY_D		(1U << 7)
+#define		QCOM_CLK_RCG2_CMD_ROOT_OFF		(1U << 31)
 
-/*
- * This structure deviates from
- * 'https://www.radiotap.org/fields/Vendor%20Namespace.html'
- * and the net80211::ieee80211_radiotap_vendor_header version.
- * We consider it LinuxKPI specific so it stays here.
- */
-struct ieee80211_vendor_radiotap {
-	u32		present;
-	u8		align;
-	u8		oui[3];
-	u8		subns;
-	u8		pad;
-	__le16		len;
-	u8		data[0];
-};
+#define	QCOM_CLK_RCG2_CFG_REG				0x4
+#define		QCOM_CLK_RCG2_CFG_SRC_DIV_SHIFT		0
+#define		QCOM_CLK_RCG2_CFG_SRC_SEL_SHIFT		8
+#define		QCOM_CLK_RCG2_CFG_SRC_SEL_MASK	\
+		    (0x7 << QCOM_CLK_RCG2_CFG_SRC_SEL_SHIFT)
+#define		QCOM_CLK_RCG2_CFG_MODE_SHIFT		12
+#define		QCOM_CLK_RCG2_CFG_MODE_MASK	\
+		    (0x3 << QCOM_CLK_RCG2_CFG_MODE_SHIFT)
+#define		QCOM_CLK_RCG2_CFG_MODE_DUAL_EDGE	\
+		    (0x2 << QCOM_CLK_RCG2_CFG_MODE_SHIFT)
+#define		QCOM_CLK_RCG2_CFG_HW_CLK_CTRL_MASK	(1U << 20)
 
-#endif	/* __LKPI_NET_IEEE80211_RADIOTAP_H */
+#define	QCOM_CLK_RCG2_M_REG				0x8
+#define	QCOM_CLK_RCG2_N_REG				0xc
+#define	QCOM_CLK_RCG2_D_REG				0x10
+
+#endif	/* __QCOM_CLK_RCG2_REG_H__ */

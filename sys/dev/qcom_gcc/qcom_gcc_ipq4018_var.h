@@ -1,8 +1,7 @@
 /*-
- * Copyright (c) 2020-2021 The FreeBSD Foundation
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
  *
- * This software was developed by Björn Zeeb under sponsorship from
- * the FreeBSD Foundation.
+ * Copyright (c) 2021 Adrian Chadd <adrian@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,26 +27,41 @@
  * $FreeBSD$
  */
 
-#ifndef	__LKPI_NET_IEEE80211_RADIOTAP_H
-#define	__LKPI_NET_IEEE80211_RADIOTAP_H
+#ifndef	__QCOM_GCC_IPQ4018_VAR_H__
+#define	__QCOM_GCC_IPQ4018_VAR_H__
 
-/* Any possibly duplicate content is only maintained in one place now. */
-#include <net80211/ieee80211_radiotap.h>
-
-/*
- * This structure deviates from
- * 'https://www.radiotap.org/fields/Vendor%20Namespace.html'
- * and the net80211::ieee80211_radiotap_vendor_header version.
- * We consider it LinuxKPI specific so it stays here.
- */
-struct ieee80211_vendor_radiotap {
-	u32		present;
-	u8		align;
-	u8		oui[3];
-	u8		subns;
-	u8		pad;
-	__le16		len;
-	u8		data[0];
+struct qcom_gcc_ipq4018_reset_entry {
+	uint32_t	reg;
+	uint32_t	bit;
 };
 
-#endif	/* __LKPI_NET_IEEE80211_RADIOTAP_H */
+struct qcom_gcc_ipq4018_softc {
+	device_t		dev;
+	int			reg_rid;
+	struct resource		*reg;
+	struct mtx		mtx;
+	struct clkdom		*clkdom;
+};
+
+/*
+ * reset block
+ */
+extern	int qcom_gcc_ipq4018_hwreset_assert(device_t dev, intptr_t id,
+	    bool reset);
+extern	int qcom_gcc_ipq4018_hwreset_is_asserted(device_t dev, intptr_t id,
+	    bool *reset);
+
+/*
+ * clock block
+ */
+extern	int qcom_gcc_ipq4018_clock_read(device_t dev, bus_addr_t addr,
+	    uint32_t *val);
+extern	int qcom_gcc_ipq4018_clock_write(device_t dev, bus_addr_t addr,
+	    uint32_t val);
+extern	int qcom_gcc_ipq4018_clock_modify(device_t dev, bus_addr_t addr,
+     uint32_t clear_mask, uint32_t set_mask);
+extern	void qcom_gcc_ipq4018_clock_setup(struct qcom_gcc_ipq4018_softc *sc);
+extern	void qcom_gcc_ipq4018_clock_lock(device_t dev);
+extern	void qcom_gcc_ipq4018_clock_unlock(device_t dev);
+
+#endif	/* __QCOM_GCC_IPQ4018_VAR_H__ */
