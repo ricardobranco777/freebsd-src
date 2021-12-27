@@ -1,8 +1,7 @@
 /*-
- * Copyright (c) 2020-2021 The FreeBSD Foundation
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
  *
- * This software was developed by Björn Zeeb under sponsorship from
- * the FreeBSD Foundation.
+ * Copyright (c) 2021 Adrian Chadd <adrian@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,26 +27,44 @@
  * $FreeBSD$
  */
 
-#ifndef	__LKPI_NET_IEEE80211_RADIOTAP_H
-#define	__LKPI_NET_IEEE80211_RADIOTAP_H
+#ifndef	__QCOM_CLK_BRANCH2_H__
+#define	__QCOM_CLK_BRANCH2_H__
 
-/* Any possibly duplicate content is only maintained in one place now. */
-#include <net80211/ieee80211_radiotap.h>
+#include "qcom_clk_freqtbl.h"
 
-/*
- * This structure deviates from
- * 'https://www.radiotap.org/fields/Vendor%20Namespace.html'
- * and the net80211::ieee80211_radiotap_vendor_header version.
- * We consider it LinuxKPI specific so it stays here.
- */
-struct ieee80211_vendor_radiotap {
-	u32		present;
-	u8		align;
-	u8		oui[3];
-	u8		subns;
-	u8		pad;
-	__le16		len;
-	u8		data[0];
+/* halt is 1 */
+#define	QCOM_CLK_BRANCH2_BRANCH_HALT		0
+
+/* halt is inverted (ie, 0) */
+#define	QCOM_CLK_BRANCH2_BRANCH_HALT_INVERTED	1
+
+/* Don't check the bit, just delay */
+#define	QCOM_CLK_BRANCH2_BRANCH_HALT_DELAY	2
+
+/* Don't check the halt bit at all */
+#define	QCOM_CLK_BRANCH2_BRANCH_HALT_SKIP	3
+
+/* Flags */
+#define	QCOM_CLK_BRANCH2_FLAGS_CRITICAL		0x1
+#define	QCOM_CLK_BRANCH2_FLAGS_SET_RATE_PARENT	0x2
+
+struct qcom_clk_branch2_def {
+	struct clknode_init_def clkdef;
+
+	uint32_t flags;
+
+	uint32_t enable_offset;	/* enable register*/
+	uint32_t enable_shift;	/* enable bit shift */
+
+	uint32_t hwcg_reg;	/* hw clock gate register */
+	uint32_t hwcg_bit;
+	uint32_t halt_reg;	/* halt register */
+
+	uint32_t halt_check_type;
+	bool halt_check_voted;	/* whether to delay when waiting */
 };
 
-#endif	/* __LKPI_NET_IEEE80211_RADIOTAP_H */
+extern	int qcom_clk_branch2_register(struct clkdom *clkdom,
+	    struct qcom_clk_branch2_def *clkdef);
+
+#endif	/* __QCOM_CLK_BRANCH2_H__ */

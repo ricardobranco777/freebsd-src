@@ -1,8 +1,5 @@
 /*-
- * Copyright (c) 2020-2021 The FreeBSD Foundation
- *
- * This software was developed by Björn Zeeb under sponsorship from
- * the FreeBSD Foundation.
+ * Copyright (c) 2021 Adrian Chadd <adrian@FreeBSD.org>.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,30 +21,36 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD$
  */
 
-#ifndef	__LKPI_NET_IEEE80211_RADIOTAP_H
-#define	__LKPI_NET_IEEE80211_RADIOTAP_H
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
-/* Any possibly duplicate content is only maintained in one place now. */
-#include <net80211/ieee80211_radiotap.h>
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/bus.h>
+#include <sys/lock.h>
+#include <sys/mutex.h>
+#include <sys/rman.h>
+#include <machine/bus.h>
+
+#include "qcom_clk_freqtbl.h"
 
 /*
- * This structure deviates from
- * 'https://www.radiotap.org/fields/Vendor%20Namespace.html'
- * and the net80211::ieee80211_radiotap_vendor_header version.
- * We consider it LinuxKPI specific so it stays here.
+ * Walk the list of frequencies and return the highest frequency supported.
  */
-struct ieee80211_vendor_radiotap {
-	u32		present;
-	u8		align;
-	u8		oui[3];
-	u8		subns;
-	u8		pad;
-	__le16		len;
-	u8		data[0];
-};
+const struct qcom_clk_freq_tbl *
+qcom_clk_freq_tbl_lookup(const struct qcom_clk_freq_tbl *tbl, uint64_t freq)
+{
+	const struct qcom_clk_freq_tbl *t;
 
-#endif	/* __LKPI_NET_IEEE80211_RADIOTAP_H */
+	if (tbl == NULL)
+		return (NULL);
+
+	for (t = tbl; t->freq !=0; t++) {
+		if (freq <= t->freq)
+			return (t);
+	}
+
+	return (NULL);
+}

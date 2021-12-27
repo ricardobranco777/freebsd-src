@@ -1,8 +1,7 @@
 /*-
- * Copyright (c) 2020-2021 The FreeBSD Foundation
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
  *
- * This software was developed by Björn Zeeb under sponsorship from
- * the FreeBSD Foundation.
+ * Copyright (c) 2021 Adrian Chadd <adrian@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,26 +27,23 @@
  * $FreeBSD$
  */
 
-#ifndef	__LKPI_NET_IEEE80211_RADIOTAP_H
-#define	__LKPI_NET_IEEE80211_RADIOTAP_H
+#ifndef	__QCOM_CLK_RO_DIV_H__
+#define	__QCOM_CLK_RO_DIV_H__
 
-/* Any possibly duplicate content is only maintained in one place now. */
-#include <net80211/ieee80211_radiotap.h>
-
-/*
- * This structure deviates from
- * 'https://www.radiotap.org/fields/Vendor%20Namespace.html'
- * and the net80211::ieee80211_radiotap_vendor_header version.
- * We consider it LinuxKPI specific so it stays here.
- */
-struct ieee80211_vendor_radiotap {
-	u32		present;
-	u8		align;
-	u8		oui[3];
-	u8		subns;
-	u8		pad;
-	__le16		len;
-	u8		data[0];
+struct qcom_clk_ro_div_tbl {
+	uint32_t val;
+	uint32_t div;
 };
 
-#endif	/* __LKPI_NET_IEEE80211_RADIOTAP_H */
+struct qcom_clk_ro_div_def {
+	struct clknode_init_def clkdef;
+	uint32_t offset;		/* register offset */
+	uint32_t shift;			/* field shift */
+	uint32_t width;			/* field width */
+	struct qcom_clk_ro_div_tbl *div_tbl;
+};
+
+extern	int qcom_clk_ro_div_register(struct clkdom *clkdom,
+	    struct qcom_clk_ro_div_def *clkdef);
+
+#endif	/* __QCOM_CLK_RO_DIV_H__ */
