@@ -6237,22 +6237,23 @@ sctp_get_frag_point(struct sctp_tcb *stcb)
 			overhead += sctp_get_auth_chunk_len(asoc->peer_hmac_id);
 		}
 	} else {
-		overhead += sizeof(struct sctp_idata_chunk);
+		overhead += sizeof(struct sctp_data_chunk);
 		if (sctp_auth_is_required_chunk(SCTP_DATA, asoc->peer_auth_chunks)) {
 			overhead += sctp_get_auth_chunk_len(asoc->peer_hmac_id);
 		}
 	}
-	/* Consider padding. */
-	if (asoc->smallest_mtu % 4) {
-		overhead += (asoc->smallest_mtu % 4);
-	}
 	KASSERT(overhead % 4 == 0,
 	    ("overhead (%u) not a multiple of 4", overhead));
+	/* Consider padding. */
+	if (asoc->smallest_mtu % 4 > 0) {
+		overhead += (asoc->smallest_mtu % 4);
+	}
 	KASSERT(asoc->smallest_mtu > overhead,
 	    ("Association MTU (%u) too small for overhead (%u)",
 	    asoc->smallest_mtu, overhead));
-
 	frag_point = asoc->smallest_mtu - overhead;
+	KASSERT(frag_point % 4 == 0,
+	    ("frag_point (%u) not a multiple of 4", frag_point));
 	/* Honor MAXSEG socket option. */
 	if ((asoc->sctp_frag_point > 0) &&
 	    (asoc->sctp_frag_point < frag_point)) {
