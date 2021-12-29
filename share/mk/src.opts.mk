@@ -195,6 +195,7 @@ __DEFAULT_YES_OPTIONS = \
     ZONEINFO
 
 __DEFAULT_NO_OPTIONS = \
+    ASAN \
     BEARSSL \
     BHYVE_SNAPSHOT \
     DEVD_PIE \
@@ -518,6 +519,7 @@ MK_RETPOLINE:=	no
 # In order to get sensible backtraces from ASAN we have to install
 # llvm-symbolizer as /usr/bin/addr2line instead of the elftoolchain version.
 MK_LLVM_BINUTILS:=	yes
+MK_SAFESTACK:=		no
 .endif
 
 .if ${MK_LLVM_BINUTILS} == "yes"
