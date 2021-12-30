@@ -1,9 +1,10 @@
 # $FreeBSD$
 
+SHLIBDIR?=	/lib
+
 .include <src.opts.mk>
 
 PACKAGE=	clibs
-SHLIBDIR?=	/lib
 _LIBCXXRTDIR=	${SRCTOP}/contrib/libcxxrt
 HDRDIR=		${SRCTOP}/contrib/llvm-project/libcxx/include
 SRCDIR=		${SRCTOP}/contrib/llvm-project/libcxx/src
