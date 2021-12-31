@@ -137,8 +137,6 @@ SUBDIR=	\
 	${_hptnr} \
 	${_hptrr} \
 	hwpmc \
-	${_hwpmc_mips24k} \
-	${_hwpmc_mips74k} \
 	${_hyperv} \
 	i2c \
 	${_iavf} \
@@ -588,11 +586,6 @@ SUBDIR+=	tests
 
 .if ${MK_ZFS} != "no" || (defined(ALL_MODULES)  && ${MACHINE_CPUARCH} != "powerpc")
 SUBDIR+=	zfs
-.endif
-
-.if (${MACHINE_CPUARCH} == "mips" && ${MACHINE_ARCH:Mmips64} == "")
-_hwpmc_mips24k=	hwpmc_mips24k
-_hwpmc_mips74k=	hwpmc_mips74k
 .endif
 
 .if ${MACHINE_CPUARCH} != "aarch64" && ${MACHINE_CPUARCH} != "arm" && \

@@ -134,6 +134,7 @@ __DEFAULT_YES_OPTIONS = \
     LLVM_COV \
     LLVM_CXXFILT \
     LOADER_GELI \
+    LOADER_KBOOT \
     LOADER_LUA \
     LOADER_OFW \
     LOADER_UBOOT \
@@ -348,6 +349,10 @@ __DEFAULT_NO_OPTIONS+=CLANG_EXTRAS
 # OFW is only for powerpc, exclude others
 .if ${__T:Mpowerpc*} == ""
 BROKEN_OPTIONS+=LOADER_OFW
+.endif
+# KBOOT is only for powerpc64 (powerpc64le broken)
+.if ${__T} != "powerpc64"
+BROKEN_OPTIONS+=LOADER_KBOOT
 .endif
 # UBOOT is only for arm, and big-endian powerpc
 .if (${__T:Marm*} == "" && ${__T:Mpowerpc*} == "") || ${__T} == "powerpc64le"
