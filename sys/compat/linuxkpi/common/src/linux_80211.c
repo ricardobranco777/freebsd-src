@@ -786,6 +786,10 @@ lkpi_sta_scan_to_auth(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 	{
 		int i, count;
 
+		count = 3 * (hw->queues + 1);
+		KASSERT(count > hw->queues, "Integer overflow");
+		count = 0;
+
 		for (i = 3 * (hw->queues + 1); i > 0; i--) {
 			struct lkpi_txq *ltxq;
 			int tid;
@@ -805,8 +809,11 @@ lkpi_sta_scan_to_auth(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 					continue;
 
 				ltxq = TXQ_TO_LTXQ(sta->txq[tid]);
-				if (!ltxq->seen_dequeue)
+				if (!ltxq->seen_dequeue) {
+					KASSERT(count + 1 > count,
+					    "Integer overflow");
 					count++;
+				}
 			}
 			if (count == 0)
 				break;
@@ -819,7 +826,7 @@ lkpi_sta_scan_to_auth(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 		}
 #ifdef LINUXKPI_DEBUG_80211
 		if (count > 0)
-			ic_printf(vap->iv_ic, "%s: %d quuees still not "
+			ic_printf(vap->iv_ic, "%s: %d queues still not "
 			    "allocated by driver\n", __func__, count);
 #endif
 	}
