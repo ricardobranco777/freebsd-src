@@ -3382,6 +3382,7 @@ syscall32_helper_unregister(struct syscall_helper_data *sd)
 int
 freebsd32_copyout_strings(struct image_params *imgp, uintptr_t *stack_base)
 {
+	struct sysentvec *sysent;
 	int argc, envc, i;
 	uint32_t *vectp;
 	char *stringp;
@@ -3392,6 +3393,7 @@ freebsd32_copyout_strings(struct image_params *imgp, uintptr_t *stack_base)
 	size_t execpath_len;
 	int error, szsigcode;
 
+<<<<<<< HEAD
 	/*
 	 * Calculate string base and vector table pointers.
 	 * Also deal with signal trampoline code for this exec type.
@@ -3410,15 +3412,22 @@ freebsd32_copyout_strings(struct image_params *imgp, uintptr_t *stack_base)
 	else {
 		szsigcode = 0;
 	}
+=======
+	sysent = imgp->sysent;
+
+	arginfo = (struct freebsd32_ps_strings *)sysent->sv_psstrings;
+	imgp->ps_strings = arginfo;
+>>>>>>> origin/freebsd/current/main
 	destp =	(uintptr_t)arginfo;
 
 	/*
-	 * install sigcode
+	 * Install sigcode.
 	 */
-	if (szsigcode != 0) {
+	if (sysent->sv_sigcode_base == 0) {
+		szsigcode = *sysent->sv_szsigcode;
 		destp -= szsigcode;
 		destp = rounddown2(destp, sizeof(uint32_t));
-		error = copyout(imgp->proc->p_sysent->sv_sigcode, (void *)destp,
+		error = copyout(sysent->sv_sigcode, (void *)destp,
 		    szsigcode);
 		if (error != 0)
 			return (error);
@@ -3427,7 +3436,8 @@ freebsd32_copyout_strings(struct image_params *imgp, uintptr_t *stack_base)
 	/*
 	 * Copy the image path for the rtld.
 	 */
-	if (execpath_len != 0) {
+	if (imgp->execpath != NULL && imgp->auxargs != NULL) {
+		execpath_len = strlen(imgp->execpath) + 1;
 		destp -= execpath_len;
 		imgp->execpathp = (void *)destp;
 		error = copyout(imgp->execpath, imgp->execpathp, execpath_len);
