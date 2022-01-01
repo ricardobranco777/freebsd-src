@@ -1685,32 +1685,23 @@ exec_copyout_strings(struct image_params *imgp, uintptr_t *stack_base)
 	char canary[sizeof(long) * 8];
 
 	p = imgp->proc;
-<<<<<<< HEAD
+	sysent = p->p_sysent;
 	szsigcode = 0;
 	arginfo = (struct ps_strings *)p->p_psstrings;
-	p->p_sigcode_base = p->p_sysent->sv_sigcode_base;
+	p->p_sigcode_base = sysent->sv_sigcode_base;
 	imgp->ps_strings = arginfo;
-	if (p->p_sigcode_base == 0) {
-		if (p->p_sysent->sv_szsigcode != NULL)
-			szsigcode = *(p->p_sysent->sv_szsigcode);
-#ifdef PAX_ASLR
-	} else {
-		// XXXOP
-		pax_aslr_vdso(p, &(p->p_sigcode_base));
-#endif
-	}
-=======
-	sysent = p->p_sysent;
-
-	arginfo = (struct ps_strings *)sysent->sv_psstrings;
->>>>>>> origin/freebsd/current/main
 	destp =	(uintptr_t)arginfo;
-	imgp->ps_strings = arginfo;
+
+#ifdef PAX_ASLR
+	if (p->p_sigcode_base != 0) {
+		pax_aslr_vdso(p, &(p->p_sigcode_base));
+	}
+#endif
 
 	/*
 	 * Install sigcode.
 	 */
-	if (sysent->sv_sigcode_base == 0 && sysent->sv_szsigcode != NULL) {
+	if (p->p_sigcode_base == 0 && sysent->sv_szsigcode != NULL) {
 		szsigcode = *(sysent->sv_szsigcode);
 		destp -= szsigcode;
 		destp = rounddown2(destp, sizeof(void *));
