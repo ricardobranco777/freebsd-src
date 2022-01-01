@@ -787,7 +787,7 @@ lkpi_sta_scan_to_auth(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 		int i, count;
 
 		count = 3 * (hw->queues + 1);
-		KASSERT(count > hw->queues, "Integer overflow");
+		KASSERT(count > hw->queues, ("Integer overflow"));
 		count = 0;
 
 		for (i = 3 * (hw->queues + 1); i > 0; i--) {
@@ -810,8 +810,7 @@ lkpi_sta_scan_to_auth(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 
 				ltxq = TXQ_TO_LTXQ(sta->txq[tid]);
 				if (!ltxq->seen_dequeue) {
-					KASSERT(count + 1 > count,
-					    "Integer overflow");
+					KASSERT(count + 1 > count, ("Integer overflow"));
 					count++;
 				}
 			}
