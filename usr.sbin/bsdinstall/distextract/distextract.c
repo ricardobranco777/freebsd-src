@@ -64,19 +64,10 @@ main(void)
 	int retval;
 	size_t minibar_size = sizeof(struct bsddialog_fileminibar);
 	size_t span;
-<<<<<<< HEAD
-	struct dpv_config *config;
-	struct dpv_file_node *dist = dists;
-	static char backtitle[] = "HardenedBSD Installer";
-	static char title[] = "Archive Extraction";
-	static char aprompt[] = "\n  Overall Progress:";
-	static char pprompt[] = "Extracting distribution files...\n";
-=======
 	unsigned int nminibars;
 	struct bsddialog_fileminibar *dists;
 	struct bsddialog_progviewconf pvconf;
 	struct bsddialog_conf conf;
->>>>>>> origin/freebsd/current/main
 	struct sigaction act;
 	char error[PATH_MAX + 512];
 
@@ -88,7 +79,7 @@ main(void)
 	if (bsddialog_init() == BSDDIALOG_ERROR)
 		errx(EXIT_FAILURE, "Cannot init libbsdialog");
 	bsddialog_initconf(&conf);
-	bsddialog_backtitle(&conf, __DECONST(char *, "FreeBSD Installer"));
+	bsddialog_backtitle(&conf, __DECONST(char *, "HardenedBSD Installer"));
 	bsddialog_infobox(&conf,
 	    __DECONST(char *, "Checking distribution archives.\n"
 	    "Please wait..."), 4, 35);
