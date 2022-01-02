@@ -763,8 +763,10 @@ interpret:
 	}
 
 	p->p_psstrings = p->p_sysent->sv_psstrings;
+	p->p_vdso_base = p->p_sysent->sv_vdso_base;
 #ifdef PAX_ASLR
 	pax_aslr_stack_with_gap(p, &(p->p_psstrings));
+	pax_aslr_vdso(p, &(p->p_vdso_base));
 #endif
 
 	/*
