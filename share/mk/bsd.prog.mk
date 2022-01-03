@@ -73,7 +73,6 @@ TAG_ARGS=	-T ${TAGS:[*]:S/ /,/g}
 LDFLAGS+= -static
 .endif
 
-<<<<<<< HEAD
 .if defined(MK_PIE)
 # Ports will not have MK_PIE defined and the following logic requires
 # it be defined.
@@ -141,8 +140,6 @@ CFLAGS+=	-mspeculative-load-hardening
 CFLAGS+= -ftls-model=initial-exec
 .endif
 
-=======
->>>>>>> origin/freebsd/current/main
 .if ${MK_DEBUG_FILES} != "no"
 PROG_FULL=${PROG}.full
 # Use ${DEBUGDIR} for base system debug files, else .debug subdirectory

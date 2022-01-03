@@ -86,22 +86,6 @@ __DEFAULT_DEPENDENT_OPTIONS = \
     STAGING_PROG/STAGING \
     STALE_STAGED/STAGING \
 
-<<<<<<< HEAD
-=======
-#
-# Default to disabling PIE on 32-bit architectures. The small address space
-# means that ASLR is of limited effectiveness, and it may cause issues with
-# some memory-hungry workloads.
-#
-.if ${MACHINE_ARCH} == "armv6" || ${MACHINE_ARCH} == "armv7" \
-    || ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "powerpc" \
-    || ${MACHINE_ARCH} == "powerpcspe"
-__DEFAULT_NO_OPTIONS+= PIE
-.else
-__DEFAULT_YES_OPTIONS+=PIE
-.endif
-
->>>>>>> origin/freebsd/current/main
 .include <bsd.mkopt.mk>
 
 #
