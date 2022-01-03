@@ -1,7 +1,9 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Copyright (c) 2021 The FreeBSD Foundation
  *
- * This software were developed by Konstantin Belousov <kib@FreeBSD.org>
+ * This software was developed by Konstantin Belousov <kib@FreeBSD.org>
  * under sponsorship from the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,31 +28,21 @@
  * SUCH DAMAGE.
  */
 
-#include <errno.h>
-#include <sched.h>
-#include <string.h>
+#include <sys/cdefs.h>
 
-int
-sched_getaffinity(pid_t pid, size_t cpusetsz, cpuset_t *cpuset)
-{
-	/*
-	 * Be more Linux-compatible:
-	 * - return EINVAL in passed size is less than size of cpuset_t
-	 *   in advance, instead of ERANGE from the syscall
-	 * - if passed size is larger than the size of cpuset_t, be
-	 *   permissive by claming it back to sizeof(cpuset_t) and
-	 *   zeroing the rest.
-	 */
-	if (cpusetsz < sizeof(cpuset_t)) {
-		errno = EINVAL;
-		return (-1);
-	}
-	if (cpusetsz > sizeof(cpuset_t)) {
-		memset((char *)cpuset + sizeof(cpuset_t), 0,
-		    cpusetsz - sizeof(cpuset_t));
-		cpusetsz = sizeof(cpuset_t);
-	}
+#define	VDSO_BLOB_START(S)	__CONCAT(_binary_, __CONCAT(S, _start))
+#define	VDSO_BLOB_END(S)	__CONCAT(_binary_, __CONCAT(S, _end))
+#define	VDSO_BLOB_SIZE(S)	__CONCAT(_binary_, __CONCAT(S, _size))
 
-	return (cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_PID,
-	    pid == 0 ? -1 : pid, cpusetsz, cpuset));
-}
+	.section .rodata, "a", %progbits
+	.globl	VDSO_BLOB_START(VDSO_NAME)
+	.type	VDSO_BLOB_START(VDSO_NAME), %object
+	.size	VDSO_BLOB_START(VDSO_NAME), 0
+VDSO_BLOB_START(VDSO_NAME):
+	.incbin	__XSTRING(VDSO_FILE)
+	.globl	VDSO_BLOB_END(VDSO_NAME)
+	.type	VDSO_BLOB_END(VDSO_NAME), %object
+	.size	VDSO_BLOB_END(VDSO_NAME), 0
+VDSO_BLOB_END(VDSO_NAME):
+	.globl	VDSO_BLOB_SIZE(VDSO_NAME)
+	.set	VDSO_BLOB_SIZE(VDSO_NAME), . - VDSO_BLOB_START(VDSO_NAME)

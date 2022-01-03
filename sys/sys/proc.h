@@ -716,6 +716,7 @@ struct proc {
 	vm_offset_t	p_timekeep_base;	/* (c) Address of timekeep structure. */
 	vm_offset_t	p_shared_page_base;	/* (c) Address of shared page. */
 	vm_offset_t	p_sigcode_base;	/* (c) Address of sigcode. */
+	vm_offset_t	p_vdso_base;
 	uint64_t	p_elf_flags;	/* (x) ELF flags */
 	void		*p_elf_brandinfo; /* (x) Elf_Brandinfo, NULL for
 						 non ELF binaries. */
