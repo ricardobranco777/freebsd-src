@@ -208,12 +208,8 @@ __DEFAULT_NO_OPTIONS = \
     EXPERIMENTAL \
     FREEBSD_UPDATE \
     HESIOD \
-<<<<<<< HEAD
     LIB32 \
-    LIBSOFT \
     HTTPD \
-=======
->>>>>>> origin/freebsd/current/main
     LOADER_FIREWIRE \
     LOADER_VERBOSE \
     LOADER_VERIEXEC_PASS_MANIFEST \
@@ -299,18 +295,6 @@ __DEFAULT_NO_OPTIONS+=LLVM_TARGET_BPF LLVM_TARGET_MIPS
 __DEFAULT_YES_OPTIONS+=LLDB
 .else
 __DEFAULT_NO_OPTIONS+=LLDB
-.endif
-<<<<<<< HEAD
-# Only doing soft float API stuff on armv6 and armv7
-.if ${__T} != "armv6" && ${__T} != "armv7"
-BROKEN_OPTIONS+=LIBSOFT
-=======
-# LIB32 is supported on amd64 and powerpc64
-.if (${__T} == "amd64" || ${__T} == "powerpc64")
-__DEFAULT_YES_OPTIONS+=LIB32
-.else
-BROKEN_OPTIONS+=LIB32
->>>>>>> origin/freebsd/current/main
 .endif
 # EFI doesn't exist on powerpc (well, officially)
 .if ${__T:Mpowerpc*}
