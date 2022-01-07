@@ -209,7 +209,6 @@ __DEFAULT_NO_OPTIONS = \
     FREEBSD_UPDATE \
     HESIOD \
     LIB32 \
-    LIBSOFT \
     HTTPD \
     LOADER_FIREWIRE \
     LOADER_VERBOSE \
@@ -296,10 +295,6 @@ __DEFAULT_NO_OPTIONS+=LLVM_TARGET_BPF LLVM_TARGET_MIPS
 __DEFAULT_YES_OPTIONS+=LLDB
 .else
 __DEFAULT_NO_OPTIONS+=LLDB
-.endif
-# Only doing soft float API stuff on armv6 and armv7
-.if ${__T} != "armv6" && ${__T} != "armv7"
-BROKEN_OPTIONS+=LIBSOFT
 .endif
 # EFI doesn't exist on powerpc (well, officially)
 .if ${__T:Mpowerpc*}
