@@ -4276,7 +4276,6 @@ vmspace_fork(struct vmspace *vm1, vm_ooffset_t *fork_charge)
 	vm2->vm_taddr = vm1->vm_taddr;
 	vm2->vm_daddr = vm1->vm_daddr;
 	vm2->vm_maxsaddr = vm1->vm_maxsaddr;
-<<<<<<< HEAD
 #ifdef PAX_ASLR
 	vm2->vm_aslr_delta_exec = vm1->vm_aslr_delta_exec;
 	vm2->vm_aslr_delta_mmap = vm1->vm_aslr_delta_mmap;
@@ -4287,9 +4286,6 @@ vmspace_fork(struct vmspace *vm1, vm_ooffset_t *fork_charge)
 	vm2->vm_aslr_delta_map32bit = vm1->vm_aslr_delta_map32bit;
 #endif
 #endif
-=======
-	vm2->vm_stacktop = vm1->vm_stacktop;
->>>>>>> origin/freebsd/current/main
 	vm_map_lock(old_map);
 	if (old_map->busy)
 		vm_map_wait_busy(old_map);
