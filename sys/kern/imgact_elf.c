@@ -1087,14 +1087,13 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	Elf_Brandinfo *brand_info;
 	struct sysentvec *sv;
 	u_long addr, baddr, et_dyn_addr, entry, proghdr;
-	u_long maxalign, maxsalign, mapsz, maxv, maxv1, anon_loc;
+	u_long maxalign, maxsalign, mapsz, maxv, maxv1;
 	uint32_t fctl0;
 	int32_t osrel;
 	bool free_interp;
-	int do_asr, error, i, n;
+	int error, i, n;
 
 	hdr = (const Elf_Ehdr *)imgp->image_header;
-	do_asr = 0;
 
 	/*
 	 * Do we have a valid ELF header ?
@@ -1221,11 +1220,6 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 		 * non-zero for some reason.
 		 */
 		if (baddr == 0) {
-			if ((__elfN(pie_aslr_enabled) &&
-			    (imgp->proc->p_flag2 & P2_ASLR_DISABLE) == 0) ||
-			    (imgp->proc->p_flag2 & P2_ASLR_ENABLE) != 0)
-				do_asr = 1;
-
 			et_dyn_addr = ET_DYN_LOAD_ADDR;
 		}
 	}
@@ -1243,75 +1237,24 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	 */
 	VOP_UNLOCK(imgp->vp);
 
-	/*
-	 * Decide whether to enable randomization of user mappings.
-	 * First, reset user preferences for the setid binaries.
-	 * Then, account for the support of the randomization by the
-	 * ABI, by user preferences, and make special treatment for
-	 * PIE binaries.
-	 */
-	if (imgp->credential_setid) {
-		PROC_LOCK(imgp->proc);
-		imgp->proc->p_flag2 &= ~(P2_ASLR_ENABLE | P2_ASLR_DISABLE |
-		    P2_WXORX_DISABLE | P2_WXORX_ENABLE_EXEC);
-		PROC_UNLOCK(imgp->proc);
-	}
-
-	if (((imgp->proc->p_flag2 & P2_ASLR_ENABLE) != 0 ||
-	    (__elfN(aslr_enabled) && hdr->e_type == ET_EXEC)) ||
-	    do_asr) {
-		imgp->map_flags |= MAP_ASLR;
-		/*
-		 * If user does not care about sbrk, utilize the bss
-		 * grow region for mappings as well.  We can select
-		 * the base for the image anywere and still not suffer
-		 * from the fragmentation.
-		 */
-		if (!__elfN(aslr_honor_sbrk) ||
-		    (imgp->proc->p_flag2 & P2_ASLR_IGNSTART) != 0)
-			imgp->map_flags |= MAP_ASLR_IGNSTART;
-		if (__elfN(aslr_stack))
-			imgp->map_flags |= MAP_ASLR_STACK;
-	}
-
 	error = exec_new_vmspace(imgp, sv);
+	vmspace = imgp->proc->p_vmspace;
+	map = &(vmspace->vm_map);
 
 	imgp->proc->p_sysent = sv;
 	imgp->proc->p_elf_brandinfo = brand_info;
 
-<<<<<<< HEAD
 	maxv = vm_map_max(map) - lim_max(td, RLIMIT_STACK);
 
 #ifdef PAX_ASLR
-	/*
-	 * Only use HardenedBSD's PaX ASLR implementation when
-	 * FreeBSD's ASR is disabled.
-	 */
-	if (!do_asr && (hdr->e_type == ET_DYN && baddr == 0)) {
+	if (hdr->e_type == ET_DYN && baddr == 0) {
 		pax_aslr_execbase(imgp->proc, &et_dyn_addr);
 	}
 #endif
 
 	if (mapsz >= maxv - vm_map_min(map)) {
-=======
-	vmspace = imgp->proc->p_vmspace;
-	map = &vmspace->vm_map;
-	maxv = sv->sv_usrstack;
-	if ((imgp->map_flags & MAP_ASLR_STACK) == 0)
-		maxv -= lim_max(td, RLIMIT_STACK);
-	if (error == 0 && mapsz >= maxv - vm_map_min(map)) {
->>>>>>> origin/freebsd/current/main
 		uprintf("Excessive mapping size\n");
 		error = ENOEXEC;
-	}
-
-	if (do_asr) {
-		KASSERT((map->flags & MAP_ASLR) != 0,
-		    ("do_asr but !MAP_ASLR"));
-		error = __CONCAT(rnd_, __elfN(base))(map,
-		    vm_map_min(map) + mapsz + lim_max(td, RLIMIT_DATA),
-		    /* reserve half of the address space to interpreter */
-		    maxv / 2, maxalign, &et_dyn_addr);
 	}
 
 	vn_lock(imgp->vp, LK_SHARED | LK_RETRY);
@@ -1326,6 +1269,8 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	if (error != 0)
 		goto ret;
 
+	entry = (u_long)(hdr->e_entry) + et_dyn_addr;
+
 	/*
 	 * We load the dynamic linker where a userland call
 	 * to mmap(0, ...) would put it.  The rationale behind this
@@ -1336,28 +1281,12 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	vmspace = imgp->proc->p_vmspace;
 	addr = round_page((vm_offset_t)vmspace->vm_daddr + lim_max(td,
 	    RLIMIT_DATA));
-	if ((map->flags & MAP_ASLR) != 0) {
-		maxv1 = maxv / 2 + addr / 2;
-		error = __CONCAT(rnd_, __elfN(base))(map, addr, maxv1,
-		    (MAXPAGESIZES > 1 && pagesizes[1] != 0) ?
-		    pagesizes[1] : pagesizes[0], &anon_loc);
-		if (error != 0)
-			goto ret;
-		map->anon_loc = anon_loc;
-	} else {
 #ifdef PAX_ASLR
-		pax_aslr_rtld(imgp->proc, &addr);
+	pax_aslr_rtld(imgp->proc, &addr);
 #endif
-		map->anon_loc = addr;
-	}
-
-<<<<<<< HEAD
 	map->anon_loc = addr;
 	PROC_UNLOCK(imgp->proc);
 
-=======
-	entry = (u_long)hdr->e_entry + et_dyn_addr;
->>>>>>> origin/freebsd/current/main
 	imgp->entry_addr = entry;
 
 	if (interp != NULL) {
@@ -1375,8 +1304,9 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 		vn_lock(imgp->vp, LK_SHARED | LK_RETRY);
 		if (error != 0)
 			goto ret;
-	} else
+	} else {
 		addr = et_dyn_addr;
+	}
 
 	error = exec_map_stack(imgp);
 	if (error != 0)
@@ -2520,15 +2450,9 @@ __elfN(note_procstat_psstrings)(void *arg, struct sbuf *sb, size_t *sizep)
 		KASSERT(*sizep == size, ("invalid size"));
 		structsize = sizeof(ps_strings);
 #if defined(COMPAT_FREEBSD32) && __ELF_WORD_SIZE == 32
-<<<<<<< HEAD
-		ps_strings = PTROUT(p->p_psstrings);
-#else
-		ps_strings = p->p_psstrings;
-=======
 		ps_strings = PTROUT(PROC_PS_STRINGS(p));
 #else
 		ps_strings = PROC_PS_STRINGS(p);
->>>>>>> origin/freebsd/current/main
 #endif
 		sbuf_bcat(sb, &structsize, sizeof(structsize));
 		sbuf_bcat(sb, &ps_strings, sizeof(ps_strings));

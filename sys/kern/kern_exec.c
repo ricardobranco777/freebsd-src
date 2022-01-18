@@ -165,46 +165,16 @@ sysctl_kern_ps_strings(SYSCTL_HANDLER_ARGS)
 #ifdef SCTL_MASK32
 	if (req->flags & SCTL_MASK32) {
 		unsigned int val;
-<<<<<<< HEAD
-		val = (unsigned int)p->p_psstrings;
-		error = SYSCTL_OUT(req, &val, sizeof(val));
-	} else
-#endif
-		error = SYSCTL_OUT(req, &p->p_psstrings,
-		   sizeof(p->p_psstrings));
-	return error;
-=======
 		val = (unsigned int)PROC_PS_STRINGS(p);
 		return (SYSCTL_OUT(req, &val, sizeof(val)));
 	}
 #endif
 	ps_strings = PROC_PS_STRINGS(p);
 	return (SYSCTL_OUT(req, &ps_strings, sizeof(ps_strings)));
->>>>>>> origin/freebsd/current/main
 }
 
 static int
 sysctl_kern_usrstack(SYSCTL_HANDLER_ARGS)
-{
-	struct proc *p;
-	vm_offset_t val;
-
-	p = curproc;
-#ifdef SCTL_MASK32
-	if (req->flags & SCTL_MASK32) {
-<<<<<<< HEAD
-		unsigned int val;
-		val = (unsigned int)p->p_usrstack;
-		error = SYSCTL_OUT(req, &val, sizeof(val));
-	} else
-#endif
-		error = SYSCTL_OUT(req, &p->p_usrstack,
-		    sizeof(p->p_usrstack));
-	return (error);
-}
-
-static int
-sysctl_kern_stacktop(SYSCTL_HANDLER_ARGS)
 {
 	struct proc *p;
 	int error;
@@ -220,16 +190,6 @@ sysctl_kern_stacktop(SYSCTL_HANDLER_ARGS)
 		error = SYSCTL_OUT(req, &p->p_usrstack,
 		    sizeof(p->p_usrstack));
 	return (error);
-=======
-		unsigned int val32;
-
-		val32 = round_page((unsigned int)p->p_vmspace->vm_stacktop);
-		return (SYSCTL_OUT(req, &val32, sizeof(val32)));
-	}
-#endif
-	val = round_page(p->p_vmspace->vm_stacktop);
-	return (SYSCTL_OUT(req, &val, sizeof(val)));
->>>>>>> origin/freebsd/current/main
 }
 
 static int
@@ -1188,12 +1148,6 @@ exec_new_vmspace(struct image_params *imgp, struct sysentvec *sv)
 	vm_object_t obj;
 	vm_offset_t sv_minuser;
 	vm_map_t map;
-<<<<<<< HEAD
-	u_long ssiz;
-	vm_prot_t stackprot;
-	vm_prot_t stackmaxprot;
-=======
->>>>>>> origin/freebsd/current/main
 
 	imgp->vmspace_destroyed = true;
 	imgp->sysent = sv;
@@ -1219,17 +1173,8 @@ exec_new_vmspace(struct image_params *imgp, struct sysentvec *sv)
 		shmexit(vmspace);
 		pmap_remove_pages(vmspace_pmap(vmspace));
 		vm_map_remove(map, vm_map_min(map), vm_map_max(map));
-		/*
-		 * An exec terminates mlockall(MCL_FUTURE), ASLR state
-		 * must be re-evaluated.
-		 */
 		vm_map_lock(map);
-		vm_map_modflags(map, 0, MAP_WIREFUTURE | MAP_ASLR |
-<<<<<<< HEAD
-		    MAP_ASLR_IGNSTART);
-=======
-		    MAP_ASLR_IGNSTART | MAP_ASLR_STACK | MAP_WXORX);
->>>>>>> origin/freebsd/current/main
+		vm_map_modflags(map, 0, MAP_WIREFUTURE | MAP_ASLR_IGNSTART);
 		vm_map_unlock(map);
 	} else {
 		error = vmspace_exec(p, sv_minuser, sv->sv_maxuser);
@@ -1294,12 +1239,14 @@ exec_map_stack(struct image_params *imgp)
 	struct proc *p;
 	vm_map_t map;
 	struct vmspace *vmspace;
-	vm_offset_t stack_addr, stack_top;
+	vm_offset_t stack_addr;
 	u_long ssiz;
-	int error, find_space, stack_off;
-	vm_prot_t stack_prot;
+	int error;
+	vm_prot_t stack_prot, stackmaxprot;
 
 	p = imgp->proc;
+	vmspace = p->p_vmspace;
+	map = &(vmspace->vm_map);
 	sv = p->p_sysent;
 
 	if (imgp->stack_sz != 0) {
@@ -1319,7 +1266,6 @@ exec_map_stack(struct image_params *imgp)
 		ssiz = maxssiz;
 	}
 
-<<<<<<< HEAD
 	stack_addr = sv->sv_usrstack;
 #ifdef PAX_ASLR
 	/* Randomize the stack top. */
@@ -1331,54 +1277,26 @@ exec_map_stack(struct image_params *imgp)
 	p->p_usrstack = stack_addr;
 	/* Calculate the stack's mapping address.  */
 	stack_addr -= ssiz;
-	stackprot = obj != NULL && imgp->stack_prot != 0 ? imgp->stack_prot : sv->sv_stackprot;
+	stack_prot = sv->sv_shared_page_obj != NULL && imgp->stack_prot != 0 ?
+	    imgp->stack_prot : sv->sv_stackprot;
 	stackmaxprot = VM_PROT_ALL;
 #ifdef PAX_NOEXEC
 	PROC_LOCK(p);
-	pax_noexec_nx(p, &stackprot, &stackmaxprot);
+	pax_noexec_nx(p, &stack_prot, &stackmaxprot);
 	PROC_UNLOCK(p);
 #endif
-	imgp->eff_stack_sz = lim_cur(curthread, RLIMIT_STACK);
-	if (ssiz < imgp->eff_stack_sz)
-		imgp->eff_stack_sz = ssiz;
+	imgp->stack_sz = lim_cur(curthread, RLIMIT_STACK);
+	if (ssiz < imgp->stack_sz)
+		imgp->stack_sz = ssiz;
 	error = vm_map_stack(map, stack_addr, (vm_size_t)ssiz,
-	    stackprot, stackmaxprot, MAP_STACK_GROWS_DOWN);
+	    stack_prot, stackmaxprot, MAP_STACK_GROWS_DOWN);
 	if (error != KERN_SUCCESS) {
 #ifdef PAX_ASLR
 		pax_log_aslr(p, PAX_LOG_DEFAULT,
 		    "failed to map the main stack @%p",
 		    (void *)p->p_usrstack);
 #endif
-=======
-	vmspace = p->p_vmspace;
-	map = &vmspace->vm_map;
-
-	stack_prot = sv->sv_shared_page_obj != NULL && imgp->stack_prot != 0 ?
-	    imgp->stack_prot : sv->sv_stackprot;
-	if ((map->flags & MAP_ASLR_STACK) != 0) {
-		stack_addr = round_page((vm_offset_t)p->p_vmspace->vm_daddr +
-		    lim_max(curthread, RLIMIT_DATA));
-		find_space = VMFS_ANY_SPACE;
-	} else {
-		stack_addr = sv->sv_usrstack - ssiz;
-		find_space = VMFS_NO_SPACE;
-	}
-	error = vm_map_find(map, NULL, 0, &stack_addr, (vm_size_t)ssiz,
-	    sv->sv_usrstack, find_space, stack_prot, VM_PROT_ALL,
-	    MAP_STACK_GROWS_DOWN);
-	if (error != KERN_SUCCESS) {
-		uprintf("exec_new_vmspace: mapping stack size %#jx prot %#x "
-		    "failed, mach error %d errno %d\n", (uintmax_t)ssiz,
-		    stack_prot, error, vm_mmap_to_errno(error));
->>>>>>> origin/freebsd/current/main
 		return (vm_mmap_to_errno(error));
-	}
-
-	stack_top = stack_addr + ssiz;
-	if ((map->flags & MAP_ASLR_STACK) != 0) {
-		/* Randomize within the first page of the stack. */
-		arc4rand(&stack_off, sizeof(stack_off), 0);
-		stack_top -= rounddown2(stack_off & PAGE_MASK, sizeof(void *));
 	}
 
 	/*
@@ -1386,7 +1304,6 @@ exec_map_stack(struct image_params *imgp)
 	 * are still used to enforce the stack rlimit on the process stack.
 	 */
 	vmspace->vm_maxsaddr = (char *)stack_addr;
-	vmspace->vm_stacktop = stack_top;
 	vmspace->vm_ssize = sgrowsiz >> PAGE_SHIFT;
 
 	return (0);
@@ -1744,9 +1661,8 @@ exec_copyout_strings(struct image_params *imgp, uintptr_t *stack_base)
 
 	p = imgp->proc;
 	sysent = p->p_sysent;
-<<<<<<< HEAD
 	szsigcode = 0;
-	arginfo = (struct ps_strings *)p->p_psstrings;
+	arginfo = (struct ps_strings *)PROC_PS_STRINGS(p);
 	p->p_sigcode_base = sysent->sv_sigcode_base;
 	imgp->ps_strings = arginfo;
 	destp =	(uintptr_t)arginfo;
@@ -1756,11 +1672,6 @@ exec_copyout_strings(struct image_params *imgp, uintptr_t *stack_base)
 		pax_aslr_vdso(p, &(p->p_sigcode_base));
 	}
 #endif
-=======
-
-	destp =	PROC_PS_STRINGS(p);
-	arginfo = imgp->ps_strings = (void *)destp;
->>>>>>> origin/freebsd/current/main
 
 	/*
 	 * Install sigcode.
