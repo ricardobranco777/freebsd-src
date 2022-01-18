@@ -337,8 +337,6 @@ SUBDIR=	\
 	send \
 	${_sfxge} \
 	sge \
-	${_sgx} \
-	${_sgx_linux} \
 	siftr \
 	siis \
 	sis \
@@ -732,8 +730,6 @@ _qlxgbe=	qlxgbe
 _qlnx=		qlnx
 .endif
 _sfxge=		sfxge
-_sgx=		sgx
-_sgx_linux=	sgx_linux
 _smartpqi=	smartpqi
 _p2sb=		p2sb
 
