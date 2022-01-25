@@ -48,6 +48,7 @@ statistic (fp, path_fcodes)
 	register u_char *p, *s;
 	register int c;
 	int count;
+	int error = 0;
 	u_char bigram1[NBG], bigram2[NBG], path[MAXPATHLEN];
 
 	for (c = 0, p = bigram1, s = bigram2; c < NBG; c++) {
@@ -66,6 +67,13 @@ statistic (fp, path_fcodes)
 		} else
 			count += c - OFFSET;
 		
+		if (count < 0 || count > MAXPATHLEN) {
+			/* stop on error and display the statstics anyway */
+			warnx("corrupted database: %s", path_fcodes);
+			error = 1;
+			break;
+		}
+
 		for (p = path + count; (c = getc(fp)) > SWITCH; size++)
 			if (c < PARITY) {
 				if (c == UMLAUT) {
@@ -98,6 +106,9 @@ statistic (fp, path_fcodes)
 	(void)printf("Integers: %ld, ", zwerg);
 	(void)printf("8-Bit characters: %ld\n", umlaut);
 
+	/* non zero exit on corrupt database */
+	if (error)
+		exit(error);
 }
 #endif /* _LOCATE_STATISTIC_ */
 
