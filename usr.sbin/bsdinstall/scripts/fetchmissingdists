@@ -30,7 +30,11 @@
 
 error()
 {
+<<<<<<< HEAD
 	dialog --backtitle "HardenedBSD Installer" --title "Error" --msgbox $1 0 0
+=======
+	dialog --backtitle "FreeBSD Installer" --title "Error" --msgbox "$1" 0 0
+>>>>>>> origin/freebsd/current/main
 	exit 1
 }
 

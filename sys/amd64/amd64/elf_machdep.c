@@ -38,6 +38,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/linker.h>
 #include <sys/pax.h>
 #include <sys/proc.h>
+#include <sys/reg.h>
 #include <sys/sysent.h>
 #include <sys/imgact_elf.h>
 #include <sys/syscall.h>
@@ -99,6 +100,8 @@ struct sysentvec elf64_freebsd_sysvec_la48 = {
 	.sv_onexec_old	= exec_onexec_old,
 	.sv_onexit	= exit_onexit,
 	.sv_set_fork_retval = x86_set_fork_retval,
+	.sv_regset_begin = SET_BEGIN(__elfN(regset)),
+	.sv_regset_end  = SET_LIMIT(__elfN(regset)),
 };
 
 struct sysentvec elf64_freebsd_sysvec_la57 = {
@@ -142,6 +145,8 @@ struct sysentvec elf64_freebsd_sysvec_la57 = {
 	.sv_onexec_old	= exec_onexec_old,
 	.sv_onexit	= exit_onexit,
 	.sv_set_fork_retval=  x86_set_fork_retval,
+	.sv_regset_begin = SET_BEGIN(__elfN(regset)),
+	.sv_regset_end  = SET_LIMIT(__elfN(regset)),
 };
 
 static void
