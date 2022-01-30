@@ -754,7 +754,7 @@ interpret:
 		goto exec_fail_dealloc;
 	}
 
-	if (imgp->args->argc == 0) {
+	if (!(imgp->args->argc > 0)) {
 		error = EINVAL;
 		vn_lock(imgp->vp, LK_SHARED | LK_RETRY);
 		goto exec_fail_dealloc;
