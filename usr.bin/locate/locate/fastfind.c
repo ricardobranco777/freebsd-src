@@ -45,8 +45,8 @@ statistic (fp, path_fcodes)
 	char *path_fcodes;  	/* for error message */
 {
 	long lines, chars, size, big, zwerg, umlaut;
-	register u_char *p, *s;
-	register int c;
+	u_char *p, *s;
+	int c;
 	int count, longest_path;
 	int error = 0;
 	u_char bigram1[NBG], bigram2[NBG], path[MAXPATHLEN];
@@ -67,7 +67,7 @@ statistic (fp, path_fcodes)
 		} else
 			count += c - OFFSET;
 		
-		if (count < 0 || count > MAXPATHLEN) {
+		if (count < 0 || count >= MAXPATHLEN) {
 			/* stop on error and display the statstics anyway */
 			warnx("corrupted database: %s", path_fcodes);
 			error = 1;
@@ -151,11 +151,11 @@ fastfind
 #endif /* MMAP */
 
 {
-	register u_char *p, *s, *patend, *q, *foundchar;
-	register int c, cc;
+	u_char *p, *s, *patend, *q, *foundchar;
+	int c, cc;
 	int count, found, globflag;
 	u_char *cutoff;
-	u_char bigram1[NBG], bigram2[NBG], path[MAXPATHLEN];
+	u_char bigram1[NBG], bigram2[NBG], path[MAXPATHLEN + 2];
 
 #ifdef FF_ICASE
 	/* use a lookup table for case insensitive search */
@@ -206,7 +206,9 @@ fastfind
 	foundchar = 0;
 
 #ifdef FF_MMAP
-	c = (u_char)*paddr++; len--;
+	c = (u_char)*paddr++;
+	len--;
+
 	for (; len > 0; ) {
 #else
 	c = getc(fp);
@@ -216,8 +218,12 @@ fastfind
 		/* go forward or backward */
 		if (c == SWITCH) { /* big step, an integer */
 #ifdef FF_MMAP
+			if (len < sizeof(int))
+				errx(1, "corrupted database: %s", database);
+
 			count += getwm(paddr) - OFFSET;
-			len -= INTSIZE; paddr += INTSIZE;
+			len -= INTSIZE;
+			paddr += INTSIZE;
 #else
 			count +=  getwf(fp) - OFFSET;
 #endif /* FF_MMAP */
@@ -225,8 +231,9 @@ fastfind
 			count += c - OFFSET;
 		}
 
-		if (count < 0 || count > MAXPATHLEN)
-			errx(1, "corrupted database: %s", database);
+		if (count < 0 || count >= MAXPATHLEN)
+			errx(1, "corrupted database: %s %d", database, count);
+
 		/* overlay old path */
 		p = path + count;
 		foundchar = p - 1;
@@ -285,6 +292,10 @@ fastfind
 				*p++ = bigram1[c];
 				*p++ = bigram2[c];
 			}
+
+			if (p - path >= MAXPATHLEN) 
+				errx(1, "corrupted database: %s", database);
+
 		}
 		
 		if (found) {                     /* previous line matched */
