@@ -773,11 +773,7 @@ linux_copyout_strings(struct image_params *imgp, uintptr_t *stack_base)
 	char canary[LINUX_AT_RANDOM_LEN];
 	size_t execpath_len;
 
-<<<<<<< HEAD
-	arginfo = (struct linux32_ps_strings *)(imgp->proc->p_psstrings);
-=======
 	arginfo = (struct linux32_ps_strings *)PROC_PS_STRINGS(imgp->proc);
->>>>>>> origin/freebsd/current/main
 	destp = (uintptr_t)arginfo;
 
 	if (imgp->execpath != NULL && imgp->auxargs != NULL) {
