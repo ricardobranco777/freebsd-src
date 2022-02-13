@@ -866,7 +866,6 @@ thread_cow_update(struct thread *td)
 	struct plimit *oldlimit;
 
 	p = td->td_proc;
-	oldlimit = NULL;
 	PROC_LOCK(p);
 	oldcred = crcowsync();
 	oldlimit = lim_cowsync();
