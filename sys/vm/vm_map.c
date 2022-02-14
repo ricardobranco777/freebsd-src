@@ -4725,11 +4725,7 @@ retry:
 	 * limit.
 	 */
 	is_procstack = addr >= (vm_offset_t)vm->vm_maxsaddr &&
-<<<<<<< HEAD
 	    addr < (vm_offset_t)p->p_usrstack;
-=======
-	    addr < (vm_offset_t)vm->vm_stacktop;
->>>>>>> origin/freebsd/current/main
 	if (is_procstack && (ctob(vm->vm_ssize) + grow_amount > stacklim))
 		return (KERN_NO_SPACE);
 
