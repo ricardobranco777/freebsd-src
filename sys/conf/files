@@ -2454,9 +2454,9 @@ dev/mmc/mmcbr_if.m		standard
 dev/mmc/mmcbus_if.m		standard
 dev/mmc/mmcsd.c			optional mmcsd !mmccam
 dev/mmc/mmc_fdt_helpers.c	optional mmc fdt | mmccam fdt
-dev/mmc/mmc_helpers.c		optional mmc gpio | mmccam gpio
-dev/mmc/mmc_pwrseq.c		optional mmc fdt | mmccam fdt
-dev/mmc/mmc_pwrseq_if.m		optional mmc fdt | mmccam fdt
+dev/mmc/mmc_helpers.c		optional mmc gpio regulator clk | mmccam gpio regulator clk
+dev/mmc/mmc_pwrseq.c		optional mmc clk regulator fdt | mmccam clk regulator fdt
+dev/mmc/mmc_pwrseq_if.m		optional mmc clk regulator fdt | mmccam clk regulator fdt
 dev/mmcnull/mmcnull.c		optional mmcnull
 dev/mpr/mpr.c			optional mpr
 dev/mpr/mpr_config.c		optional mpr
@@ -3771,6 +3771,7 @@ kern/init_sysent.c		standard
 kern/ksched.c			optional _kposix_priority_scheduling
 kern/kern_acct.c		standard
 kern/kern_alq.c			optional alq
+kern/kern_boottrace.c		standard
 kern/kern_clock.c		standard
 kern/kern_clocksource.c		standard
 kern/kern_condvar.c		standard
