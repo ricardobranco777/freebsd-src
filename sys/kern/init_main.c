@@ -72,13 +72,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/mutex.h>
-<<<<<<< HEAD
-#include <sys/dtrace_bsd.h>
-#include <sys/syscallsubr.h>
-#include <sys/sysctl.h>
 #include <sys/pax.h>
-=======
->>>>>>> origin/freebsd/current/main
 #include <sys/proc.h>
 #include <sys/racct.h>
 #include <sys/reboot.h>
