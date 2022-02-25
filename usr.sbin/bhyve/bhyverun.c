@@ -306,12 +306,7 @@ topology_parse(const char *opt)
 	return (0);
 
 out:
-<<<<<<< HEAD
-	if (str != NULL)
-		free(str);
-=======
 	free(tofree);
->>>>>>> origin/freebsd/current/main
 	return (-1);
 }
 
