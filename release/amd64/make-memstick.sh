@@ -11,8 +11,8 @@
 #
 
 set -e
-# XXXOP - be more verbose
-set -x
+
+vendor_name="HardenedBSD"
 
 scriptdir=$(dirname $(realpath $0))
 . ${scriptdir}/../../tools/boot/install-boot.sh
@@ -45,14 +45,7 @@ if [ -e ${2} ]; then
 	exit 1
 fi
 
-<<<<<<< HEAD
-echo '/dev/ufs/HardenedBSD_Install / ufs ro,noatime 1 1' > ${1}/etc/fstab
-echo 'root_rw_mount="NO"' > ${1}/etc/rc.conf.local
-makefs -B little -o label=HardenedBSD_Install -o version=2 ${2}.part ${1}
-rm ${1}/etc/fstab
-rm ${1}/etc/rc.conf.local
-=======
-echo '/dev/ufs/FreeBSD_Install / ufs ro,noatime 1 1' > ${BASEBITSDIR}/etc/fstab
+echo "/dev/ufs/${vendor_name}_Install / ufs ro,noatime 1 1" > ${BASEBITSDIR}/etc/fstab
 echo 'root_rw_mount="NO"' > ${BASEBITSDIR}/etc/rc.conf.local
 if [ -n "${METALOG}" ]; then
 	metalogfilename=$(mktemp /tmp/metalog.XXXXXX)
@@ -61,13 +54,12 @@ if [ -n "${METALOG}" ]; then
 	echo "./etc/rc.conf.local type=file uname=root gname=wheel mode=0644" >> ${metalogfilename}
 	MAKEFSARG=${metalogfilename}
 fi
-makefs -D -N ${BASEBITSDIR}/etc -B little -o label=FreeBSD_Install -o version=2 ${2}.part ${MAKEFSARG}
+makefs -D -N ${BASEBITSDIR}/etc -B little -o label=${vendor_name}_Install -o version=2 ${2}.part ${MAKEFSARG}
 rm ${BASEBITSDIR}/etc/fstab
 rm ${BASEBITSDIR}/etc/rc.conf.local
 if [ -n "${METALOG}" ]; then
 	rm ${metalogfilename}
 fi
->>>>>>> origin/freebsd/current/main
 
 # Make an ESP in a file.
 espfilename=$(mktemp /tmp/efiboot.XXXXXX)
