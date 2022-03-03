@@ -37,6 +37,7 @@
 WORLDDIR?=	${.CURDIR}/..
 PORTSDIR?=	/usr/ports
 KERNCONF?=	HARDENEDBSD
+VENDOR_NAME?=	HardenedBSD
 
 .if !defined(TARGET) || empty(TARGET)
 TARGET=		${MACHINE}
@@ -68,7 +69,7 @@ VOLUME_LABEL=	${REVISION:C/[.-]/_/g}_${BRANCH:C/[.-]/_/g}_${TARGET_ARCH}
 .endif
 
 .if !defined(VOLUME_LABEL) || empty(VOLUME_LABEL)
-VOLUME_LABEL=	HardenedBSD_Install
+VOLUME_LABEL=	${VENDOR_NAME}_Install
 .endif
 
 .if !exists(${PORTSDIR})
