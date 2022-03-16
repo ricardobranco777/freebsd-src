@@ -71,19 +71,13 @@ main(void)
 		errx(EXIT_FAILURE, "Error: distfetch URLs out of memory!");
 	}
 
-<<<<<<< HEAD
-	init_dialog(stdin, stdout);
-	dialog_vars.backtitle = __DECONST(char *, "HardenedBSD Installer");
-	dlg_put_backtitle();
-=======
 	if (bsddialog_init() == BSDDIALOG_ERROR) {
 		free(diststring);
 		errx(EXIT_FAILURE, "Error libbsddialog: %s\n",
 		    bsddialog_geterror());
 	}
 	bsddialog_initconf(&conf);
-	bsddialog_backtitle(&conf, "FreeBSD Installer");
->>>>>>> origin/freebsd/current/main
+	bsddialog_backtitle(&conf, "HardenedBSD Installer");
 
 	for (i = 0; i < ndists; i++) {
 		urls[i] = malloc(PATH_MAX);
