@@ -1166,7 +1166,6 @@ static void
 native_clock_source_init(void)
 {
 	i8254_init();
-	tsc_init();
 }
 
 static void
