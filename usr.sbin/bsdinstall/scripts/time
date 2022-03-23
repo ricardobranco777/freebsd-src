@@ -36,13 +36,8 @@ export TZ
 
 # Set date
 exec 3>&1
-<<<<<<< HEAD
-DATE=$(dialog --backtitle 'HardenedBSD Installer' \
-	--title 'Time & Date' \
-=======
-DATE=$(bsddialog --backtitle 'FreeBSD Installer' \
+DATE=$(bsddialog --backtitle 'HardenedBSD Installer' \
 	--title ' Date ' \
->>>>>>> origin/freebsd/current/main
 	--ok-label 'Set Date' \
 	--cancel-label 'Skip' \
 	--default-no \
@@ -53,13 +48,8 @@ exec 3>&-
 
 # Set time
 exec 3>&1
-<<<<<<< HEAD
-TIME=$(dialog --backtitle 'HardenedBSD Installer' \
-	--title 'Time & Date' \
-=======
-TIME=$(bsddialog --backtitle 'FreeBSD Installer' \
+TIME=$(bsddialog --backtitle 'HardenedBSD Installer' \
 	--title ' Time ' \
->>>>>>> origin/freebsd/current/main
 	--ok-label 'Set Time' \
 	--cancel-label 'Skip' \
 	--default-no \

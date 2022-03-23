@@ -49,11 +49,7 @@ if [ `sysctl -n security.bsd.unprivileged_proc_debug` -eq 0 ]; then
 fi
 
 exec 3>&1
-<<<<<<< HEAD
-FEATURES=$( dialog --backtitle "HardenedBSD Installer" \
-=======
-FEATURES=$( bsddialog --backtitle "FreeBSD Installer" \
->>>>>>> origin/freebsd/current/main
+FEATURES=$( bsddialog --backtitle "HardenedBSD Installer" \
     --title "System Hardening" --nocancel --separate-output \
     --checklist "Choose system security hardening options:" \
     0 0 0 \
