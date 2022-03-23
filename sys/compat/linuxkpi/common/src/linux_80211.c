@@ -141,7 +141,8 @@ static void lkpi_80211_txq_task(void *, int);
 static void lkpi_ieee80211_free_skb_mbuf(void *);
 
 static void
-lkpi_dump_lsta(struct lkpi_sta *lsta, const char *_f, int _l)
+lkpi_lsta_dump(struct lkpi_sta *lsta, struct ieee80211_node *ni,
+    const char *_f, int _l)
 {
 
 	if ((debug_80211 & D80211_TRACE_STA) == 0)
@@ -150,9 +151,9 @@ lkpi_dump_lsta(struct lkpi_sta *lsta, const char *_f, int _l)
 		return;
 
 	printf("%s:%d lsta %p ni %p sta %p\n",
-	    _f, _l, lsta, lsta->ni, &lsta->sta);
-	if (lsta->ni != NULL)
-		ieee80211_dump_node(NULL, lsta->ni);
+	    _f, _l, lsta, ni, &lsta->sta);
+	if (ni != NULL)
+		ieee80211_dump_node(NULL, ni);
 	printf("\ttxq_task txq len %d mtx\n", mbufq_len(&lsta->txq));
 	printf("\tkc %p state %d added_to_drv %d in_mgd %d\n",
 		lsta->kc, lsta->state, lsta->added_to_drv, lsta->in_mgd);
@@ -1104,7 +1105,7 @@ lkpi_sta_auth_to_scan(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 	lsta = ni->ni_drv_data;
 	sta = LSTA_TO_STA(lsta);
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	IEEE80211_UNLOCK(vap->iv_ic);
 
@@ -1146,7 +1147,7 @@ lkpi_sta_auth_to_scan(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 	lsta->added_to_drv = false;	/* mo manages. */
 #endif
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	lkpi_lsta_remove(lsta, lvif);
 
@@ -1330,7 +1331,7 @@ _lkpi_sta_assoc_to_down(struct ieee80211vap *vap, enum ieee80211_state nstate, i
 	lsta = ni->ni_drv_data;
 	sta = LSTA_TO_STA(lsta);
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	IEEE80211_UNLOCK(vap->iv_ic);
 
@@ -1355,7 +1356,7 @@ _lkpi_sta_assoc_to_down(struct ieee80211vap *vap, enum ieee80211_state nstate, i
 
 	IEEE80211_UNLOCK(vap->iv_ic);
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	/* Wake tx queues to get packet(s) out. */
 	lkpi_wake_tx_queues(hw, sta, true, true);
@@ -1387,7 +1388,7 @@ _lkpi_sta_assoc_to_down(struct ieee80211vap *vap, enum ieee80211_state nstate, i
 	if (error != 0)
 		goto out;
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	/* Adjust sta and change state (from NONE) to NOTEXIST. */
 	KASSERT(lsta != NULL, ("%s: ni %p lsta is NULL\n", __func__, ni));
@@ -1402,7 +1403,7 @@ _lkpi_sta_assoc_to_down(struct ieee80211vap *vap, enum ieee80211_state nstate, i
 	lsta->added_to_drv = false;	/* mo manages. */
 #endif
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	/* Update bss info (bss_info_changed) (assoc, aid, ..). */
 	/* We need to do this now, can only do after sta is IEEE80211_STA_NOTEXIST. */
@@ -1646,7 +1647,7 @@ lkpi_sta_run_to_assoc(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 	lsta = ni->ni_drv_data;
 	sta = LSTA_TO_STA(lsta);
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	IEEE80211_UNLOCK(vap->iv_ic);
 
@@ -1671,7 +1672,7 @@ lkpi_sta_run_to_assoc(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 
 	IEEE80211_UNLOCK(vap->iv_ic);
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	/* Wake tx queues to get packet(s) out. */
 	lkpi_wake_tx_queues(hw, sta, true, true);
@@ -1705,7 +1706,7 @@ lkpi_sta_run_to_assoc(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 	if (error != 0)
 		goto out;
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	/* Update sta_state (ASSOC to AUTH). */
 	KASSERT(lsta != NULL, ("%s: ni %p lsta is NULL\n", __func__, ni));
@@ -1715,7 +1716,7 @@ lkpi_sta_run_to_assoc(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 	if (error != 0)
 		goto out;
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 #if 0
 	/* Update bss info (bss_info_changed) (assoc, aid, ..). */
@@ -1755,7 +1756,7 @@ lkpi_sta_run_to_init(struct ieee80211vap *vap, enum ieee80211_state nstate, int 
 	lsta = ni->ni_drv_data;
 	sta = LSTA_TO_STA(lsta);
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	IEEE80211_UNLOCK(vap->iv_ic);
 
@@ -1780,7 +1781,7 @@ lkpi_sta_run_to_init(struct ieee80211vap *vap, enum ieee80211_state nstate, int 
 
 	IEEE80211_UNLOCK(vap->iv_ic);
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	/* Wake tx queues to get packet(s) out. */
 	lkpi_wake_tx_queues(hw, sta, true, true);
@@ -1812,7 +1813,7 @@ lkpi_sta_run_to_init(struct ieee80211vap *vap, enum ieee80211_state nstate, int 
 	if (error != 0)
 		goto out;
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	/* Update sta_state (ASSOC to AUTH). */
 	KASSERT(lsta != NULL, ("%s: ni %p lsta is NULL\n", __func__, ni));
@@ -1822,7 +1823,7 @@ lkpi_sta_run_to_init(struct ieee80211vap *vap, enum ieee80211_state nstate, int 
 	if (error != 0)
 		goto out;
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	/* Update sta and change state (from AUTH) to NONE. */
 	KASSERT(lsta != NULL, ("%s: ni %p lsta is NULL\n", __func__, ni));
@@ -1832,7 +1833,7 @@ lkpi_sta_run_to_init(struct ieee80211vap *vap, enum ieee80211_state nstate, int 
 	if (error != 0)
 		goto out;
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	/* Adjust sta and change state (from NONE) to NOTEXIST. */
 	KASSERT(lsta != NULL, ("%s: ni %p lsta is NULL\n", __func__, ni));
@@ -1847,7 +1848,7 @@ lkpi_sta_run_to_init(struct ieee80211vap *vap, enum ieee80211_state nstate, int 
 	lsta->added_to_drv = false;	/* mo manages. */
 #endif
 
-	lkpi_dump_lsta(lsta, __func__, __LINE__);
+	lkpi_lsta_dump(lsta, ni, __func__, __LINE__);
 
 	/* Update bss info (bss_info_changed) (assoc, aid, ..). */
 	/*
