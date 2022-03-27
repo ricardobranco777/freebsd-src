@@ -39,13 +39,8 @@ fi
 echo -n > $BSDINSTALL_TMPETC/rc.conf.services
 
 exec 3>&1
-<<<<<<< HEAD
-DAEMONS=$( dialog --backtitle "HardenedBSD Installer" \
-    --title "System Configuration" --nocancel --separate-output \
-=======
-DAEMONS=$( bsddialog --backtitle "FreeBSD Installer" \
+DAEMONS=$( bsddialog --backtitle "HardenedBSD Installer" \
     --title "System Configuration" --no-cancel --separate-output \
->>>>>>> origin/freebsd/current/main
     --checklist "Choose the services you would like to be started at boot:" \
     0 0 0 \
 	local_unbound "Local caching validating resolver" ${local_unbound:-off} \
