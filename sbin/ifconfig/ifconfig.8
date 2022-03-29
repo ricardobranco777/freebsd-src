@@ -36,11 +36,8 @@
 .Nd configure network interface parameters
 .Sh SYNOPSIS
 .Nm
-.Op Fl f Ar type Ns Cm \&: Ns Ar format Ns Op Cm \&, Ns Ar type Ns Cm \& : Ns Ar format ...
-.Op Fl L
-.Op Fl k
-.Op Fl m
-.Op Fl n
+.Op Fl kLmn
+.Op Fl f Ar type Ns Cm \&: Ns Ar format
 .Ar interface
 .Op Cm create
 .Ar address_family
@@ -54,28 +51,22 @@
 .Cm destroy
 .Nm
 .Fl a
-.Op Fl L
-.Op Fl d
-.Op Fl [gG] Ar groupname
-.Op Fl m
-.Op Fl u
-.Op Fl v
+.Op Fl dkLmuv
+.Op Fl f Ar type Ns Cm \&: Ns Ar format
+.Op Fl G Ar groupname
+.Op Fl g Ar groupname
 .Op Ar address_family
+.Nm
+.Fl C
+.Nm
+.Fl g Ar groupname
 .Nm
 .Fl l
-.Op Fl d
-.Op Fl u
+.Op Fl du
 .Op Ar address_family
 .Nm
-.Op Fl L
-.Op Fl d
-.Op Fl k
-.Op Fl m
-.Op Fl u
-.Op Fl v
-.Op Fl C
-.Nm
-.Op Fl g Ar groupname
+.Op Fl dkLmuv
+.Op Fl f Ar type Ns Cm \&: Ns Ar format
 .Sh DESCRIPTION
 The
 .Nm
@@ -206,6 +197,9 @@ environment variable.
 The format is specified as a comma separated list of
 .Sy type:format
 pairs.
+The
+.Fl f
+flag can be supplied multiple times.
 See the
 .Sx EXAMPLES
 section for more information.
