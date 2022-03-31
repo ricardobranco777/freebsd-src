@@ -28,7 +28,7 @@
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD$
 .\"
-.Dd March 30, 2022
+.Dd March 31, 2022
 .Dt IFCONFIG 8
 .Os
 .Sh NAME
@@ -40,10 +40,12 @@
 .Op Fl f Ar type Ns Cm \&: Ns Ar format
 .Ar interface
 .Op Cm create
+.Oo
 .Ar address_family
 .Oo
 .Ar address
 .Op Ar dest_address
+.Oc
 .Oc
 .Op Ar parameters
 .Nm
@@ -225,8 +227,17 @@ with no other additional information.
 If an
 .Ar address_family
 is specified, only interfaces of that type will be listed.
-.Ql ifconfig -l ether
-will list only Ethernet adapters, excluding the loopback interface.
+.Pp
+If the
+.Ar address_family
+is set to
+.Cm ether ,
+then
+.Fl l
+will exclude loopback interfaces from the list of Ethernet interfaces.
+This is a special case, because all the other synonyms of the
+.Cm link
+address family will include loopback interfaces in the list.
 .Pp
 Use of this flag is mutually exclusive
 with all other flags and commands, except for
@@ -261,7 +272,7 @@ That is, one can specify an address like
 .Li 192.168.0.1/16 .
 .Pp
 For the
-.Dq inet6
+.Cm inet6
 family, it is also possible to specify the prefix length using the slash
 notation, like
 .Li ::1/128 .
@@ -290,20 +301,23 @@ parameter below for more information.
 .\" count out long strings of digits in network byte order.
 .Pp
 The link-level
-.Pq Dq link
+.Pq Cm link
 address
 is specified as a series of colon-separated hex digits.
 This can be used to, for example,
 set a new MAC address on an Ethernet interface, though the
 mechanism used is not Ethernet specific.
+.Pp
 Use the
-.Pq Dq random
+.Cm random
 keyword to set a randomly generated MAC address.
 A randomly-generated MAC address might be the same as one already in use
 in the network.
 Such duplications are extremely unlikely.
+.Pp
 If the interface is already
-up when this option is used, it will be briefly brought down and
+up when the link-level address is modified,
+it will be briefly brought down and
 then brought back up again in order to ensure that the receive
 filter in the underlying Ethernet hardware is properly reprogrammed.
 .It Ar address_family
@@ -313,32 +327,25 @@ which affects interpretation of the remaining parameters.
 Since an interface can receive transmissions in differing protocols
 with different naming schemes, specifying the address family is recommended.
 The address or protocol families currently
-supported are
-.Dq inet ,
-.Dq inet6 ,
-and
-.Dq link .
-The default if available is
-.Dq inet
-or otherwise
-.Dq link .
-.Dq ether
-and
-.Dq lladdr
-are synonyms for
-.Dq link .
-When using the
+supported are:
+.Bl -tag
+.It Cm ether
+Synonymous with
+.Cm link
+.Po with some exceptions, see
 .Fl l
-flag, the
-.Dq ether
-address family has special meaning and is no longer synonymous with
-.Dq link
-or
-.Dq lladdr .
-Specifying
-.Fl l Dq ether
-will list only Ethernet interfaces, excluding all other interface types,
-including the loopback interface.
+.Pc .
+.It Cm inet
+Default, if available.
+.It Cm inet6
+.It Cm link
+Default, if
+.Cm inet
+is not available.
+.It Cm lladdr
+Synonymous with
+.Cm link .
+.El
 .It Ar dest_address
 Specify the address of the correspondent on the other end
 of a point to point link.
@@ -3084,12 +3091,8 @@ Add the IPv4 address
 with the CIDR network prefix
 .Li /28 ,
 to the interface
-.Li em0 ,
-using
-.Cm add
-as a synonym for the canonical form of the option
-.Cm alias :
-.Dl # ifconfig em0 inet 192.0.2.45/28 add
+.Li em0 :
+.Dl # ifconfig em0 inet 192.0.2.45/28 alias
 .Pp
 Remove the IPv4 address
 .Li 192.0.2.45
@@ -3110,17 +3113,15 @@ Note that lower case hexadecimal IPv6 addresses are acceptable.
 Remove the IPv6 address added in the above example,
 using the
 .Li /
-character as shorthand for the network prefix,
-and using
-.Cm delete
-as a synonym for the canonical form of the option
-.Fl alias :
-.Dl # ifconfig em0 inet6 2001:db8:bdbd::123/48 delete
+character as shorthand for the network prefix:
+.Dl # ifconfig em0 inet6 2001:db8:bdbd::123/48 -alias
 .Pp
 Configure a single CARP redundant address on igb0, and then switch it
 to be master:
-.Dl # ifconfig igb0 vhid 1 10.0.0.1/24 pass foobar up
-.Dl # ifconfig igb0 vhid 1 state master
+.Bd -literal -offset indent -compact
+# ifconfig igb0 vhid 1 10.0.0.1/24 pass foobar up
+# ifconfig igb0 vhid 1 state master
+.Ed
 .Pp
 Configure the interface
 .Li xl0 ,
@@ -3147,6 +3148,9 @@ Display inet and inet6 address subnet masks in CIDR notation
 .Pp
 Display interfaces that are up with the exception of loopback
 .Dl # ifconfig -a -u -G lo
+.Pp
+Set a randomly-generated MAC address on tap0:
+.Dl # ifconfig tap0 ether random
 .Sh DIAGNOSTICS
 Messages indicating the specified interface does not exist, the
 requested address is unknown, or the user is not privileged and
