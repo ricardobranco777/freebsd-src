@@ -95,14 +95,8 @@ main(int argc, const char **argv)
 		err(1, "%s", bsddialog_geterror());
 	bsddialog_initconf(&conf);
 	if (!sade_mode)
-<<<<<<< HEAD
-		dialog_vars.backtitle = __DECONST(char *, "HardenedBSD Installer");
-	dialog_vars.item_help = TRUE;
-	nscroll = i = 0;
-=======
-		bsddialog_backtitle(&conf, "FreeBSD Installer");
+		bsddialog_backtitle(&conf, "HardenedBSD Installer");
 	i = 0;
->>>>>>> origin/freebsd/current/main
 
 	/* Revert changes on SIGINT */
 	signal(SIGINT, sigint_handler);
@@ -124,20 +118,15 @@ main(int argc, const char **argv)
 			return (error);
 		}
 	} else {
-<<<<<<< HEAD
-		prompt = "Create partitions for HardenedBSD. No changes will be "
-		    "made until you select Finish.";
-=======
-		prompt = "Create partitions for FreeBSD, F1 for help.\n"
+		prompt = "Create partitions for HardenedBSD, F1 for help.\n"
 		    "No changes will be made until you select Finish.";
->>>>>>> origin/freebsd/current/main
 	}
 
 	/* Show the part editor either immediately, or to confirm wizard */
 	while (prompt != NULL) {
 		bsddialog_clearterminal();
 		if (!sade_mode)
-			bsddialog_backtitle(&conf, "FreeBSD Installer");
+			bsddialog_backtitle(&conf, "HardenedBSD Installer");
 
 		error = geom_gettree(&mesh);
 		if (error == 0)
@@ -303,18 +292,11 @@ validate_setup(void)
 	bsddialog_initconf(&conf);
 
 	if (root == NULL) {
-<<<<<<< HEAD
-		dialog_msgbox("Error", "No root partition was found. "
-		    "The root HardenedBSD partition must have a mountpoint of '/'.",
-		0, 0, TRUE);
-		return (FALSE);
-=======
 		conf.title = "Error";
 		bsddialog_msgbox(&conf, "No root partition was found. "
-		    "The root FreeBSD partition must have a mountpoint "
+		    "The root HardenedBSD partition must have a mountpoint "
 		    "of '/'.", 0, 0);
 		return (false);
->>>>>>> origin/freebsd/current/main
 	}
 
 	/*

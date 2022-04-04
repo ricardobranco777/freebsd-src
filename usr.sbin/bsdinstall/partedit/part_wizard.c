@@ -66,14 +66,14 @@ part_wizard(const char *fsreq)
 startwizard:
 	error = geom_gettree(&mesh);
 
-	bsddialog_backtitle(&conf, "FreeBSD Installer");
+	bsddialog_backtitle(&conf, "HardenedBSD Installer");
 	error = geom_gettree(&mesh);
 	disk = boot_disk_select(&mesh);
 	if (disk == NULL)
 		return (1);
 
 	bsddialog_clearterminal();
-	bsddialog_backtitle(&conf, "FreeBSD Installer");
+	bsddialog_backtitle(&conf, "HardenedBSD Installer");
 	schemeroot = wizard_partition(&mesh, disk);
 	free(disk);
 	if (schemeroot == NULL)
@@ -81,7 +81,7 @@ startwizard:
 
 	geom_deletetree(&mesh);
 	bsddialog_clearterminal();
-	bsddialog_backtitle(&conf, "FreeBSD Installer");
+	bsddialog_backtitle(&conf, "HardenedBSD Installer");
 	error = geom_gettree(&mesh);
 
 	error = wizard_makeparts(&mesh, schemeroot, fstype, 1);
@@ -161,16 +161,10 @@ boot_disk_select(struct gmesh *mesh)
 	}
 
 	if (n > 1) {
-<<<<<<< HEAD
-		err = dlg_menu("Partitioning",
-		    "Select the disk on which to install HardenedBSD.", 0, 0, 0,
-		    n, disks, &selected, NULL);
-=======
 		conf.title = "Partitioning";
 		button = bsddialog_menu(&conf,
-		    "Select the disk on which to install FreeBSD.", 0, 0, 0,
+		    "Select the disk on which to install HardenedBSD.", 0, 0, 0,
 		    n, disks, &selected);
->>>>>>> origin/freebsd/current/main
 
 		chosen = (button == BSDDIALOG_OK) ?
 		    strdup(disks[selected].name) : NULL;
