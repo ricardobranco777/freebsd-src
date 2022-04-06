@@ -32,7 +32,7 @@
 #ifndef	_SYS_PAX_H
 #define	_SYS_PAX_H
 
-#define	__HardenedBSD_version	1400001UL
+#define	__HardenedBSD_version	1400002UL
 
 #if defined(_KERNEL) || defined(_WANT_PRISON)
 typedef	uint32_t	pax_state_t;
@@ -224,6 +224,8 @@ int pax_hardening_init_prison(struct prison *pr, struct vfsoptlist *opts);
 #define	pax_hardening_init_prison(pr, opts)	({ 0; })
 #endif
 int pax_procfs_harden(struct thread *td);
+
+bool pax_insecure_kmod(void);
 
 #endif /* _KERNEL */
 
