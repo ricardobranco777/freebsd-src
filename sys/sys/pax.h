@@ -32,7 +32,7 @@
 #ifndef	_SYS_PAX_H
 #define	_SYS_PAX_H
 
-#define	__HardenedBSD_version	1400001UL
+#define	__HardenedBSD_version	1400002UL
 
 #if defined(_KERNEL) || defined(_WANT_PRISON)
 typedef	uint32_t	pax_state_t;
