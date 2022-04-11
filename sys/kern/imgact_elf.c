@@ -140,55 +140,6 @@ SYSCTL_INT(__CONCAT(_kern_elf, __ELF_WORD_SIZE), OID_AUTO,
 static int __elfN(vdso) = 0;
 #endif
 
-static u_long __elfN(pie_base) = ET_DYN_LOAD_ADDR;
-static int
-sysctl_pie_base(SYSCTL_HANDLER_ARGS)
-{
-	u_long val;
-	int error;
-
-	val = __elfN(pie_base);
-	error = sysctl_handle_long(oidp, &val, 0, req);
-	if (error != 0 || req->newptr == NULL)
-		return (error);
-	if ((val & PAGE_MASK) != 0)
-		return (EINVAL);
-	__elfN(pie_base) = val;
-	return (0);
-}
-SYSCTL_PROC(__CONCAT(_kern_elf, __ELF_WORD_SIZE), OID_AUTO, pie_base,
-    CTLTYPE_ULONG | CTLFLAG_MPSAFE | CTLFLAG_RW, NULL, 0,
-    sysctl_pie_base, "LU",
-    "PIE load base without randomization");
-
-SYSCTL_NODE(__CONCAT(_kern_elf, __ELF_WORD_SIZE), OID_AUTO, aslr,
-    CTLFLAG_RW | CTLFLAG_MPSAFE, 0,
-    "");
-#define	ASLR_NODE_OID	__CONCAT(__CONCAT(_kern_elf, __ELF_WORD_SIZE), _aslr)
-
-static int __elfN(aslr_enabled) = 0;
-SYSCTL_INT(ASLR_NODE_OID, OID_AUTO, enable, CTLFLAG_RWTUN,
-    &__elfN(aslr_enabled), 0,
-    __XSTRING(__CONCAT(ELF, __ELF_WORD_SIZE))
-    ": enable address map randomization");
-
-static int __elfN(pie_aslr_enabled) = 0;
-SYSCTL_INT(ASLR_NODE_OID, OID_AUTO, pie_enable, CTLFLAG_RWTUN,
-    &__elfN(pie_aslr_enabled), 0,
-    __XSTRING(__CONCAT(ELF, __ELF_WORD_SIZE))
-    ": enable address map randomization for PIE binaries");
-
-static int __elfN(aslr_honor_sbrk) = 0;
-SYSCTL_INT(ASLR_NODE_OID, OID_AUTO, honor_sbrk, CTLFLAG_RW,
-    &__elfN(aslr_honor_sbrk), 0,
-    __XSTRING(__CONCAT(ELF, __ELF_WORD_SIZE)) ": assume sbrk is used");
-
-static int __elfN(aslr_stack) = 1;
-SYSCTL_INT(ASLR_NODE_OID, OID_AUTO, stack, CTLFLAG_RWTUN,
-    &__elfN(aslr_stack), 0,
-    __XSTRING(__CONCAT(ELF, __ELF_WORD_SIZE))
-    ": enable stack address randomization");
-
 static int __elfN(sigfastblock) = 1;
 SYSCTL_INT(__CONCAT(_kern_elf, __ELF_WORD_SIZE), OID_AUTO, sigfastblock,
     CTLFLAG_RWTUN, &__elfN(sigfastblock), 0,
@@ -856,46 +807,6 @@ fail:
 	free(tempdata, M_TEMP);
 
 	return (error);
-}
-
-/*
- * Select randomized valid address in the map map, between minv and
- * maxv, with specified alignment.  The [minv, maxv) range must belong
- * to the map.  Note that function only allocates the address, it is
- * up to caller to clamp maxv in a way that the final allocation
- * length fit into the map.
- *
- * Result is returned in *resp, error code indicates that arguments
- * did not pass sanity checks for overflow and range correctness.
- */
-static int
-__CONCAT(rnd_, __elfN(base))(vm_map_t map, u_long minv, u_long maxv,
-    u_int align, u_long *resp)
-{
-	u_long rbase, res;
-
-	MPASS(vm_map_min(map) <= minv);
-
-	if (minv >= maxv || minv + align >= maxv || maxv > vm_map_max(map)) {
-		uprintf("Invalid ELF segments layout\n");
-		return (ENOEXEC);
-	}
-
-	arc4rand(&rbase, sizeof(rbase), 0);
-	res = roundup(minv, (u_long)align) + rbase % (maxv - minv);
-	res &= ~((u_long)align - 1);
-	if (res >= maxv)
-		res -= align;
-
-	KASSERT(res >= minv,
-	    ("res %#lx < minv %#lx, maxv %#lx rbase %#lx",
-	    res, minv, maxv, rbase));
-	KASSERT(res < maxv,
-	    ("res %#lx > maxv %#lx, minv %#lx rbase %#lx",
-	    res, maxv, minv, rbase));
-
-	*resp = res;
-	return (0);
 }
 
 static int
