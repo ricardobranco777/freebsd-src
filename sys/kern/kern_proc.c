@@ -3318,6 +3318,28 @@ static SYSCTL_NODE(_kern_proc, KERN_PROC_SIGFASTBLK, sigfastblk, CTLFLAG_RD |
 	CTLFLAG_ANYBODY | CTLFLAG_MPSAFE, sysctl_kern_proc_sigfastblk,
 	"Thread sigfastblock address");
 
+<<<<<<< HEAD
+=======
+static SYSCTL_NODE(_kern_proc, KERN_PROC_VM_LAYOUT, vm_layout, CTLFLAG_RD |
+	CTLFLAG_ANYBODY | CTLFLAG_MPSAFE, sysctl_kern_proc_vm_layout,
+	"Process virtual address space layout info");
+
+static struct sx stop_all_proc_blocker;
+SX_SYSINIT(stop_all_proc_blocker, &stop_all_proc_blocker, "sapblk");
+
+void
+stop_all_proc_block(void)
+{
+	sx_xlock(&stop_all_proc_blocker);
+}
+
+void
+stop_all_proc_unblock(void)
+{
+	sx_xunlock(&stop_all_proc_blocker);
+}
+
+>>>>>>> origin/freebsd/current/main
 int allproc_gen;
 
 /*
@@ -3332,6 +3354,8 @@ stop_all_proc(void)
 	struct proc *cp, *p;
 	int r, gen;
 	bool restart, seen_stopped, seen_exiting, stopped_some;
+
+	stop_all_proc_block();
 
 	cp = curproc;
 allproc_loop:
@@ -3424,6 +3448,8 @@ again:
 			goto again;
 	}
 	sx_xunlock(&allproc_lock);
+
+	stop_all_proc_unblock();
 }
 
 /* #define	TOTAL_STOP_DEBUG	1 */
