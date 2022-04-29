@@ -344,6 +344,7 @@ init_unrhdr(struct unrhdr *uh, int low, int high, struct mtx *mutex)
 
 	KASSERT(low >= 0 && low <= high,
 	    ("UNR: use error: new_unrhdr(%d, %d)", low, high));
+	memset(uh, 0, sizeof(*uh));
 	if (mutex == UNR_NO_MTX)
 		uh->mtx = NULL;
 	else if (mutex != NULL)
@@ -354,10 +355,7 @@ init_unrhdr(struct unrhdr *uh, int low, int high, struct mtx *mutex)
 	TAILQ_INIT(&uh->ppfree);
 	uh->low = low;
 	uh->high = high;
-	uh->first = 0;
 	uh->last = 1 + (high - low);
-	uh->busy = 0;
-	uh->alloc = 0;
 	check_unrhdr(uh, __LINE__);
 }
 
