@@ -1,6 +1,6 @@
 # $FreeBSD$
 
-OSNAME?=	FreeBSD
+OSNAME?=	HardenedBSD
 SUBDIR= distextract distfetch partedit scripts
 SUBDIR_PARALLEL=
 SCRIPTS= bsdinstall

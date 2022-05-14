@@ -84,11 +84,7 @@ main(void)
 		errx(EXIT_FAILURE, "Error libbsdialog: %s",
 		    bsddialog_geterror());
 	bsddialog_initconf(&conf);
-<<<<<<< HEAD
-	bsddialog_backtitle(&conf, "HardenedBSD Installer");
-=======
 	bsddialog_backtitle(&conf, OSNAME " Installer");
->>>>>>> origin/freebsd/current/main
 	bsddialog_infobox(&conf,
 	    "Checking distribution archives.\nPlease wait...", 4, 35);
 
