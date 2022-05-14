@@ -173,7 +173,11 @@ boot_disk_select(struct gmesh *mesh)
 	if (n > 1) {
 		conf.title = "Partitioning";
 		button = bsddialog_menu(&conf,
+<<<<<<< HEAD
 		    "Select the disk on which to install HardenedBSD.", 0, 0, 0,
+=======
+		    "Select the disk on which to install " OSNAME ".", 0, 0, 0,
+>>>>>>> origin/freebsd/current/main
 		    n, disks, &selected);
 
 		chosen = (button == BSDDIALOG_OK) ?
@@ -259,7 +263,11 @@ query:
 		conf.button.default_cancel = true;
 
 	snprintf(message, sizeof(message), "Would you like to use this entire "
+<<<<<<< HEAD
 	    "disk (%s) for HardenedBSD or partition it to share it with other "
+=======
+	    "disk (%s) for " OSNAME " or partition it to share it with other "
+>>>>>>> origin/freebsd/current/main
 	    "operating systems? Using the entire disk will erase any data "
 	    "currently stored there.", disk);
 	conf.title = "Partition";
@@ -275,7 +283,11 @@ query:
 
 		sprintf(warning, "The existing partition scheme on this "
 		    "disk (%s) is not bootable on this platform. To install "
+<<<<<<< HEAD
 		    "HardenedBSD, it must be repartitioned. This will destroy all "
+=======
+		    OSNAME ", it must be repartitioned. This will destroy all "
+>>>>>>> origin/freebsd/current/main
 		    "data on the disk. Are you sure you want to proceed?",
 		    scheme);
 		conf.title = "Non-bootable Disk";
@@ -362,7 +374,11 @@ wizard_makeparts(struct gmesh *mesh, const char *disk, const char *fstype,
 		humanize_number(neededstr, 7, MIN_FREE_SPACE, "B", HN_AUTOSCALE,
 		    HN_DECIMAL);
 		sprintf(message, "There is not enough free space on %s to "
+<<<<<<< HEAD
 		    "install HardenedBSD (%s free, %s required). Would you like "
+=======
+		    "install " OSNAME " (%s free, %s required). Would you like "
+>>>>>>> origin/freebsd/current/main
 		    "to choose another disk or to open the partition editor?",
 		    disk, availablestr, neededstr);
 

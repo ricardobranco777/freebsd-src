@@ -95,7 +95,11 @@ main(int argc, const char **argv)
 		err(1, "%s", bsddialog_geterror());
 	bsddialog_initconf(&conf);
 	if (!sade_mode)
+<<<<<<< HEAD
 		bsddialog_backtitle(&conf, "HardenedBSD Installer");
+=======
+		bsddialog_backtitle(&conf, OSNAME " Installer");
+>>>>>>> origin/freebsd/current/main
 	i = 0;
 
 	/* Revert changes on SIGINT */
@@ -118,7 +122,11 @@ main(int argc, const char **argv)
 			return (error);
 		}
 	} else {
+<<<<<<< HEAD
 		prompt = "Create partitions for HardenedBSD, F1 for help.\n"
+=======
+		prompt = "Create partitions for " OSNAME ", F1 for help.\n"
+>>>>>>> origin/freebsd/current/main
 		    "No changes will be made until you select Finish.";
 	}
 
@@ -294,7 +302,11 @@ validate_setup(void)
 	if (root == NULL) {
 		conf.title = "Error";
 		bsddialog_msgbox(&conf, "No root partition was found. "
+<<<<<<< HEAD
 		    "The root HardenedBSD partition must have a mountpoint "
+=======
+		    "The root " OSNAME " partition must have a mountpoint "
+>>>>>>> origin/freebsd/current/main
 		    "of '/'.", 0, 0);
 		return (false);
 	}
@@ -308,7 +320,11 @@ validate_setup(void)
 		conf.title = "Warning";
 		button = bsddialog_yesno(&conf, "The chosen root partition "
 		    "has a preexisting filesystem. If it contains an existing "
+<<<<<<< HEAD
 		    "HardenedBSD system, please update it with freebsd-update "
+=======
+		    OSNAME " system, please update it with freebsd-update "
+>>>>>>> origin/freebsd/current/main
 		    "instead of installing a new system on it. The partition "
 		    "can also be erased by pressing \"No\" and then deleting "
 		    "and recreating it. Are you sure you want to proceed?",

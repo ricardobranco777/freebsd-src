@@ -42,6 +42,8 @@ __FBSDID("$FreeBSD$");
 #include <string.h>
 #include <unistd.h>
 
+#include "opt_osname.h"
+
 static int fetch_files(int nfiles, char **urls);
 
 int
@@ -76,7 +78,11 @@ main(void)
 		    bsddialog_geterror());
 	}
 	bsddialog_initconf(&conf);
+<<<<<<< HEAD
 	bsddialog_backtitle(&conf, "HardenedBSD Installer");
+=======
+	bsddialog_backtitle(&conf, OSNAME " Installer");
+>>>>>>> origin/freebsd/current/main
 
 	for (i = 0; i < ndists; i++) {
 		urls[i] = malloc(PATH_MAX);
