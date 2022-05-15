@@ -42,6 +42,7 @@ __FBSDID("$FreeBSD$");
 #include "opt_capsicum.h"
 #include "opt_ddb.h"
 #include "opt_ktrace.h"
+#include "opt_pax.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -3792,7 +3793,11 @@ dupfdopen(struct thread *td, struct filedesc *fdp, int dfd, int mode,
  *	2: allowed for all processes.
  */
 
+#ifdef PAX_HARDENING
+static int chroot_allow_open_directories = 0;
+#else
 static int chroot_allow_open_directories = 1;
+#endif
 
 SYSCTL_INT(_kern, OID_AUTO, chroot_allow_open_directories, CTLFLAG_RW,
     &chroot_allow_open_directories, 0,
