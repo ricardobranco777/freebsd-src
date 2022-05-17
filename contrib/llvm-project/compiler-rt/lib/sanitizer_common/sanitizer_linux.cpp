@@ -2180,32 +2180,6 @@ void CheckASLR() {
            GetArgv()[0]);
     Die();
   }
-<<<<<<< HEAD
-#elif SANITIZER_PPC64V2
-  // Disable ASLR for Linux PPC64LE.
-  int old_personality = personality(0xffffffff);
-  if (old_personality != -1 && (old_personality & ADDR_NO_RANDOMIZE) == 0) {
-    VReport(1, "WARNING: Program is being run with address space layout "
-               "randomization (ASLR) enabled which prevents the thread and "
-               "memory sanitizers from working on powerpc64le.\n"
-               "ASLR will be disabled and the program re-executed.\n");
-=======
-#elif SANITIZER_FREEBSD
-  int aslr_status;
-  if (UNLIKELY(procctl(P_PID, 0, PROC_ASLR_STATUS, &aslr_status) == -1)) {
-    // We're making things less 'dramatic' here since
-    // the cmd is not necessarily guaranteed to be here
-    // just yet regarding FreeBSD release
-    return;
-  }
-  if ((aslr_status & PROC_ASLR_ACTIVE) != 0) {
-    VReport(1, "This sanitizer is not compatible with enabled ASLR "
-               "and binaries compiled with PIE\n"
-               "ASLR will be disabled and the program re-executed.\n");
-    int aslr_ctl = PROC_ASLR_FORCE_DISABLE;
-    CHECK_NE(procctl(P_PID, 0, PROC_ASLR_CTL, &aslr_ctl), -1);
-    ReExec();
-  }
 #  elif SANITIZER_PPC64V2
   // Disable ASLR for Linux PPC64LE.
   int old_personality = personality(0xffffffff);
@@ -2215,7 +2189,6 @@ void CheckASLR() {
             "randomization (ASLR) enabled which prevents the thread and "
             "memory sanitizers from working on powerpc64le.\n"
             "ASLR will be disabled and the program re-executed.\n");
->>>>>>> origin/freebsd/current/main
     CHECK_NE(personality(old_personality | ADDR_NO_RANDOMIZE), -1);
     ReExec();
   }
