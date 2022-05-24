@@ -30,11 +30,7 @@ BSDCFG_SHARE="/usr/share/bsdconfig"
 . $BSDCFG_SHARE/common.subr || exit 1
 
 clear
-<<<<<<< HEAD
-echo "HardenedBSD Installer"
-=======
 echo "$OSNAME Installer"
->>>>>>> origin/freebsd/current/main
 echo "========================"
 echo "Add Users"
 echo

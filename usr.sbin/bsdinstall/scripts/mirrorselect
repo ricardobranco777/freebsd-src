@@ -49,11 +49,7 @@ case `uname -r` in
 esac
 
 exec 3>&1
-<<<<<<< HEAD
-MIRROR=`bsddialog --backtitle "HardenedBSD Installer" \
-=======
 MIRROR=`bsddialog --backtitle "$OSNAME Installer" \
->>>>>>> origin/freebsd/current/main
     --title "Mirror Selection" --extra-button --extra-label "Other" \
     --menu "Please select the site closest to you or \"other\" if you'd like to specify a different choice.  Also note that not every site listed here carries more than the base distribution kits. Only Primary sites are guaranteed to carry the full range of possible distributions. Select a site that's close!" \
     0 0 16 \
@@ -74,11 +70,7 @@ $BSDDIALOG_OK)
 	;;
 $BSDDIALOG_EXTRA)
 	exec 3>&1
-<<<<<<< HEAD
-	BSDINSTALL_DISTSITE=`bsddialog --backtitle "HardenedBSD Installer" \
-=======
 	BSDINSTALL_DISTSITE=`bsddialog --backtitle "$OSNAME Installer" \
->>>>>>> origin/freebsd/current/main
 	    --title "Mirror Selection" \
 	    --inputbox "Please enter the URL to an alternate $OSNAME mirror:" \
 	    0 74 "$BSDINSTALL_DISTSITE" 2>&1 1>&3`

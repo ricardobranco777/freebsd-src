@@ -32,11 +32,7 @@
 BSDCFG_SHARE="/usr/share/bsdconfig"
 . $BSDCFG_SHARE/common.subr || exit 1
 f_include $BSDCFG_SHARE/dialog.subr
-<<<<<<< HEAD
-f_dialog_backtitle "HardenedBSD Installer"
-=======
 f_dialog_backtitle "$OSNAME Installer"
->>>>>>> origin/freebsd/current/main
 
 ############################################################ FUNCTIONS
 

@@ -40,11 +40,7 @@ for dist in $DISTRIBUTIONS; do
 	for i in $DISTRIBUTIONS; do
 		items="$items $i `eval echo \\\${status_$(basename $i .txz):--11}`"
 	done
-<<<<<<< HEAD
-	bsddialog --backtitle "HardenedBSD Installer" --title "Checksum Verification" \
-=======
 	bsddialog --backtitle "$OSNAME Installer" --title "Checksum Verification" \
->>>>>>> origin/freebsd/current/main
 	    --mixedgauge "\nVerifying checksums of selected distributions.\n" \
 	    0 0 $percentage  -- $items
 
@@ -71,19 +67,11 @@ for dist in $DISTRIBUTIONS; do
 		eval "status_$distname=-2"
 		case $(/bin/freebsd-version -u) in
 		*-ALPHA*|*-CURRENT|*-STABLE|*-PRERELEASE)
-<<<<<<< HEAD
-			bsddialog --backtitle "HardenedBSD Installer" --title "Error" \
-			    --msgbox "The checksum for $dist does not match. It may have become corrupted, or it may be from a newer version of FreeBSD. Please check for a newer snapshot." 0 0
-			;;
-		*)
-			bsddialog --backtitle "HardenedBSD Installer" --title "Error" \
-=======
 			bsddialog --backtitle "$OSNAME Installer" --title "Error" \
 			    --msgbox "The checksum for $dist does not match. It may have become corrupted, or it may be from a newer version of FreeBSD. Please check for a newer snapshot." 0 0
 			;;
 		*)
 			bsddialog --backtitle "$OSNAME Installer" --title "Error" \
->>>>>>> origin/freebsd/current/main
 			    --msgbox "The checksum for $dist does not match. It may have become corrupted, and should be redownloaded." 0 0
 			;;
 		esac
