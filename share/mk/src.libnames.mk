@@ -680,13 +680,10 @@ LIBAVLDIR=	${OBJTOP}/cddl/lib/libavl
 LIBCTFDIR=	${OBJTOP}/cddl/lib/libctf
 LIBDTRACEDIR=	${OBJTOP}/cddl/lib/libdtrace
 LIBICPDIR=	${OBJTOP}/cddl/lib/libicp
-<<<<<<< HEAD
 LIBNVDIR=	${OBJTOP}/lib/libnv
-=======
 LIBICP?=	${LIBICPDIR}/libicp${PIE_SUFFIX}.a
 LIBICP_RESCUEDIR=	${OBJTOP}/cddl/lib/libicp_rescue
 LIBICP_RESCUE?=	${LIBICP_RESCUEDIR}/libicp_rescue${PIE_SUFFIX}.a
->>>>>>> origin/freebsd/current/main
 LIBNVPAIRDIR=	${OBJTOP}/cddl/lib/libnvpair
 LIBNVPAIR?=	${LIBNVPAIRDIR}/libnvpair${PIE_SUFFIX}.a
 LIBUMEMDIR=	${OBJTOP}/cddl/lib/libumem
