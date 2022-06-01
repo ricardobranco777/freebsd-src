@@ -455,6 +455,7 @@ kern_mmap(struct thread *td, const struct mmap_req *mrp)
 		pax_mprotect(td->td_proc, (vm_prot_t *)&prot, (vm_prot_t *)&max_prot);
 #endif
 #ifdef PAX_ASLR
+		(void)pax_aslr_done;
 		KASSERT((flags & MAP_FIXED) == MAP_FIXED || pax_aslr_done == 1,
 		    ("%s: ASLR reqiured ...", __func__));
 #endif
