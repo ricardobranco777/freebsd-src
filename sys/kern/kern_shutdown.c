@@ -837,7 +837,7 @@ kassert_panic(const char *fmt, ...)
 	 * If we are suppressing secondary panics, log the warning but do not
 	 * re-enter panic/kdb.
 	 */
-	if (panicstr != NULL && kassert_suppress_in_panic) {
+	if (KERNEL_PANICKED() && kassert_suppress_in_panic) {
 		if (kassert_do_log) {
 			printf("KASSERT failed: %s\n", buf);
 #ifdef KDB
@@ -934,7 +934,7 @@ vpanic(const char *fmt, va_list ap)
 
 	bootopt = RB_AUTOBOOT;
 	newpanic = 0;
-	if (panicstr)
+	if (KERNEL_PANICKED())
 		bootopt |= RB_NOSYNC;
 	else {
 		bootopt |= RB_DUMP;
@@ -1021,7 +1021,7 @@ kproc_shutdown(void *arg, int howto)
 	struct proc *p;
 	int error;
 
-	if (panicstr)
+	if (KERNEL_PANICKED())
 		return;
 
 	p = (struct proc *)arg;
@@ -1041,7 +1041,7 @@ kthread_shutdown(void *arg, int howto)
 	struct thread *td;
 	int error;
 
-	if (panicstr)
+	if (KERNEL_PANICKED())
 		return;
 
 	td = (struct thread *)arg;
