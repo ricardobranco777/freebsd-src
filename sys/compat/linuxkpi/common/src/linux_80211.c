@@ -179,9 +179,12 @@ lkpi_lsta_remove(struct lkpi_sta *lsta, struct lkpi_vif *lvif)
 
 	lsta->ni = NULL;
 	ni->ni_drv_data = NULL;
-	ieee80211_free_node(ni);
+	if (ni != NULL)
+		ieee80211_free_node(ni);
 
-	IMPROVE("free lsta here?  We won't have a pointer to it from the node anymore.");
+	IMPROVE("more from lkpi_ic_node_free() should happen here.");
+
+	free(lsta, M_LKPI80211);
 }
 
 static struct lkpi_sta *
@@ -998,12 +1001,15 @@ lkpi_sta_scan_to_auth(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 			goto out;
 		}
 		lsta->ni = ieee80211_ref_node(ni);
-		LKPI_80211_LVIF_LOCK(lvif);
-		TAILQ_INSERT_TAIL(&lvif->lsta_head, lsta, lsta_entry);
-		LKPI_80211_LVIF_UNLOCK(lvif);
 	} else {
 		lsta = ni->ni_drv_data;
 	}
+
+	/* Insert the [l]sta into the list of known stations. */
+	LKPI_80211_LVIF_LOCK(lvif);
+	TAILQ_INSERT_TAIL(&lvif->lsta_head, lsta, lsta_entry);
+	LKPI_80211_LVIF_UNLOCK(lvif);
+
 	/* Add (or adjust) sta and change state (from NOTEXIST) to NONE. */
 	KASSERT(lsta != NULL, ("%s: ni %p lsta is NULL\n", __func__, ni));
 	KASSERT(lsta->state == IEEE80211_STA_NOTEXIST, ("%s: lsta %p state not "
@@ -1030,6 +1036,7 @@ lkpi_sta_scan_to_auth(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 	 */
 	lkpi_wake_tx_queues(hw, sta, false, false);
 
+<<<<<<< HEAD
 	{
 		int i, count;
 
@@ -1077,6 +1084,8 @@ lkpi_sta_scan_to_auth(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 #endif
 	}
 
+=======
+>>>>>>> origin/freebsd/current/main
 	/* Start mgd_prepare_tx. */
 	memset(&prep_tx_info, 0, sizeof(prep_tx_info));
 	prep_tx_info.duration = PREP_TX_INFO_DURATION;
@@ -1515,14 +1524,23 @@ lkpi_sta_assoc_to_run(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 	vif = LVIF_TO_VIF(lvif);
 
 	IEEE80211_UNLOCK(vap->iv_ic);
+	ni = NULL;
 
 	IMPROVE("ponder some of this moved to ic_newassoc, scan_assoc_success, "
 	    "and to lesser extend ieee80211_notify_node_join");
 
+	/* Finish assoc. */
+	/* Update sta_state (AUTH to ASSOC) and set aid. */
 	ni = ieee80211_ref_node(vap->iv_bss);
 	lsta = ni->ni_drv_data;
 	KASSERT(lsta != NULL, ("%s: ni %p lsta is NULL\n", __func__, ni));
+	KASSERT(lsta->state == IEEE80211_STA_AUTH, ("%s: lsta %p state not "
+	    "AUTH: %#x\n", __func__, lsta, lsta->state));
 	sta = LSTA_TO_STA(lsta);
+	sta->aid = IEEE80211_NODE_AID(ni);
+	error = lkpi_80211_mo_sta_state(hw, vif, sta, IEEE80211_STA_ASSOC);
+	if (error != 0)
+		goto out;
 
 	IMPROVE("wme / conf_tx [all]");
 
@@ -1555,16 +1573,6 @@ lkpi_sta_assoc_to_run(struct ieee80211vap *vap, enum ieee80211_state nstate, int
 	bss_changed |= lkpi_update_dtim_tsf(vif, ni, vap, __func__, __LINE__);
 
 	lkpi_80211_mo_bss_info_changed(hw, vif, &vif->bss_conf, bss_changed);
-
-	/* This MUST come after the bss_info_changed. */
-	/* Finish assoc. */
-	/* Update sta_state (AUTH to ASSOC) and set aid. */
-	KASSERT(lsta->state == IEEE80211_STA_AUTH, ("%s: lsta %p state not "
-	    "AUTH: %#x\n", __func__, lsta, lsta->state));
-	sta->aid = IEEE80211_NODE_AID(ni);
-	error = lkpi_80211_mo_sta_state(hw, vif, sta, IEEE80211_STA_ASSOC);
-	if (error != 0)
-		goto out;
 
 	/* - change_chanctx (if needed)
 	 * - event_callback
@@ -2080,8 +2088,8 @@ lkpi_iv_update_bss(struct ieee80211vap *vap, struct ieee80211_node *ni)
 	struct lkpi_vif *lvif;
 	struct ieee80211_node *obss;
 	struct lkpi_sta *lsta;
+	struct ieee80211_sta *sta;
 
-	lvif = VAP_TO_LVIF(vap);
 	obss = vap->iv_bss;
 
 #ifdef LINUXKPI_DEBUG_80211
@@ -2108,13 +2116,20 @@ lkpi_iv_update_bss(struct ieee80211vap *vap, struct ieee80211_node *ni)
 	lsta = obss->ni_drv_data;
 	obss->ni_drv_data = ni->ni_drv_data;
 	ni->ni_drv_data = lsta;
-	if (lsta != NULL)
+	if (lsta != NULL) {
 		lsta->ni = ni;
+		sta = LSTA_TO_STA(lsta);
+		IEEE80211_ADDR_COPY(sta->addr, lsta->ni->ni_macaddr);
+	}
 	lsta = obss->ni_drv_data;
-	if (lsta != NULL)
+	if (lsta != NULL) {
 		lsta->ni = obss;
+		sta = LSTA_TO_STA(lsta);
+		IEEE80211_ADDR_COPY(sta->addr, lsta->ni->ni_macaddr);
+	}
 
 out:
+	lvif = VAP_TO_LVIF(vap);
 	return (lvif->iv_update_bss(vap, ni));
 }
 
@@ -2816,7 +2831,6 @@ lkpi_ic_node_init(struct ieee80211_node *ni)
 	struct ieee80211com *ic;
 	struct lkpi_hw *lhw;
 	struct lkpi_sta *lsta;
-	struct lkpi_vif *lvif;
 	int error;
 
 	ic = ni->ni_ic;
@@ -2828,16 +2842,10 @@ lkpi_ic_node_init(struct ieee80211_node *ni)
 			return (error);
 	}
 
-	lvif = VAP_TO_LVIF(ni->ni_vap);
-
 	lsta = ni->ni_drv_data;
 
 	/* Now take the reference before linking it to the table. */
 	lsta->ni = ieee80211_ref_node(ni);
-
-	LKPI_80211_LVIF_LOCK(lvif);
-	TAILQ_INSERT_TAIL(&lvif->lsta_head, lsta, lsta_entry);
-	LKPI_80211_LVIF_UNLOCK(lvif);
 
 	/* XXX-BZ Sync other state over. */
 	IMPROVE();
@@ -2888,11 +2896,11 @@ lkpi_ic_node_free(struct ieee80211_node *ni)
 	mtx_destroy(&lsta->txq_mtx);
 
 	/* Remove lsta if added_to_drv. */
+
 	/* Remove lsta from vif */
-
-	/* remove ref from lsta node... */
-
+	/* Remove ref from lsta node... */
 	/* Free lsta. */
+	lkpi_lsta_remove(lsta, VAP_TO_LVIF(ni->ni_vap));
 
 out:
 	if (lhw->ic_node_free != NULL)
