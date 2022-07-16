@@ -202,6 +202,7 @@ int cold = 1;
 
 long Maxmem = 0;
 long realmem = 0;
+int late_console = 1;
 
 struct kva_md_info kmi;
 
@@ -1300,7 +1301,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	struct user_segment_descriptor *gdt;
 	struct region_descriptor r_gdt;
 	size_t kstack0_sz;
-	int late_console;
 
 	TSRAW(&thread0, TS_ENTER, __func__, NULL);
 
@@ -1520,7 +1520,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * Default to late console initialization to support these drivers.
 	 * This loses mainly printf()s in getmemsize() and early debugging.
 	 */
-	late_console = 1;
 	TUNABLE_INT_FETCH("debug.late_console", &late_console);
 	if (!late_console) {
 		cninit();
