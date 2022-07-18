@@ -416,7 +416,7 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 
 	sysent = p->p_sysent;
 	if (sysent->sv_sigcode_base != 0)
-		tf->tf_ra = (register_t)PROC_SIGCODE(p);
+		tf->tf_ra = (register_t)sysent->sv_sigcode_base;
 	else
 		tf->tf_ra = (register_t)(PROC_PS_STRINGS(p) -
 		    *(sysent->sv_szsigcode));
