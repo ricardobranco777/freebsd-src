@@ -3525,7 +3525,7 @@ freebsd32_copyout_strings(struct image_params *imgp, uintptr_t *stack_base)
 	/*
 	 * Install sigcode.
 	 */
-	if (!PROC_HAS_SHP(imgp->proc)) {
+	if (sysent->sv_sigcode_base == 0) {
 		szsigcode = *sysent->sv_szsigcode;
 		destp -= szsigcode;
 		destp = rounddown2(destp, sizeof(uint32_t));
