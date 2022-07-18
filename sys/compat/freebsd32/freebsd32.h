@@ -442,9 +442,7 @@ struct kinfo_vm_layout32 {
 	uint32_t	kvm_stack_addr;
 	uint32_t	kvm_stack_size;
 	int		kvm_map_flags;
-	uint32_t	kvm_shp_addr;
-	uint32_t	kvm_shp_size;
-	uint32_t	kvm_spare[12];
+	uint32_t	kvm_spare[14];
 };
 
 struct kld_file_stat_1_32 {
