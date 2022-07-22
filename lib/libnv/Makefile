@@ -5,14 +5,9 @@ SHLIBDIR?= /lib
 .include <src.opts.mk>
 
 PACKAGE=	runtime
-<<<<<<< HEAD
 SHLIB=	nv
-SHLIB_MAJOR= 0
-LIB=	nv
-=======
-LIB=	nv
 SHLIB_MAJOR= 1
->>>>>>> origin/freebsd/current/main
+LIB=	nv
 
 VERSION_DEF=	${SRCTOP}/lib/libc/Versions.def
 VERSION_MAP=	${.CURDIR}/Version.map
