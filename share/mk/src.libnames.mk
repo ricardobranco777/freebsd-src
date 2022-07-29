@@ -676,18 +676,10 @@ LIBHBSDCONTROL?=	${LIBHBSDCONTROLDIR}/libhbsdcontrol.a
 # Define a directory for each library.  This is useful for adding -L in when
 # not using a --sysroot or for meta mode bootstrapping when there is no
 # Makefile.depend.  These are sorted by directory.
-<<<<<<< HEAD
-LIBAVLDIR=	${OBJTOP}/cddl/lib/libavl
-LIBCTFDIR=	${OBJTOP}/cddl/lib/libctf
-LIBDTRACEDIR=	${OBJTOP}/cddl/lib/libdtrace
-LIBICPDIR=	${OBJTOP}/cddl/lib/libicp
-LIBNVDIR=	${OBJTOP}/lib/libnv
-=======
 LIBAVLDIR=	${_LIB_OBJTOP}/cddl/lib/libavl
 LIBCTFDIR=	${_LIB_OBJTOP}/cddl/lib/libctf
 LIBDTRACEDIR=	${_LIB_OBJTOP}/cddl/lib/libdtrace
 LIBICPDIR=	${_LIB_OBJTOP}/cddl/lib/libicp
->>>>>>> origin/freebsd/current/main
 LIBICP?=	${LIBICPDIR}/libicp${PIE_SUFFIX}.a
 LIBICP_RESCUEDIR=	${_LIB_OBJTOP}/cddl/lib/libicp_rescue
 LIBICP_RESCUE?=	${LIBICP_RESCUEDIR}/libicp_rescue${PIE_SUFFIX}.a
@@ -722,64 +714,6 @@ LIBOSMCOMPDIR=	${_LIB_OBJTOP}/lib/ofed/complib
 LIBOPENSMDIR=	${_LIB_OBJTOP}/lib/ofed/libopensm
 LIBOSMVENDORDIR=${_LIB_OBJTOP}/lib/ofed/libvendor
 
-<<<<<<< HEAD
-LIBDIALOGDIR=	${OBJTOP}/gnu/lib/libdialog
-LIBSSPDIR=	${OBJTOP}/lib/libssp
-LIBSSP_NONSHAREDDIR=	${OBJTOP}/lib/libssp_nonshared
-LIBASN1DIR=	${OBJTOP}/kerberos5/lib/libasn1
-LIBGSSAPI_KRB5DIR=	${OBJTOP}/kerberos5/lib/libgssapi_krb5
-LIBGSSAPI_NTLMDIR=	${OBJTOP}/kerberos5/lib/libgssapi_ntlm
-LIBGSSAPI_SPNEGODIR=	${OBJTOP}/kerberos5/lib/libgssapi_spnego
-LIBHDBDIR=	${OBJTOP}/kerberos5/lib/libhdb
-LIBHEIMBASEDIR=	${OBJTOP}/kerberos5/lib/libheimbase
-LIBHEIMIPCCDIR=	${OBJTOP}/kerberos5/lib/libheimipcc
-LIBHEIMIPCSDIR=	${OBJTOP}/kerberos5/lib/libheimipcs
-LIBHEIMNTLMDIR=	${OBJTOP}/kerberos5/lib/libheimntlm
-LIBHX509DIR=	${OBJTOP}/kerberos5/lib/libhx509
-LIBKADM5CLNTDIR=	${OBJTOP}/kerberos5/lib/libkadm5clnt
-LIBKADM5SRVDIR=	${OBJTOP}/kerberos5/lib/libkadm5srv
-LIBKAFS5DIR=	${OBJTOP}/kerberos5/lib/libkafs5
-LIBKDCDIR=	${OBJTOP}/kerberos5/lib/libkdc
-LIBKRB5DIR=	${OBJTOP}/kerberos5/lib/libkrb5
-LIBROKENDIR=	${OBJTOP}/kerberos5/lib/libroken
-LIBWINDDIR=	${OBJTOP}/kerberos5/lib/libwind
-LIBATF_CDIR=	${OBJTOP}/lib/atf/libatf-c
-LIBATF_CXXDIR=	${OBJTOP}/lib/atf/libatf-c++
-LIBGMOCKDIR=	${OBJTOP}/lib/googletest/gmock
-LIBGMOCK_MAINDIR=	${OBJTOP}/lib/googletest/gmock_main
-LIBGTESTDIR=	${OBJTOP}/lib/googletest/gtest
-LIBGTEST_MAINDIR=	${OBJTOP}/lib/googletest/gtest_main
-LIBALIASDIR=	${OBJTOP}/lib/libalias/libalias
-LIBBLACKLISTDIR=	${OBJTOP}/lib/libblacklist
-LIBBLOCKSRUNTIMEDIR=	${OBJTOP}/lib/libblocksruntime
-LIBBSNMPDIR=	${OBJTOP}/lib/libbsnmp/libbsnmp
-LIBCASPERDIR=	${OBJTOP}/lib/libcasper/libcasper
-LIBCAP_DNSDIR=	${OBJTOP}/lib/libcasper/services/cap_dns
-LIBCAP_GRPDIR=	${OBJTOP}/lib/libcasper/services/cap_grp
-LIBCAP_NETDIR=	${OBJTOP}/lib/libcasper/services/cap_net
-LIBCAP_PWDDIR=	${OBJTOP}/lib/libcasper/services/cap_pwd
-LIBCAP_SYSCTLDIR=	${OBJTOP}/lib/libcasper/services/cap_sysctl
-LIBCAP_SYSLOGDIR=	${OBJTOP}/lib/libcasper/services/cap_syslog
-LIBCBORDIR=	${OBJTOP}/lib/libcbor
-LIBBSDXMLDIR=	${OBJTOP}/lib/libexpat
-LIBFIDO2DIR=	${OBJTOP}/lib/libfido2
-LIBKVMDIR=	${OBJTOP}/lib/libkvm
-LIBPTHREADDIR=	${OBJTOP}/lib/libthr
-LIBMDIR=	${OBJTOP}/lib/msun
-LIBFORMWDIR=	${OBJTOP}/lib/ncurses/form
-LIBMENUWDIR=	${OBJTOP}/lib/ncurses/menu
-LIBNCURSESWDIR=	${OBJTOP}/lib/ncurses/ncurses
-LIBTINFOWDIR=	${OBJTOP}/lib/ncurses/tinfo
-LIBPANELWDIR=	${OBJTOP}/lib/ncurses/panel
-LIBCRYPTODIR=	${OBJTOP}/secure/lib/libcrypto
-LIBSPLDIR=	${OBJTOP}/cddl/lib/libspl
-LIBSSHDIR=	${OBJTOP}/secure/lib/libssh
-LIBSSLDIR=	${OBJTOP}/secure/lib/libssl
-LIBTEKENDIR=	${OBJTOP}/sys/teken/libteken
-LIBTLSDIR=	${OBJTOP}/secure/lib/libtls
-LIBEGACYDIR=	${OBJTOP}/tools/build
-LIBLNDIR=	${OBJTOP}/usr.bin/lex/lib
-=======
 LIBDIALOGDIR=	${_LIB_OBJTOP}/gnu/lib/libdialog
 LIBSSPDIR=	${_LIB_OBJTOP}/lib/libssp
 LIBSSP_NONSHAREDDIR=	${_LIB_OBJTOP}/lib/libssp_nonshared
@@ -835,7 +769,6 @@ LIBSSLDIR=	${_LIB_OBJTOP}/secure/lib/libssl
 LIBTEKENDIR=	${_LIB_OBJTOP}/sys/teken/libteken
 LIBEGACYDIR=	${_LIB_OBJTOP}/tools/build
 LIBLNDIR=	${_LIB_OBJTOP}/usr.bin/lex/lib
->>>>>>> origin/freebsd/current/main
 
 LIBTERMCAPWDIR=	${LIBTINFOWDIR}
 
