@@ -20,9 +20,20 @@ host_dup(int fd)
 }
 
 int
+host_exit(int code)
+{
+	return host_syscall(SYS_exit, code);
+}
+
+/* Same system call with different names on different Linux architectures due to history */
+int
 host_fstat(int fd, struct host_kstat *sb)
 {
+#ifdef SYS_newfstat
 	return host_syscall(SYS_newfstat, fd, (uintptr_t)sb);
+#else
+	return host_syscall(SYS_fstat, fd, (uintptr_t)sb);
+#endif
 }
 
 int
@@ -41,6 +52,12 @@ int
 host_gettimeofday(struct host_timeval *a, void *b)
 {
 	return host_syscall(SYS_gettimeofday, (uintptr_t)a, (uintptr_t)b);
+}
+
+int
+host_ioctl(int fd, unsigned long request, unsigned long arg)
+{
+	return host_syscall(SYS_ioctl, fd, request, arg);
 }
 
 int
