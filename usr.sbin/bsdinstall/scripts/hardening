@@ -42,7 +42,7 @@ FEATURES=$( bsddialog --backtitle "$OSNAME Installer" \
     0 0 0 \
 	"0 hide_jail" "Hide processes running in jails" ${hide_jail:-off} \
 	"1 shm_use_phys" "Lock shared memory pages" ${shm_use_phys:-off} \
-	"2 unprivileged_mlock" "No allow non-root users to call mlock" ${unprivileged_mlock:-off} \
+	"2 unprivileged_mlock" "Do not allow non-root users to call mlock" ${unprivileged_mlock:-off} \
 	"3 clear_tmp" "Clean the /tmp filesystem on system startup" ${clear_tmp:-off} \
 	"4 disable_syslogd" "Disable opening Syslogd network socket (disables remote logging)" ${disable_syslogd:-off} \
 	"5 disable_sendmail" "Disable Sendmail service" ${disable_sendmail:-off} \
