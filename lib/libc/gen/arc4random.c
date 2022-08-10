@@ -108,7 +108,7 @@ static void
 _rs_stir(void)
 {
 	u_char rnd[KEYSZ + IVSZ];
-	uint32_t rekey_fuzz = 0;
+	uint32_t rekey_fuzz;
 
 #if defined(__FreeBSD__)
 	bool need_init;
@@ -155,10 +155,7 @@ _rs_stir(void)
 	rs->rs_have = 0;
 	memset(rsx->rs_buf, 0, sizeof(rsx->rs_buf));
 
-<<<<<<< HEAD
 	rekey_fuzz = 0;
-=======
->>>>>>> origin/freebsd/current/main
 	/* rekey interval should not be predictable */
 	chacha_encrypt_bytes(&rsx->rs_chacha, (uint8_t *)&rekey_fuzz,
 	    (uint8_t *)&rekey_fuzz, sizeof(rekey_fuzz));
