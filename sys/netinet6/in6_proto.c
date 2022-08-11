@@ -218,7 +218,6 @@ struct protosw inet6sw[] = {
 	.pr_protocol =		IPPROTO_RAW,
 	.pr_flags =		PR_ATOMIC|PR_ADDR,
 	.pr_input =		rip6_input,
-	.pr_output =		rip6_output,
 	.pr_ctlinput =		rip6_ctlinput,
 	.pr_ctloutput =		rip6_ctloutput,
 	.pr_usrreqs =		&rip6_usrreqs
@@ -229,7 +228,6 @@ struct protosw inet6sw[] = {
 	.pr_protocol =		IPPROTO_ICMPV6,
 	.pr_flags =		PR_ATOMIC|PR_ADDR|PR_LASTHDR,
 	.pr_input =		icmp6_input,
-	.pr_output =		rip6_output,
 	.pr_ctlinput =		rip6_ctlinput,
 	.pr_ctloutput =		rip6_ctloutput,
 	.pr_fasttimo =		icmp6_fasttimo,
@@ -267,7 +265,6 @@ struct protosw inet6sw[] = {
 	.pr_protocol =		IPPROTO_IPV4,
 	.pr_flags =		PR_ATOMIC|PR_ADDR|PR_LASTHDR,
 	.pr_input =		encap6_input,
-	.pr_output =		rip6_output,
 	.pr_ctloutput =		rip6_ctloutput,
 	.pr_usrreqs =		&rip6_usrreqs
 },
@@ -278,7 +275,6 @@ struct protosw inet6sw[] = {
 	.pr_protocol =		IPPROTO_IPV6,
 	.pr_flags =		PR_ATOMIC|PR_ADDR|PR_LASTHDR,
 	.pr_input =		encap6_input,
-	.pr_output =		rip6_output,
 	.pr_ctloutput =		rip6_ctloutput,
 	.pr_usrreqs =		&rip6_usrreqs
 },
@@ -297,7 +293,6 @@ struct protosw inet6sw[] = {
 	.pr_protocol =		IPPROTO_GRE,
 	.pr_flags =		PR_ATOMIC|PR_ADDR|PR_LASTHDR,
 	.pr_input =		encap6_input,
-	.pr_output =		rip6_output,
 	.pr_ctloutput =		rip6_ctloutput,
 	.pr_usrreqs =		&rip6_usrreqs
 },
@@ -307,7 +302,6 @@ struct protosw inet6sw[] = {
 	.pr_protocol =		IPPROTO_PIM,
 	.pr_flags =		PR_ATOMIC|PR_ADDR|PR_LASTHDR,
 	.pr_input =		encap6_input,
-	.pr_output =		rip6_output,
 	.pr_ctloutput =		rip6_ctloutput,
 	.pr_usrreqs =		&rip6_usrreqs
 },
@@ -326,7 +320,6 @@ IP6PROTOSPACER,
 	.pr_domain =		&inet6domain,
 	.pr_flags =		PR_ATOMIC|PR_ADDR,
 	.pr_input =		rip6_input,
-	.pr_output =		rip6_output,
 	.pr_ctloutput =		rip6_ctloutput,
 	.pr_usrreqs =		&rip6_usrreqs
 },
