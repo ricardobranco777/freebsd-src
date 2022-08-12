@@ -50,11 +50,7 @@ __FBSDID("$FreeBSD$");
 #include "opt_kdb.h"
 #include "opt_kstack_pages.h"
 #include "opt_maxmem.h"
-<<<<<<< HEAD
-#include "opt_mp_watchdog.h"
 #include "opt_pax.h"
-=======
->>>>>>> origin/freebsd/current/main
 #include "opt_platform.h"
 #include "opt_sched.h"
 #ifdef __i386__
