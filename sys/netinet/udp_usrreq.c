@@ -1495,7 +1495,8 @@ release:
 	return (error);
 }
 
-static void
+pr_abort_t udp_abort;			/* shared with udp6_usrreq.c */
+void
 udp_abort(struct socket *so)
 {
 	struct inpcb *inp;
@@ -1688,7 +1689,8 @@ udp_detach(struct socket *so)
 	udp_discardcb(up);
 }
 
-static int
+pr_disconnect_t udp_disconnect;		/* shared with udp6_usrreq.c */
+int
 udp_disconnect(struct socket *so)
 {
 	struct inpcb *inp;
@@ -1713,7 +1715,8 @@ udp_disconnect(struct socket *so)
 	return (0);
 }
 
-static int
+pr_send_t udp_send;			/* shared with udp6_usrreq.c */
+int
 udp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
     struct mbuf *control, struct thread *td)
 {

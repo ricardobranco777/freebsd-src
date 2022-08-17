@@ -560,6 +560,10 @@ pci_nvme_init_ctrldata(struct pci_nvme_softc *sc)
 	cd->wctemp = 0x0157;
 	cd->cctemp = 0x0157;
 
+	/* SANICAP must not be 0 for Revision 1.4 and later NVMe Controllers */
+	cd->sanicap = (NVME_CTRLR_DATA_SANICAP_NODMMAS_NO <<
+			NVME_CTRLR_DATA_SANICAP_NODMMAS_SHIFT);
+
 	cd->sqes = (6 << NVME_CTRLR_DATA_SQES_MAX_SHIFT) |
 	    (6 << NVME_CTRLR_DATA_SQES_MIN_SHIFT);
 	cd->cqes = (4 << NVME_CTRLR_DATA_CQES_MAX_SHIFT) |
@@ -1564,6 +1568,15 @@ nvme_opc_identify(struct pci_nvme_softc* sc, struct nvme_command* command,
 		((uint8_t *)dest)[0] = 1;
 		((uint8_t *)dest)[1] = sizeof(uint64_t);
 		bcopy(sc->nsdata.eui64, ((uint8_t *)dest) + 4, sizeof(uint64_t));
+		break;
+	case 0x13:
+		/*
+		 * Controller list is optional but used by UNH tests. Return
+		 * a valid but empty list.
+		 */
+		dest = vm_map_gpa(sc->nsc_pi->pi_vmctx, command->prp1,
+		                  sizeof(uint16_t) * 2048);
+		memset(dest, 0, sizeof(uint16_t) * 2048);
 		break;
 	default:
 		DPRINTF("%s unsupported identify command requested 0x%x",
@@ -3348,7 +3361,7 @@ pci_nvme_legacy_config(nvlist_t *nvl, const char *opts)
 		return (blockif_legacy_config(nvl, opts));
 }
 
-struct pci_devemu pci_de_nvme = {
+static const struct pci_devemu pci_de_nvme = {
 	.pe_emu =	"nvme",
 	.pe_init =	pci_nvme_init,
 	.pe_legacy_config = pci_nvme_legacy_config,
