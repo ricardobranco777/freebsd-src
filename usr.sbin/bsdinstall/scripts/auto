@@ -415,13 +415,8 @@ finalconfig() {
 	esac
 }
 
-<<<<<<< HEAD
-# Allow the user to make last-minute changes
-finalconfig
-=======
 # Allow user to change his mind
 [ -z "$BSDINSTALL_SKIP_FINALCONFIG" ] && finalconfig
->>>>>>> origin/freebsd/current/main
 
 trap error SIGINT	# SIGINT is bad again
 bsdinstall config  || error "Failed to save config"
