@@ -1,16 +1,7 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright 2018-2020 Alex Richardson <arichardson@FreeBSD.org>
- *
- * This software was developed by SRI International and the University of
- * Cambridge Computer Laboratory (Department of Computer Science and
- * Technology) under DARPA contract HR0011-18-C-0016 ("ECATS"), as part of the
- * DARPA SSITH research programme.
- *
- * This software was developed by SRI International and the University of
- * Cambridge Computer Laboratory under DARPA/AFRL contract (FA8750-10-C-0237)
- * ("CTSRD"), as part of the DARPA CRASH research programme.
+ * Copyright 2022 Jessica Clarke <jrtc27@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,40 +27,14 @@
  * $FreeBSD$
  */
 #pragma once
-#include_next <sys/types.h>
-#include <sys/_types.h>
-/*
- * elftoolchain includes sys/elf32.h which expects that uint32_t is defined
- * However, it only includes <sys/types.h> and not <stdint.h>
- */
-#include <stdint.h>
+#include <sys/cdefs.h>
 
-#if __has_include(<sys/sysmacros.h>)
-/* GLibc defines makedev/minor/major in sysmacros.h instead of sys/types.h */
-#include <sys/sysmacros.h>
-#endif
+#include_next <strings.h>
 
-typedef __UINTPTR_TYPE__ __uintptr_t;
-typedef __INTPTR_TYPE__ __intptr_t;
+__BEGIN_DECLS
 
-/* needed for gencat */
-typedef int __nl_item;
+int	fls(int) __pure2;
+int	flsl(long) __pure2;
+int	flsll(long long) __pure2;
 
-typedef size_t u_register_t;
-
-/* capsicum compat: */
-#ifndef _CAP_IOCTL_T_DECLARED
-#define _CAP_IOCTL_T_DECLARED
-typedef unsigned long cap_ioctl_t;
-#endif
-
-#ifndef _CAP_RIGHTS_T_DECLARED
-#define _CAP_RIGHTS_T_DECLARED
-struct cap_rights;
-
-typedef struct cap_rights cap_rights_t;
-
-/* Needed for bitstring */
-#include <sys/bitcount.h>
-
-#endif
+__END_DECLS
