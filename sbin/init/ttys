@@ -51,3 +51,5 @@ dcons	"/usr/libexec/getty std.9600"	vt100	off secure
 xc0	"/usr/libexec/getty Pc"		xterm	onifconsole secure
 # RISC-V HTIF console
 rcons	"/usr/libexec/getty std.9600"	vt100	onifconsole secure
+# virtio / Linux KVM virtual console:
+ttyV0.0	"/usr/libexec/getty Pc"		xterm	onifconsole secure
