@@ -547,7 +547,7 @@ interpret:
 	}
 #endif
 
-#ifdef PAX
+#ifdef PAX_HARDENING
 	error = pax_enforce_tpe(td, imgp->vp, imgp->execpath);
 	if (error) {
 		pax_log_internal(td->td_proc,
