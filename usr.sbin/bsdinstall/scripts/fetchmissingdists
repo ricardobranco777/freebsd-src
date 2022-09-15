@@ -33,11 +33,7 @@ BSDCFG_SHARE="/usr/share/bsdconfig"
 
 error()
 {
-<<<<<<< HEAD
-	bsddialog --backtitle "HardenedBSD Installer" --title "Error" --msgbox "$1" 0 0
-=======
 	bsddialog --backtitle "$OSNAME Installer" --title "Error" --msgbox "$1" 0 0
->>>>>>> origin/freebsd/current/main
 	exit 1
 }
 
