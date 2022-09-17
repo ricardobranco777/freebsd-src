@@ -158,12 +158,6 @@ tmpfs_lookup1(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 				if (error != 0)
 					goto out;
 
-				/*
-				 * Keep the component name in the buffer for
-				 * future uses.
-				 */
-				cnp->cn_flags |= SAVENAME;
-
 				error = EJUSTRETURN;
 			} else
 				error = ENOENT;
@@ -217,7 +211,6 @@ tmpfs_lookup1(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 					*vpp = NULL;
 					goto out;
 				}
-				cnp->cn_flags |= SAVENAME;
 			} else {
 				error = tmpfs_alloc_vp(dvp->v_mount, tnode,
 				    cnp->cn_lkflags, vpp);
@@ -796,7 +789,6 @@ tmpfs_link(struct vop_link_args *v)
 	struct tmpfs_node *node;
 
 	MPASS(VOP_ISLOCKED(dvp));
-	MPASS(cnp->cn_flags & HASBUF);
 	MPASS(dvp != vp); /* XXX When can this be false? */
 	node = VP_TO_TMPFS_NODE(vp);
 
@@ -989,8 +981,6 @@ tmpfs_rename(struct vop_rename_args *v)
 
 	MPASS(VOP_ISLOCKED(tdvp));
 	MPASS(IMPLIES(tvp != NULL, VOP_ISLOCKED(tvp)));
-	MPASS(fcnp->cn_flags & HASBUF);
-	MPASS(tcnp->cn_flags & HASBUF);
 
 	want_seqc_end = false;
 
