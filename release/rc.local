@@ -74,10 +74,7 @@ $BSDDIALOG_OK)	# Install
 	trap true SIGINT	# Ignore cntrl-C here
 	bsdinstall
 	if [ $? -eq 0 ]; then
-<<<<<<< HEAD
-		bsddialog --backtitle "HardenedBSD Installer" --title "Complete" --yes-label "Reboot" --no-label "Live CD" --yesno "Installation of HardenedBSD complete! Would you like to reboot into the installed system now?" 0 0 && reboot
-=======
-		bsddialog --backtitle "FreeBSD Installer" --title "Complete" --ok-label "Reboot" --extra-button --extra-label "Shutdown" --cancel-label "Live CD" --yesno "Installation of FreeBSD complete! Would you like to reboot into the installed system now?" 0 0
+		bsddialog --backtitle "HardenedBSD Installer" --title "Complete" --ok-label "Reboot" --extra-button --extra-label "Shutdown" --cancel-label "Live CD" --yesno "Installation of FreeBSD complete! Would you like to reboot into the installed system now?" 0 0
 
 		case $? in
 		$BSDDIALOG_OK)		# Reboot
@@ -90,7 +87,6 @@ $BSDDIALOG_OK)	# Install
 			exit 0
 			;;
 		esac
->>>>>>> reversions/current/2022-09-stack-rtld
 	else
 		. /etc/rc.local
 	fi
