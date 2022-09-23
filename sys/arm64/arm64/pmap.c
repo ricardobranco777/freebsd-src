@@ -1248,7 +1248,7 @@ pmap_init_asids(struct asid_set *set, int bits)
 	 * bit_alloc().
 	 */
 	set->asid_set_size = 1 << set->asid_bits;
-	set->asid_set = (bitstr_t *)kmem_malloc(bitstr_size(set->asid_set_size),
+	set->asid_set = kmem_malloc(bitstr_size(set->asid_set_size),
 	    M_WAITOK | M_ZERO);
 	for (i = 0; i < ASID_FIRST_AVAILABLE; i++)
 		bit_set(set->asid_set, i);
@@ -1327,7 +1327,7 @@ pmap_init(void)
 	 */
 	s = (vm_size_t)(pv_npg * sizeof(struct md_page));
 	s = round_page(s);
-	pv_table = (struct md_page *)kmem_malloc(s, M_WAITOK | M_ZERO);
+	pv_table = kmem_malloc(s, M_WAITOK | M_ZERO);
 	for (i = 0; i < pv_npg; i++)
 		TAILQ_INIT(&pv_table[i].pv_list);
 	TAILQ_INIT(&pv_dummy.pv_list);
@@ -6096,15 +6096,16 @@ pmap_mapbios(vm_paddr_t pa, vm_size_t size)
 }
 
 void
-pmap_unmapbios(vm_offset_t va, vm_size_t size)
+pmap_unmapbios(void *p, vm_size_t size)
 {
 	struct pmap_preinit_mapping *ppim;
-	vm_offset_t offset, tmpsize, va_trunc;
+	vm_offset_t offset, tmpsize, va, va_trunc;
 	pd_entry_t *pde;
 	pt_entry_t *l2;
 	int i, lvl, l2_blocks, block;
 	bool preinit_map;
 
+	va = (vm_offset_t)p;
 	l2_blocks =
 	   (roundup2(va + size, L2_SIZE) - rounddown2(va, L2_SIZE)) >> L2_SHIFT;
 	KASSERT(l2_blocks > 0, ("pmap_unmapbios: invalid size %lx", size));
