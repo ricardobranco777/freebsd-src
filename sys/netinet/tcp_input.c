@@ -1609,6 +1609,7 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 	if ((tp->t_state == TCPS_SYN_SENT) && (thflags & TH_ACK) &&
 	    (SEQ_LEQ(th->th_ack, tp->iss) || SEQ_GT(th->th_ack, tp->snd_max))) {
 		rstreason = BANDLIM_UNLIMITED;
+		tcp_log_end_status(tp, TCP_EI_STATUS_RST_IN_FRONT);
 		goto dropwithreset;
 	}
 
@@ -1620,6 +1621,8 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 	 */
 	tp->t_rcvtime = ticks;
 
+	if (thflags & TH_FIN)
+		tcp_log_end_status(tp, TCP_EI_STATUS_CLIENT_FIN);
 	/*
 	 * Scale up the window into a 32-bit value.
 	 * For the SYN_SENT state the scale is zero.
@@ -1993,6 +1996,7 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 		    (SEQ_LEQ(th->th_ack, tp->snd_una) ||
 		     SEQ_GT(th->th_ack, tp->snd_max))) {
 				rstreason = BANDLIM_RST_OPENPORT;
+				tcp_log_end_status(tp, TCP_EI_STATUS_RST_IN_FRONT);
 				goto dropwithreset;
 		}
 		if (IS_FASTOPEN(tp->t_flags)) {
@@ -2005,6 +2009,7 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 			 */
 			if ((thflags & (TH_SYN|TH_ACK)) == (TH_SYN|TH_ACK)) {
 				rstreason = BANDLIM_RST_OPENPORT;
+				tcp_log_end_status(tp, TCP_EI_STATUS_RST_IN_FRONT);
 				goto dropwithreset;
 			} else if (thflags & TH_SYN) {
 				/* non-initial SYN is ignored */
@@ -2036,6 +2041,7 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 		if ((thflags & (TH_ACK|TH_RST)) == (TH_ACK|TH_RST)) {
 			TCP_PROBE5(connect__refused, NULL, tp,
 			    m, tp, th);
+			tcp_log_end_status(tp, TCP_EI_STATUS_RST_IN_FRONT);
 			tp = tcp_drop(tp, ECONNREFUSED);
 		}
 		if (thflags & TH_RST)
@@ -2198,6 +2204,7 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 				close:
 					/* FALLTHROUGH */
 				default:
+					tcp_log_end_status(tp, TCP_EI_STATUS_CLIENT_RST);
 					tp = tcp_close(tp);
 				}
 			} else {
@@ -2222,6 +2229,7 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 		if (V_tcp_insecure_syn &&
 		    SEQ_GEQ(th->th_seq, tp->last_ack_sent) &&
 		    SEQ_LT(th->th_seq, tp->last_ack_sent + tp->rcv_wnd)) {
+			tcp_log_end_status(tp, TCP_EI_STATUS_RST_IN_FRONT);
 			tp = tcp_drop(tp, ECONNRESET);
 			rstreason = BANDLIM_UNLIMITED;
 		} else {
@@ -2273,6 +2281,7 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 	 */
 	if (tp->t_state == TCPS_SYN_RECEIVED && SEQ_LT(th->th_seq, tp->irs)) {
 		rstreason = BANDLIM_RST_OPENPORT;
+		tcp_log_end_status(tp, TCP_EI_STATUS_RST_IN_FRONT);
 		goto dropwithreset;
 	}
 
@@ -2346,6 +2355,9 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 			    s, __func__, tcpstates[tp->t_state], tlen);
 			free(s, M_TCPLOG);
 		}
+		tcp_log_end_status(tp, TCP_EI_STATUS_DATA_A_CLOSE);
+		/* tcp_close will kill the inp pre-log the Reset */
+		tcp_log_end_status(tp, TCP_EI_STATUS_SERVER_RST);
 		tp = tcp_close(tp);
 		TCPSTAT_INC(tcps_rcvafterclose);
 		rstreason = BANDLIM_UNLIMITED;
@@ -3337,6 +3349,7 @@ dropafterack:
 	    (SEQ_GT(tp->snd_una, th->th_ack) ||
 	     SEQ_GT(th->th_ack, tp->snd_max)) ) {
 		rstreason = BANDLIM_RST_OPENPORT;
+		tcp_log_end_status(tp, TCP_EI_STATUS_RST_IN_FRONT);
 		goto dropwithreset;
 	}
 #ifdef TCPDEBUG
@@ -4065,9 +4078,13 @@ tcp_newreno_partial_ack(struct tcpcb *tp, struct tcphdr *th)
 int
 tcp_compute_pipe(struct tcpcb *tp)
 {
-	return (tp->snd_max - tp->snd_una +
-		tp->sackhint.sack_bytes_rexmit -
-		tp->sackhint.sacked_bytes);
+	if (tp->t_fb->tfb_compute_pipe == NULL) {
+		return (tp->snd_max - tp->snd_una +
+			tp->sackhint.sack_bytes_rexmit -
+			tp->sackhint.sacked_bytes);
+	} else {
+		return((*tp->t_fb->tfb_compute_pipe)(tp));
+	}
 }
 
 uint32_t
