@@ -151,6 +151,12 @@ __FBSDID("$FreeBSD$");
 #include <machine/md_var.h>
 #include <machine/pcb.h>
 
+#ifdef NUMA
+#define	PMAP_MEMDOM	MAXMEMDOM
+#else
+#define	PMAP_MEMDOM	1
+#endif
+
 #define	PMAP_ASSERT_STAGE1(pmap)	MPASS((pmap)->pm_stage == PM_STAGE1)
 #define	PMAP_ASSERT_STAGE2(pmap)	MPASS((pmap)->pm_stage == PM_STAGE2)
 
@@ -277,8 +283,28 @@ vm_offset_t kernel_vm_end = 0;
 /*
  * Data for the pv entry allocation mechanism.
  */
-static TAILQ_HEAD(pch, pv_chunk) pv_chunks = TAILQ_HEAD_INITIALIZER(pv_chunks);
-static struct mtx pv_chunks_mutex;
+#ifdef NUMA
+static __inline int
+pc_to_domain(struct pv_chunk *pc)
+{
+	return (vm_phys_domain(DMAP_TO_PHYS((vm_offset_t)pc)));
+}
+#else
+static __inline int
+pc_to_domain(struct pv_chunk *pc __unused)
+{
+	return (0);
+}
+#endif
+
+struct pv_chunks_list {
+	struct mtx pvc_lock;
+	TAILQ_HEAD(pch, pv_chunk) pvc_list;
+	int active_reclaims;
+} __aligned(CACHE_LINE_SIZE);
+
+struct pv_chunks_list __exclusive_cache_line pv_chunks[PMAP_MEMDOM];
+
 static struct rwlock pv_list_locks[NPV_LIST_LOCKS];
 static struct md_page *pv_table;
 static struct md_page pv_dummy;
@@ -381,7 +407,10 @@ SYSCTL_INT(_vm_pmap, OID_AUTO, superpages_enabled,
 #define	PMAP_ENTER_NORECLAIM	0x1000000	/* Don't reclaim PV entries. */
 #define	PMAP_ENTER_NOREPLACE	0x2000000	/* Don't replace mappings. */
 
+TAILQ_HEAD(pv_chunklist, pv_chunk);
+
 static void	free_pv_chunk(struct pv_chunk *pc);
+static void	free_pv_chunk_batch(struct pv_chunklist *batch);
 static void	free_pv_entry(pmap_t pmap, pv_entry_t pv);
 static pv_entry_t get_pv_entry(pmap_t pmap, struct rwlock **lockp);
 static vm_page_t reclaim_pv_chunk(pmap_t locked_pmap, struct rwlock **lockp);
@@ -818,41 +847,74 @@ pmap_early_vtophys(vm_offset_t va)
 }
 
 /* State of the bootstrapped DMAP page tables */
-struct dmap_bootstrap_state {
-	vm_offset_t	va;
-	vm_paddr_t	pa;
+struct pmap_bootstrap_state {
 	pt_entry_t	*l1;
 	pt_entry_t	*l2;
 	pt_entry_t	*l3;
+	vm_offset_t	freemempos;
+	vm_offset_t	va;
+	vm_paddr_t	pa;
+	pt_entry_t	table_attrs;
 	u_int		l0_slot;
 	u_int		l1_slot;
 	u_int		l2_slot;
-	vm_offset_t	freemempos;
+	bool		dmap_valid;
+};
+
+/* The bootstrap state */
+static struct pmap_bootstrap_state bs_state = {
+	.l1 = NULL,
+	.l2 = NULL,
+	.l3 = NULL,
+	.table_attrs = TATTR_PXN_TABLE,
+	.l0_slot = L0_ENTRIES,
+	.l1_slot = Ln_ENTRIES,
+	.l2_slot = Ln_ENTRIES,
+	.dmap_valid = false,
 };
 
 static void
-pmap_bootstrap_dmap_l0_table(struct dmap_bootstrap_state *state)
+pmap_bootstrap_l0_table(struct pmap_bootstrap_state *state)
 {
 	vm_paddr_t l1_pa;
+	pd_entry_t l0e;
 	u_int l0_slot;
 
 	/* Link the level 0 table to a level 1 table */
 	l0_slot = pmap_l0_index(state->va);
 	if (l0_slot != state->l0_slot) {
+		/*
+		 * Make sure we move from a low address to high address
+		 * before the DMAP region is ready. This ensures we never
+		 * modify an existing mapping until we can map from a
+		 * physical address to a virtual address.
+		 */
 		MPASS(state->l0_slot < l0_slot ||
-		    state->l0_slot == L0_ENTRIES);
-
-		/* Create a new L0 table entry */
-		state->l0_slot = l0_slot;
-		state->l1 = (pt_entry_t *)state->freemempos;
-		memset(state->l1, 0, PAGE_SIZE);
-		state->freemempos += PAGE_SIZE;
+		    state->l0_slot == L0_ENTRIES ||
+		    state->dmap_valid);
 
 		/* Reset lower levels */
 		state->l2 = NULL;
 		state->l3 = NULL;
 		state->l1_slot = Ln_ENTRIES;
 		state->l2_slot = Ln_ENTRIES;
+
+		/* Check the existing L0 entry */
+		state->l0_slot = l0_slot;
+		if (state->dmap_valid) {
+			l0e = pagetable_l0_ttbr1[l0_slot];
+			if ((l0e & ATTR_DESCR_VALID) != 0) {
+				MPASS((l0e & ATTR_DESCR_MASK) == L0_TABLE);
+				l1_pa = l0e & ~ATTR_MASK;
+				state->l1 = (pt_entry_t *)PHYS_TO_DMAP(l1_pa);
+				return;
+			}
+		}
+
+		/* Create a new L0 table entry */
+		state->l1 = (pt_entry_t *)state->freemempos;
+		memset(state->l1, 0, PAGE_SIZE);
+		state->freemempos += PAGE_SIZE;
 
 		l1_pa = pmap_early_vtophys((vm_offset_t)state->l1);
 		MPASS((l1_pa & Ln_TABLE_MASK) == 0);
@@ -864,56 +926,84 @@ pmap_bootstrap_dmap_l0_table(struct dmap_bootstrap_state *state)
 }
 
 static void
-pmap_bootstrap_dmap_l1_table(struct dmap_bootstrap_state *state)
+pmap_bootstrap_l1_table(struct pmap_bootstrap_state *state)
 {
 	vm_paddr_t l2_pa;
+	pd_entry_t l1e;
 	u_int l1_slot;
 
 	/* Make sure there is a valid L0 -> L1 table */
-	pmap_bootstrap_dmap_l0_table(state);
+	pmap_bootstrap_l0_table(state);
 
 	/* Link the level 1 table to a level 2 table */
 	l1_slot = pmap_l1_index(state->va);
 	if (l1_slot != state->l1_slot) {
+		/* See pmap_bootstrap_l0_table for a description */
 		MPASS(state->l1_slot < l1_slot ||
-		    state->l1_slot == Ln_ENTRIES);
-
-		/* Create a new L1 table entry */
-		state->l1_slot = l1_slot;
-		state->l2 = (pt_entry_t *)state->freemempos;
-		memset(state->l2, 0, PAGE_SIZE);
-		state->freemempos += PAGE_SIZE;
+		    state->l1_slot == Ln_ENTRIES ||
+		    state->dmap_valid);
 
 		/* Reset lower levels */
 		state->l3 = NULL;
 		state->l2_slot = Ln_ENTRIES;
 
+		/* Check the existing L1 entry */
+		state->l1_slot = l1_slot;
+		if (state->dmap_valid) {
+			l1e = state->l1[l1_slot];
+			if ((l1e & ATTR_DESCR_VALID) != 0) {
+				MPASS((l1e & ATTR_DESCR_MASK) == L1_TABLE);
+				l2_pa = l1e & ~ATTR_MASK;
+				state->l2 = (pt_entry_t *)PHYS_TO_DMAP(l2_pa);
+				return;
+			}
+		}
+
+		/* Create a new L1 table entry */
+		state->l2 = (pt_entry_t *)state->freemempos;
+		memset(state->l2, 0, PAGE_SIZE);
+		state->freemempos += PAGE_SIZE;
+
 		l2_pa = pmap_early_vtophys((vm_offset_t)state->l2);
 		MPASS((l2_pa & Ln_TABLE_MASK) == 0);
 		MPASS(state->l1[l1_slot] == 0);
-		pmap_store(&state->l1[l1_slot], l2_pa | TATTR_PXN_TABLE |
+		pmap_store(&state->l1[l1_slot], l2_pa | state->table_attrs |
 		    L1_TABLE);
 	}
 	KASSERT(state->l2 != NULL, ("%s: NULL l2", __func__));
 }
 
 static void
-pmap_bootstrap_dmap_l2_table(struct dmap_bootstrap_state *state)
+pmap_bootstrap_l2_table(struct pmap_bootstrap_state *state)
 {
 	vm_paddr_t l3_pa;
+	pd_entry_t l2e;
 	u_int l2_slot;
 
 	/* Make sure there is a valid L1 -> L2 table */
-	pmap_bootstrap_dmap_l1_table(state);
+	pmap_bootstrap_l1_table(state);
 
 	/* Link the level 2 table to a level 3 table */
 	l2_slot = pmap_l2_index(state->va);
 	if (l2_slot != state->l2_slot) {
+		/* See pmap_bootstrap_l0_table for a description */
 		MPASS(state->l2_slot < l2_slot ||
-		    state->l2_slot == Ln_ENTRIES);
+		    state->l2_slot == Ln_ENTRIES ||
+		    state->dmap_valid);
+
+		/* Check the existing L2 entry */
+		state->l2_slot = l2_slot;
+		if (state->dmap_valid) {
+			l2e = state->l2[l2_slot];
+			if ((l2e & ATTR_DESCR_VALID) != 0) {
+				MPASS((l2e & ATTR_DESCR_MASK) == L2_TABLE);
+				l3_pa = l2e & ~ATTR_MASK;
+				state->l3 = (pt_entry_t *)PHYS_TO_DMAP(l3_pa);
+				return;
+			}
+		}
 
 		/* Create a new L2 table entry */
-		state->l2_slot = l2_slot;
 		state->l3 = (pt_entry_t *)state->freemempos;
 		memset(state->l3, 0, PAGE_SIZE);
 		state->freemempos += PAGE_SIZE;
@@ -921,14 +1011,14 @@ pmap_bootstrap_dmap_l2_table(struct dmap_bootstrap_state *state)
 		l3_pa = pmap_early_vtophys((vm_offset_t)state->l3);
 		MPASS((l3_pa & Ln_TABLE_MASK) == 0);
 		MPASS(state->l2[l2_slot] == 0);
-		pmap_store(&state->l2[l2_slot], l3_pa | TATTR_PXN_TABLE |
+		pmap_store(&state->l2[l2_slot], l3_pa | state->table_attrs |
 		    L2_TABLE);
 	}
 	KASSERT(state->l3 != NULL, ("%s: NULL l3", __func__));
 }
 
 static void
-pmap_bootstrap_dmap_l2_block(struct dmap_bootstrap_state *state, int i)
+pmap_bootstrap_l2_block(struct pmap_bootstrap_state *state, int i)
 {
 	u_int l2_slot;
 	bool first;
@@ -937,7 +1027,7 @@ pmap_bootstrap_dmap_l2_block(struct dmap_bootstrap_state *state, int i)
 		return;
 
 	/* Make sure there is a valid L1 table */
-	pmap_bootstrap_dmap_l1_table(state);
+	pmap_bootstrap_l1_table(state);
 
 	MPASS((state->va & L2_OFFSET) == 0);
 	for (first = true;
@@ -963,7 +1053,7 @@ pmap_bootstrap_dmap_l2_block(struct dmap_bootstrap_state *state, int i)
 }
 
 static void
-pmap_bootstrap_dmap_l3_page(struct dmap_bootstrap_state *state, int i)
+pmap_bootstrap_l3_page(struct pmap_bootstrap_state *state, int i)
 {
 	u_int l3_slot;
 	bool first;
@@ -972,7 +1062,7 @@ pmap_bootstrap_dmap_l3_page(struct dmap_bootstrap_state *state, int i)
 		return;
 
 	/* Make sure there is a valid L2 table */
-	pmap_bootstrap_dmap_l2_table(state);
+	pmap_bootstrap_l2_table(state);
 
 	MPASS((state->va & L3_OFFSET) == 0);
 	for (first = true;
@@ -997,144 +1087,98 @@ pmap_bootstrap_dmap_l3_page(struct dmap_bootstrap_state *state, int i)
 	MPASS(state->va == (state->pa - dmap_phys_base + DMAP_MIN_ADDRESS));
 }
 
-static vm_offset_t
-pmap_bootstrap_dmap(vm_offset_t kern_l1, vm_paddr_t min_pa,
-    vm_offset_t freemempos)
+static void
+pmap_bootstrap_dmap(vm_paddr_t min_pa)
 {
-	struct dmap_bootstrap_state state;
 	int i;
 
 	dmap_phys_base = min_pa & ~L1_OFFSET;
 	dmap_phys_max = 0;
 	dmap_max_addr = 0;
 
-	state.l1 = state.l2 = state.l3 = NULL;
-	state.l0_slot = L0_ENTRIES;
-	state.l1_slot = Ln_ENTRIES;
-	state.l2_slot = Ln_ENTRIES;
-	state.freemempos = freemempos;
-
 	for (i = 0; i < (physmap_idx * 2); i += 2) {
-		state.pa = physmap[i] & ~L3_OFFSET;
-		state.va = state.pa - dmap_phys_base + DMAP_MIN_ADDRESS;
+		bs_state.pa = physmap[i] & ~L3_OFFSET;
+		bs_state.va = bs_state.pa - dmap_phys_base + DMAP_MIN_ADDRESS;
 
 		/* Create L3 mappings at the start of the region */
-		if ((state.pa & L2_OFFSET) != 0)
-			pmap_bootstrap_dmap_l3_page(&state, i);
-		MPASS(state.pa <= physmap[i + 1]);
+		if ((bs_state.pa & L2_OFFSET) != 0)
+			pmap_bootstrap_l3_page(&bs_state, i);
+		MPASS(bs_state.pa <= physmap[i + 1]);
 
 		if (L1_BLOCKS_SUPPORTED) {
 			/* Create L2 mappings at the start of the region */
-			if ((state.pa & L1_OFFSET) != 0)
-				pmap_bootstrap_dmap_l2_block(&state, i);
-			MPASS(state.pa <= physmap[i + 1]);
+			if ((bs_state.pa & L1_OFFSET) != 0)
+				pmap_bootstrap_l2_block(&bs_state, i);
+			MPASS(bs_state.pa <= physmap[i + 1]);
 
 			/* Create the main L1 block mappings */
-			for (; state.va < DMAP_MAX_ADDRESS &&
-			    (physmap[i + 1] - state.pa) >= L1_SIZE;
-			    state.va += L1_SIZE, state.pa += L1_SIZE) {
+			for (; bs_state.va < DMAP_MAX_ADDRESS &&
+			    (physmap[i + 1] - bs_state.pa) >= L1_SIZE;
+			    bs_state.va += L1_SIZE, bs_state.pa += L1_SIZE) {
 				/* Make sure there is a valid L1 table */
-				pmap_bootstrap_dmap_l0_table(&state);
-				MPASS((state.pa & L1_OFFSET) == 0);
-				pmap_store(&state.l1[pmap_l1_index(state.va)],
-				    state.pa | ATTR_DEFAULT | ATTR_S1_XN |
+				pmap_bootstrap_l0_table(&bs_state);
+				MPASS((bs_state.pa & L1_OFFSET) == 0);
+				pmap_store(
+				    &bs_state.l1[pmap_l1_index(bs_state.va)],
+				    bs_state.pa | ATTR_DEFAULT | ATTR_S1_XN |
 				    ATTR_S1_IDX(VM_MEMATTR_WRITE_BACK) |
 				    L1_BLOCK);
 			}
-			MPASS(state.pa <= physmap[i + 1]);
+			MPASS(bs_state.pa <= physmap[i + 1]);
 
 			/* Create L2 mappings at the end of the region */
-			pmap_bootstrap_dmap_l2_block(&state, i);
+			pmap_bootstrap_l2_block(&bs_state, i);
 		} else {
-			while (state.va < DMAP_MAX_ADDRESS &&
-			    (physmap[i + 1] - state.pa) >= L2_SIZE) {
-				pmap_bootstrap_dmap_l2_block(&state, i);
+			while (bs_state.va < DMAP_MAX_ADDRESS &&
+			    (physmap[i + 1] - bs_state.pa) >= L2_SIZE) {
+				pmap_bootstrap_l2_block(&bs_state, i);
 			}
 		}
-		MPASS(state.pa <= physmap[i + 1]);
+		MPASS(bs_state.pa <= physmap[i + 1]);
 
 		/* Create L3 mappings at the end of the region */
-		pmap_bootstrap_dmap_l3_page(&state, i);
-		MPASS(state.pa == physmap[i + 1]);
+		pmap_bootstrap_l3_page(&bs_state, i);
+		MPASS(bs_state.pa == physmap[i + 1]);
 
-		if (state.pa > dmap_phys_max) {
-			dmap_phys_max = state.pa;
-			dmap_max_addr = state.va;
+		if (bs_state.pa > dmap_phys_max) {
+			dmap_phys_max = bs_state.pa;
+			dmap_max_addr = bs_state.va;
 		}
 	}
 
 	cpu_tlb_flushID();
-
-	return (state.freemempos);
 }
 
-static vm_offset_t
-pmap_bootstrap_l2(vm_offset_t l1pt, vm_offset_t va, vm_offset_t l2_start)
+static void
+pmap_bootstrap_l2(vm_offset_t va)
 {
-	vm_offset_t l2pt;
-	vm_paddr_t pa;
-	pd_entry_t *l1;
-	u_int l1_slot;
-
 	KASSERT((va & L1_OFFSET) == 0, ("Invalid virtual address"));
 
-	l1 = (pd_entry_t *)l1pt;
-	l1_slot = pmap_l1_index(va);
-	l2pt = l2_start;
+	/* Leave bs_state.pa as it's only needed to bootstrap blocks and pages*/
+	bs_state.va = va;
 
-	for (; va < VM_MAX_KERNEL_ADDRESS; l1_slot++, va += L1_SIZE) {
-		KASSERT(l1_slot < Ln_ENTRIES, ("Invalid L1 index"));
-
-		pa = pmap_early_vtophys(l2pt);
-		pmap_store(&l1[l1_slot],
-		    (pa & ~Ln_TABLE_MASK) | L1_TABLE);
-		l2pt += PAGE_SIZE;
-	}
-
-	/* Clean the L2 page table */
-	memset((void *)l2_start, 0, l2pt - l2_start);
-
-	return l2pt;
+	for (; bs_state.va < VM_MAX_KERNEL_ADDRESS; bs_state.va += L1_SIZE)
+		pmap_bootstrap_l1_table(&bs_state);
 }
 
-static vm_offset_t
-pmap_bootstrap_l3(vm_offset_t l1pt, vm_offset_t va, vm_offset_t l3_start)
+static void
+pmap_bootstrap_l3(vm_offset_t va)
 {
-	vm_offset_t l3pt;
-	vm_paddr_t pa;
-	pd_entry_t *l2;
-	u_int l2_slot;
-
 	KASSERT((va & L2_OFFSET) == 0, ("Invalid virtual address"));
 
-	l2 = pmap_l2(kernel_pmap, va);
-	l2 = (pd_entry_t *)rounddown2((uintptr_t)l2, PAGE_SIZE);
-	l2_slot = pmap_l2_index(va);
-	l3pt = l3_start;
+	/* Leave bs_state.pa as it's only needed to bootstrap blocks and pages*/
+	bs_state.va = va;
 
-	for (; va < VM_MAX_KERNEL_ADDRESS; l2_slot++, va += L2_SIZE) {
-		KASSERT(l2_slot < Ln_ENTRIES, ("Invalid L2 index"));
-
-		pa = pmap_early_vtophys(l3pt);
-		pmap_store(&l2[l2_slot],
-		    (pa & ~Ln_TABLE_MASK) | ATTR_S1_UXN | L2_TABLE);
-		l3pt += PAGE_SIZE;
-	}
-
-	/* Clean the L2 page table */
-	memset((void *)l3_start, 0, l3pt - l3_start);
-
-	return l3pt;
+	for (; bs_state.va < VM_MAX_KERNEL_ADDRESS; bs_state.va += L2_SIZE)
+		pmap_bootstrap_l2_table(&bs_state);
 }
 
 /*
  *	Bootstrap the system enough to run with virtual memory.
  */
 void
-pmap_bootstrap(vm_offset_t l0pt, vm_offset_t l1pt, vm_paddr_t kernstart,
-    vm_size_t kernlen)
+pmap_bootstrap(vm_paddr_t kernstart, vm_size_t kernlen)
 {
-	vm_offset_t freemempos;
 	vm_offset_t dpcpu, msgbufpv;
 	vm_paddr_t start_pa, pa, min_pa;
 	uint64_t kern_delta;
@@ -1146,14 +1190,14 @@ pmap_bootstrap(vm_offset_t l0pt, vm_offset_t l1pt, vm_paddr_t kernstart,
 
 	kern_delta = KERNBASE - kernstart;
 
-	printf("pmap_bootstrap %lx %lx %lx\n", l1pt, kernstart, kernlen);
-	printf("%lx\n", l1pt);
+	printf("pmap_bootstrap %lx %lx\n", kernstart, kernlen);
 	printf("%lx\n", (KERNBASE >> L1_SHIFT) & Ln_ADDR_MASK);
 
 	/* Set this early so we can use the pagetable walking functions */
-	kernel_pmap_store.pm_l0 = (pd_entry_t *)l0pt;
+	kernel_pmap_store.pm_l0 = pagetable_l0_ttbr1;
 	PMAP_LOCK_INIT(kernel_pmap);
-	kernel_pmap->pm_l0_paddr = l0pt - kern_delta;
+	kernel_pmap->pm_l0_paddr =
+	    pmap_early_vtophys((vm_offset_t)kernel_pmap_store.pm_l0);
 	kernel_pmap->pm_cookie = COOKIE_FROM(-1, INT_MIN);
 	kernel_pmap->pm_stage = PM_STAGE1;
 	kernel_pmap->pm_levels = 4;
@@ -1177,11 +1221,17 @@ pmap_bootstrap(vm_offset_t l0pt, vm_offset_t l1pt, vm_paddr_t kernstart,
 			min_pa = physmap[i];
 	}
 
-	freemempos = KERNBASE + kernlen;
-	freemempos = roundup2(freemempos, PAGE_SIZE);
+	bs_state.freemempos = KERNBASE + kernlen;
+	bs_state.freemempos = roundup2(bs_state.freemempos, PAGE_SIZE);
 
 	/* Create a direct map region early so we can use it for pa -> va */
-	freemempos = pmap_bootstrap_dmap(l1pt, min_pa, freemempos);
+	pmap_bootstrap_dmap(min_pa);
+	bs_state.dmap_valid = true;
+	/*
+	 * We only use PXN when we know nothing will be executed from it, e.g.
+	 * the DMAP region.
+	 */
+	bs_state.table_attrs &= ~TATTR_PXN_TABLE;
 
 	start_pa = pa = KERNBASE - kern_delta;
 
@@ -1190,16 +1240,15 @@ pmap_bootstrap(vm_offset_t l0pt, vm_offset_t l1pt, vm_paddr_t kernstart,
 	 * loader allocated the first and only l2 page table page used to map
 	 * the kernel, preloaded files and module metadata.
 	 */
-	freemempos = pmap_bootstrap_l2(l1pt, KERNBASE + L1_SIZE, freemempos);
+	pmap_bootstrap_l2(KERNBASE + L1_SIZE);
 	/* And the l3 tables for the early devmap */
-	freemempos = pmap_bootstrap_l3(l1pt,
-	    VM_MAX_KERNEL_ADDRESS - (PMAP_MAPDEV_EARLY_SIZE), freemempos);
+	pmap_bootstrap_l3(VM_MAX_KERNEL_ADDRESS - (PMAP_MAPDEV_EARLY_SIZE));
 
 	cpu_tlb_flushID();
 
 #define alloc_pages(var, np)						\
-	(var) = freemempos;						\
-	freemempos += (np * PAGE_SIZE);					\
+	(var) = bs_state.freemempos;					\
+	bs_state.freemempos += (np * PAGE_SIZE);			\
 	memset((char *)(var), 0, ((np) * PAGE_SIZE));
 
 	/* Allocate dynamic per-cpu area. */
@@ -1211,14 +1260,14 @@ pmap_bootstrap(vm_offset_t l0pt, vm_offset_t l1pt, vm_paddr_t kernstart,
 	msgbufp = (void *)msgbufpv;
 
 	/* Reserve some VA space for early BIOS/ACPI mapping */
-	preinit_map_va = roundup2(freemempos, L2_SIZE);
+	preinit_map_va = roundup2(bs_state.freemempos, L2_SIZE);
 
 	virtual_avail = preinit_map_va + PMAP_PREINIT_MAPPING_SIZE;
 	virtual_avail = roundup2(virtual_avail, L1_SIZE);
 	virtual_end = VM_MAX_KERNEL_ADDRESS - (PMAP_MAPDEV_EARLY_SIZE);
 	kernel_vm_end = virtual_avail;
 
-	pa = pmap_early_vtophys(freemempos);
+	pa = pmap_early_vtophys(bs_state.freemempos);
 
 	physmem_exclude_region(start_pa, pa - start_pa, EXFLAG_NOALLOC);
 
@@ -1302,9 +1351,13 @@ pmap_init(void)
 	}
 
 	/*
-	 * Initialize the pv chunk list mutex.
+	 * Initialize pv chunk lists.
 	 */
-	mtx_init(&pv_chunks_mutex, "pmap pv chunk list", NULL, MTX_DEF);
+	for (i = 0; i < PMAP_MEMDOM; i++) {
+		mtx_init(&pv_chunks[i].pvc_lock, "pmap pv chunk list", NULL,
+		    MTX_DEF);
+		TAILQ_INIT(&pv_chunks[i].pvc_list);
+	}
 
 	/*
 	 * Initialize the pool of pv list locks.
@@ -2528,8 +2581,9 @@ SYSCTL_INT(_vm_pmap, OID_AUTO, pv_entry_spare, CTLFLAG_RD, &pv_entry_spare, 0,
  * exacerbating the shortage of free pv entries.
  */
 static vm_page_t
-reclaim_pv_chunk(pmap_t locked_pmap, struct rwlock **lockp)
+reclaim_pv_chunk_domain(pmap_t locked_pmap, struct rwlock **lockp, int domain)
 {
+	struct pv_chunks_list *pvc;
 	struct pv_chunk *pc, *pc_marker, *pc_marker_end;
 	struct pv_chunk_header pc_marker_b, pc_marker_end_b;
 	struct md_page *pvh;
@@ -2542,7 +2596,6 @@ reclaim_pv_chunk(pmap_t locked_pmap, struct rwlock **lockp)
 	struct spglist free;
 	uint64_t inuse;
 	int bit, field, freed, lvl;
-	static int active_reclaims = 0;
 
 	PMAP_LOCK_ASSERT(locked_pmap, MA_OWNED);
 	KASSERT(lockp != NULL, ("reclaim_pv_chunk: lockp is NULL"));
@@ -2555,10 +2608,11 @@ reclaim_pv_chunk(pmap_t locked_pmap, struct rwlock **lockp)
 	pc_marker = (struct pv_chunk *)&pc_marker_b;
 	pc_marker_end = (struct pv_chunk *)&pc_marker_end_b;
 
-	mtx_lock(&pv_chunks_mutex);
-	active_reclaims++;
-	TAILQ_INSERT_HEAD(&pv_chunks, pc_marker, pc_lru);
-	TAILQ_INSERT_TAIL(&pv_chunks, pc_marker_end, pc_lru);
+	pvc = &pv_chunks[domain];
+	mtx_lock(&pvc->pvc_lock);
+	pvc->active_reclaims++;
+	TAILQ_INSERT_HEAD(&pvc->pvc_list, pc_marker, pc_lru);
+	TAILQ_INSERT_TAIL(&pvc->pvc_list, pc_marker_end, pc_lru);
 	while ((pc = TAILQ_NEXT(pc_marker, pc_lru)) != pc_marker_end &&
 	    SLIST_EMPTY(&free)) {
 		next_pmap = pc->pc_pmap;
@@ -2571,11 +2625,11 @@ reclaim_pv_chunk(pmap_t locked_pmap, struct rwlock **lockp)
 			 */
 			goto next_chunk;
 		}
-		mtx_unlock(&pv_chunks_mutex);
+		mtx_unlock(&pvc->pvc_lock);
 
 		/*
 		 * A pv_chunk can only be removed from the pc_lru list
-		 * when both pv_chunks_mutex is owned and the
+		 * when both pvc->pvc_lock is owned and the
 		 * corresponding pmap is locked.
 		 */
 		if (pmap != next_pmap) {
@@ -2586,15 +2640,15 @@ reclaim_pv_chunk(pmap_t locked_pmap, struct rwlock **lockp)
 			if (pmap > locked_pmap) {
 				RELEASE_PV_LIST_LOCK(lockp);
 				PMAP_LOCK(pmap);
-				mtx_lock(&pv_chunks_mutex);
+				mtx_lock(&pvc->pvc_lock);
 				continue;
 			} else if (pmap != locked_pmap) {
 				if (PMAP_TRYLOCK(pmap)) {
-					mtx_lock(&pv_chunks_mutex);
+					mtx_lock(&pvc->pvc_lock);
 					continue;
 				} else {
 					pmap = NULL; /* pmap is not locked */
-					mtx_lock(&pv_chunks_mutex);
+					mtx_lock(&pvc->pvc_lock);
 					pc = TAILQ_NEXT(pc_marker, pc_lru);
 					if (pc == NULL ||
 					    pc->pc_pmap != next_pmap)
@@ -2646,7 +2700,7 @@ reclaim_pv_chunk(pmap_t locked_pmap, struct rwlock **lockp)
 			}
 		}
 		if (freed == 0) {
-			mtx_lock(&pv_chunks_mutex);
+			mtx_lock(&pvc->pvc_lock);
 			goto next_chunk;
 		}
 		/* Every freed mapping is for a 4 KB page. */
@@ -2662,20 +2716,20 @@ reclaim_pv_chunk(pmap_t locked_pmap, struct rwlock **lockp)
 			/* Entire chunk is free; return it. */
 			m_pc = PHYS_TO_VM_PAGE(DMAP_TO_PHYS((vm_offset_t)pc));
 			dump_drop_page(m_pc->phys_addr);
-			mtx_lock(&pv_chunks_mutex);
-			TAILQ_REMOVE(&pv_chunks, pc, pc_lru);
+			mtx_lock(&pvc->pvc_lock);
+			TAILQ_REMOVE(&pvc->pvc_list, pc, pc_lru);
 			break;
 		}
 		TAILQ_INSERT_HEAD(&pmap->pm_pvchunk, pc, pc_list);
-		mtx_lock(&pv_chunks_mutex);
+		mtx_lock(&pvc->pvc_lock);
 		/* One freed pv entry in locked_pmap is sufficient. */
 		if (pmap == locked_pmap)
 			break;
 
 next_chunk:
-		TAILQ_REMOVE(&pv_chunks, pc_marker, pc_lru);
-		TAILQ_INSERT_AFTER(&pv_chunks, pc, pc_marker, pc_lru);
-		if (active_reclaims == 1 && pmap != NULL) {
+		TAILQ_REMOVE(&pvc->pvc_list, pc_marker, pc_lru);
+		TAILQ_INSERT_AFTER(&pvc->pvc_list, pc, pc_marker, pc_lru);
+		if (pvc->active_reclaims == 1 && pmap != NULL) {
 			/*
 			 * Rotate the pv chunks list so that we do not
 			 * scan the same pv chunks that could not be
@@ -2683,17 +2737,17 @@ next_chunk:
 			 * and/or superpage mapping) on every
 			 * invocation of reclaim_pv_chunk().
 			 */
-			while ((pc = TAILQ_FIRST(&pv_chunks)) != pc_marker) {
+			while ((pc = TAILQ_FIRST(&pvc->pvc_list)) != pc_marker){
 				MPASS(pc->pc_pmap != NULL);
-				TAILQ_REMOVE(&pv_chunks, pc, pc_lru);
-				TAILQ_INSERT_TAIL(&pv_chunks, pc, pc_lru);
+				TAILQ_REMOVE(&pvc->pvc_list, pc, pc_lru);
+				TAILQ_INSERT_TAIL(&pvc->pvc_list, pc, pc_lru);
 			}
 		}
 	}
-	TAILQ_REMOVE(&pv_chunks, pc_marker, pc_lru);
-	TAILQ_REMOVE(&pv_chunks, pc_marker_end, pc_lru);
-	active_reclaims--;
-	mtx_unlock(&pv_chunks_mutex);
+	TAILQ_REMOVE(&pvc->pvc_list, pc_marker, pc_lru);
+	TAILQ_REMOVE(&pvc->pvc_list, pc_marker_end, pc_lru);
+	pvc->active_reclaims--;
+	mtx_unlock(&pvc->pvc_lock);
 	if (pmap != NULL && pmap != locked_pmap)
 		PMAP_UNLOCK(pmap);
 	if (m_pc == NULL && !SLIST_EMPTY(&free)) {
@@ -2704,6 +2758,23 @@ next_chunk:
 	}
 	vm_page_free_pages_toq(&free, true);
 	return (m_pc);
+}
+
+static vm_page_t
+reclaim_pv_chunk(pmap_t locked_pmap, struct rwlock **lockp)
+{
+	vm_page_t m;
+	int i, domain;
+
+	domain = PCPU_GET(domain);
+	for (i = 0; i < vm_ndomains; i++) {
+		m = reclaim_pv_chunk_domain(locked_pmap, lockp, domain);
+		if (m != NULL)
+			break;
+		domain = (domain + 1) % vm_ndomains;
+	}
+
+	return (m);
 }
 
 /*
@@ -2737,13 +2808,10 @@ free_pv_entry(pmap_t pmap, pv_entry_t pv)
 }
 
 static void
-free_pv_chunk(struct pv_chunk *pc)
+free_pv_chunk_dequeued(struct pv_chunk *pc)
 {
 	vm_page_t m;
 
-	mtx_lock(&pv_chunks_mutex);
- 	TAILQ_REMOVE(&pv_chunks, pc, pc_lru);
-	mtx_unlock(&pv_chunks_mutex);
 	PV_STAT(atomic_subtract_int(&pv_entry_spare, _NPCPV));
 	PV_STAT(atomic_subtract_int(&pc_chunk_count, 1));
 	PV_STAT(atomic_add_int(&pc_chunk_frees, 1));
@@ -2752,6 +2820,43 @@ free_pv_chunk(struct pv_chunk *pc)
 	dump_drop_page(m->phys_addr);
 	vm_page_unwire_noq(m);
 	vm_page_free(m);
+}
+
+static void
+free_pv_chunk(struct pv_chunk *pc)
+{
+	struct pv_chunks_list *pvc;
+
+	pvc = &pv_chunks[pc_to_domain(pc)];
+	mtx_lock(&pvc->pvc_lock);
+	TAILQ_REMOVE(&pvc->pvc_list, pc, pc_lru);
+	mtx_unlock(&pvc->pvc_lock);
+	free_pv_chunk_dequeued(pc);
+}
+
+static void
+free_pv_chunk_batch(struct pv_chunklist *batch)
+{
+	struct pv_chunks_list *pvc;
+	struct pv_chunk *pc, *npc;
+	int i;
+
+	for (i = 0; i < vm_ndomains; i++) {
+		if (TAILQ_EMPTY(&batch[i]))
+			continue;
+		pvc = &pv_chunks[i];
+		mtx_lock(&pvc->pvc_lock);
+		TAILQ_FOREACH(pc, &batch[i], pc_list) {
+			TAILQ_REMOVE(&pvc->pvc_list, pc, pc_lru);
+		}
+		mtx_unlock(&pvc->pvc_lock);
+	}
+
+	for (i = 0; i < vm_ndomains; i++) {
+		TAILQ_FOREACH_SAFE(pc, &batch[i], pc_list, npc) {
+			free_pv_chunk_dequeued(pc);
+		}
+	}
 }
 
 /*
@@ -2765,6 +2870,7 @@ free_pv_chunk(struct pv_chunk *pc)
 static pv_entry_t
 get_pv_entry(pmap_t pmap, struct rwlock **lockp)
 {
+	struct pv_chunks_list *pvc;
 	int bit, field;
 	pv_entry_t pv;
 	struct pv_chunk *pc;
@@ -2813,9 +2919,10 @@ retry:
 	pc->pc_pmap = pmap;
 	memcpy(pc->pc_map, pc_freemask, sizeof(pc_freemask));
 	pc->pc_map[0] &= ~1ul;		/* preallocated bit 0 */
-	mtx_lock(&pv_chunks_mutex);
-	TAILQ_INSERT_TAIL(&pv_chunks, pc, pc_lru);
-	mtx_unlock(&pv_chunks_mutex);
+	pvc = &pv_chunks[vm_page_domain(m)];
+	mtx_lock(&pvc->pvc_lock);
+	TAILQ_INSERT_TAIL(&pvc->pvc_list, pc, pc_lru);
+	mtx_unlock(&pvc->pvc_lock);
 	pv = &pc->pc_pventry[0];
 	TAILQ_INSERT_HEAD(&pmap->pm_pvchunk, pc, pc_list);
 	PV_STAT(atomic_add_long(&pv_entry_count, 1));
@@ -2832,10 +2939,11 @@ retry:
 static void
 reserve_pv_entries(pmap_t pmap, int needed, struct rwlock **lockp)
 {
-	struct pch new_tail;
+	struct pv_chunks_list *pvc;
+	struct pch new_tail[PMAP_MEMDOM];
 	struct pv_chunk *pc;
 	vm_page_t m;
-	int avail, free;
+	int avail, free, i;
 	bool reclaimed;
 
 	PMAP_LOCK_ASSERT(pmap, MA_OWNED);
@@ -2847,7 +2955,8 @@ reserve_pv_entries(pmap_t pmap, int needed, struct rwlock **lockp)
 	 * reclaim_pv_chunk() could recycle one of these chunks.  In
 	 * contrast, these chunks must be added to the pmap upon allocation.
 	 */
-	TAILQ_INIT(&new_tail);
+	for (i = 0; i < PMAP_MEMDOM; i++)
+		TAILQ_INIT(&new_tail[i]);
 retry:
 	avail = 0;
 	TAILQ_FOREACH(pc, &pmap->pm_pvchunk, pc_list) {
@@ -2874,7 +2983,7 @@ retry:
 		pc->pc_pmap = pmap;
 		memcpy(pc->pc_map, pc_freemask, sizeof(pc_freemask));
 		TAILQ_INSERT_HEAD(&pmap->pm_pvchunk, pc, pc_list);
-		TAILQ_INSERT_TAIL(&new_tail, pc, pc_lru);
+		TAILQ_INSERT_TAIL(&new_tail[vm_page_domain(m)], pc, pc_lru);
 		PV_STAT(atomic_add_int(&pv_entry_spare, _NPCPV));
 
 		/*
@@ -2885,10 +2994,13 @@ retry:
 		if (reclaimed)
 			goto retry;
 	}
-	if (!TAILQ_EMPTY(&new_tail)) {
-		mtx_lock(&pv_chunks_mutex);
-		TAILQ_CONCAT(&pv_chunks, &new_tail, pc_lru);
-		mtx_unlock(&pv_chunks_mutex);
+	for (i = 0; i < vm_ndomains; i++) {
+		if (TAILQ_EMPTY(&new_tail[i]))
+			continue;
+		pvc = &pv_chunks[i];
+		mtx_lock(&pvc->pvc_lock);
+		TAILQ_CONCAT(&pvc->pvc_list, &new_tail[i], pc_lru);
+		mtx_unlock(&pvc->pvc_lock);
 	}
 }
 
@@ -5229,6 +5341,7 @@ pmap_remove_pages(pmap_t pmap)
 	pd_entry_t *pde;
 	pt_entry_t *pte, tpte;
 	struct spglist free;
+	struct pv_chunklist free_chunks[PMAP_MEMDOM];
 	vm_page_t m, ml3, mt;
 	pv_entry_t pv;
 	struct md_page *pvh;
@@ -5236,11 +5349,13 @@ pmap_remove_pages(pmap_t pmap)
 	struct rwlock *lock;
 	int64_t bit;
 	uint64_t inuse, bitmask;
-	int allfree, field, freed, idx, lvl;
+	int allfree, field, freed, i, idx, lvl;
 	vm_paddr_t pa;
 
 	lock = NULL;
 
+	for (i = 0; i < PMAP_MEMDOM; i++)
+		TAILQ_INIT(&free_chunks[i]);
 	SLIST_INIT(&free);
 	PMAP_LOCK(pmap);
 	TAILQ_FOREACH_SAFE(pc, &pmap->pm_pvchunk, pc_list, npc) {
@@ -5381,12 +5496,14 @@ pmap_remove_pages(pmap_t pmap)
 		PV_STAT(atomic_subtract_long(&pv_entry_count, freed));
 		if (allfree) {
 			TAILQ_REMOVE(&pmap->pm_pvchunk, pc, pc_list);
-			free_pv_chunk(pc);
+			TAILQ_INSERT_TAIL(&free_chunks[pc_to_domain(pc)], pc,
+			    pc_list);
 		}
 	}
 	if (lock != NULL)
 		rw_wunlock(lock);
 	pmap_invalidate_all(pmap);
+	free_pv_chunk_batch(free_chunks);
 	PMAP_UNLOCK(pmap);
 	vm_page_free_pages_toq(&free, true);
 }
