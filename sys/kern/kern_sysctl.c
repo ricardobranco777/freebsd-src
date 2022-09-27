@@ -137,7 +137,7 @@ sysctl_find_oidname(const char *name, struct sysctl_oid_list *list)
 	struct sysctl_oid *oidp;
 
 	SYSCTL_ASSERT_LOCKED();
-	RB_FOREACH(oidp, sysctl_oid_list, list) {
+	SYSCTL_FOREACH(oidp, list) {
 		if (strcmp(oidp->oid_name, name) == 0) {
 			return (oidp);
 		}
@@ -357,29 +357,34 @@ sysctl_search_oid(struct sysctl_oid **nodes, struct sysctl_oid *needle)
 
 	SYSCTL_ASSERT_LOCKED();
 	indx = 0;
-	while (indx < CTL_MAXNAME && indx >= 0) {
-		if (nodes[indx] == NULL && indx == 0)
-			nodes[indx] = RB_MIN(sysctl_oid_list,
-			    &sysctl__children);
-		else if (nodes[indx] == NULL)
-			nodes[indx] = RB_MIN(sysctl_oid_list,
-			    &nodes[indx - 1]->oid_children);
-		else
-			nodes[indx] = RB_NEXT(sysctl_oid_list,
-			    &nodes[indx - 1]->oid_children, nodes[indx]);
-
+	/*
+	 * Do a depth-first search of the oid tree, looking for 'needle'. Start
+	 * with the first child of the root.
+	 */
+	nodes[indx] = RB_MIN(sysctl_oid_list, &sysctl__children);
+	for (;;) {
 		if (nodes[indx] == needle)
 			return (indx + 1);
 
 		if (nodes[indx] == NULL) {
-			indx--;
+			/* Node has no more siblings, so back up to parent. */
+			if (indx-- == 0) {
+				/* Retreat to root, so give up. */
+				break;
+			}
+		} else if ((nodes[indx]->oid_kind & CTLTYPE) == CTLTYPE_NODE) {
+			/* Node has children. */
+			if (++indx == CTL_MAXNAME) {
+				/* Max search depth reached, so give up. */
+				break;
+			}
+			/* Start with the first child. */
+			nodes[indx] = RB_MIN(sysctl_oid_list,
+			    &nodes[indx - 1]->oid_children);
 			continue;
 		}
-
-		if ((nodes[indx]->oid_kind & CTLTYPE) == CTLTYPE_NODE) {
-			indx++;
-			continue;
-		}
+		/* Consider next sibling. */
+		nodes[indx] = RB_NEXT(sysctl_oid_list, NULL, nodes[indx]);
 	}
 	return (-1);
 }
@@ -480,10 +485,9 @@ sysctl_register_oid(struct sysctl_oid *oidp)
 	/*
 	 * Insert the OID into the parent's list sorted by OID number.
 	 */
-retry:
 	key.oid_number = oid_number;
-	p = RB_FIND(sysctl_oid_list, parent, &key);
-	if (p) {
+	p = RB_NFIND(sysctl_oid_list, parent, &key);
+	while (p != NULL && oid_number == p->oid_number) {
 		/* get the next valid OID number */
 		if (oid_number < CTL_AUTO_START ||
 		    oid_number == 0x7fffffff) {
@@ -492,10 +496,12 @@ retry:
 			/* don't loop forever */
 			if (!timeout--)
 				panic("sysctl: Out of OID numbers\n");
-			goto retry;
-		} else {
-			oid_number++;
+			key.oid_number = oid_number;
+			p = RB_NFIND(sysctl_oid_list, parent, &key);
+			continue;
 		}
+		p = RB_NEXT(sysctl_oid_list, NULL, p);
+		oid_number++;
 	}
 	/* check for non-auto OID number collision */
 	if (oidp->oid_number >= 0 && oidp->oid_number < CTL_AUTO_START &&
@@ -1006,7 +1012,7 @@ sysctl_sysctl_debug_dump_node(struct sysctl_oid_list *l, int i)
 	struct sysctl_oid *oidp;
 
 	SYSCTL_ASSERT_LOCKED();
-	RB_FOREACH(oidp, sysctl_oid_list, l) {
+	SYSCTL_FOREACH(oidp, l) {
 		for (k=0; k<i; k++)
 			printf(" ");
 
@@ -1321,17 +1327,11 @@ name2oid(char *name, int *oid, int *len, struct sysctl_oid **oidpp)
 {
 	struct sysctl_oid *oidp;
 	struct sysctl_oid_list *lsp = &sysctl__children;
-	char *p;
 
 	SYSCTL_ASSERT_LOCKED();
 
 	for (*len = 0; *len < CTL_MAXNAME;) {
-		p = strsep(&name, ".");
-
-		RB_FOREACH(oidp, sysctl_oid_list, lsp) {
-			if (strcmp(p, oidp->oid_name) == 0)
-				break;
-		}
+		oidp = sysctl_find_oidname(strsep(&name, "."), lsp);
 		if (oidp == NULL)
 			return (ENOENT);
 		*oid++ = oidp->oid_number;
