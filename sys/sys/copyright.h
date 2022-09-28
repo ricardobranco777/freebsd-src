@@ -27,9 +27,15 @@
 
 /* Copyrights macros  */
 
-/* Add a FreeBSD vendor copyright here */
+/* Add a FreeBSD vendor copyright here - or via CFLAGS */
+#ifndef COPYRIGHT_Vendor
 #define	COPYRIGHT_Vendor \
+<<<<<<< HEAD
 	"Copyright (c) 2013-2022 The HardenedBSD Project.\n"
+=======
+	""
+#endif
+>>>>>>> origin/freebsd/current/main
 
 /* FreeBSD */
 #define COPYRIGHT_FreeBSD \
