@@ -28,6 +28,7 @@
 #ifndef _NETLINK_NETLINK_MESSAGE_PARSER_H_
 #define _NETLINK_NETLINK_MESSAGE_PARSER_H_
 
+#ifdef _KERNEL
 /*
  * It is not meant to be included directly
  */
@@ -248,6 +249,7 @@ nl_parse_nested(struct nlattr *nla, const struct nlhdr_parser *parser,
 static inline void
 nl_verify_parsers(const struct nlhdr_parser **parser, int count)
 {
+#ifdef INVARIANTS
 	for (int i = 0; i < count; i++) {
 		const struct nlhdr_parser *p = parser[i];
 		int attr_type = 0;
@@ -256,6 +258,7 @@ nl_verify_parsers(const struct nlhdr_parser **parser, int count)
 			attr_type = p->np[j].type;
 		}
 	}
+#endif
 }
 void nl_verify_parsers(const struct nlhdr_parser **parser, int count);
 #define	NL_VERIFY_PARSERS(_p)	nl_verify_parsers((_p), NL_ARRAY_LEN(_p))
@@ -267,4 +270,5 @@ nl_parse_nlmsg(struct nlmsghdr *hdr, const struct nlhdr_parser *parser,
 	return (nl_parse_header(hdr + 1, hdr->nlmsg_len - sizeof(*hdr), parser, npt, target));
 }
 
+#endif
 #endif
