@@ -1,12 +1,7 @@
 # $FreeBSD$
 
-<<<<<<< HEAD
 OSNAME?=	HardenedBSD
-SUBDIR= distextract distfetch partedit scripts
-=======
-OSNAME?=	FreeBSD
 SUBDIR=	distextract distfetch partedit runconsoles scripts
->>>>>>> origin/freebsd/current/main
 SUBDIR_PARALLEL=
 SCRIPTS= bsdinstall
 MAN= bsdinstall.8
