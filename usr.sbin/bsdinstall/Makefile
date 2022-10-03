@@ -1,7 +1,12 @@
 # $FreeBSD$
 
+<<<<<<< HEAD
 OSNAME?=	HardenedBSD
 SUBDIR= distextract distfetch partedit scripts
+=======
+OSNAME?=	FreeBSD
+SUBDIR=	distextract distfetch partedit runconsoles scripts
+>>>>>>> origin/freebsd/current/main
 SUBDIR_PARALLEL=
 SCRIPTS= bsdinstall
 MAN= bsdinstall.8
@@ -9,6 +14,9 @@ PACKAGE=	bsdinstall
 GENHDRS=	opt_osname.h
 SRCS+=		${GENHDRS}
 CLEANFILES+=	${GENHDRS}
+
+SCRIPTS+=	startbsdinstall
+SCRIPTSDIR_startbsdinstall=	${LIBEXECDIR}/bsdinstall
 
 opt_osname.h: .PHONY
 	if ! grep -q "^#define OSNAME \"${OSNAME}\"$"" ${.TARGET}; then \
