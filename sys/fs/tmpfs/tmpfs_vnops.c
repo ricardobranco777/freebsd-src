@@ -1846,7 +1846,6 @@ restart_locked:
 	return (ENOENT);
 }
 
-<<<<<<< HEAD
 static struct tmpfs_extattr_list_entry *
 tmpfs_node_has_extattr(struct tmpfs_node *node, int attrnamespace,
     const char *name, bool dolock)
@@ -1918,111 +1917,10 @@ tmpfs_extattr_get(struct vnode *vp, int attrnamespace, const char *name,
 		uio->uio_offset = 0;
 		error = uiomove(attr->tele_value, len, uio);
 	}
-
-=======
-static off_t
-tmpfs_seek_data_locked(vm_object_t obj, off_t noff)
-{
-	vm_page_t m;
-	vm_pindex_t p, p_m, p_swp;
-
-	p = OFF_TO_IDX(noff);
-	m = vm_page_find_least(obj, p);
-
-	/*
-	 * Microoptimize the most common case for SEEK_DATA, where
-	 * there is no hole and the page is resident.
-	 */
-	if (m != NULL && vm_page_any_valid(m) && m->pindex == p)
-		return (noff);
-
-	p_swp = swap_pager_find_least(obj, p);
-	if (p_swp == p)
-		return (noff);
-
-	p_m = m == NULL ? obj->size : m->pindex;
-	return (IDX_TO_OFF(MIN(p_m, p_swp)));
-}
-
-static off_t
-tmpfs_seek_next(off_t noff)
-{
-	return (noff + PAGE_SIZE - (noff & PAGE_MASK));
-}
-
-static int
-tmpfs_seek_clamp(struct tmpfs_node *tn, off_t *noff, bool seekdata)
-{
-	if (*noff < tn->tn_size)
-		return (0);
-	if (seekdata)
-		return (ENXIO);
-	*noff = tn->tn_size;
-	return (0);
-}
-
-static off_t
-tmpfs_seek_hole_locked(vm_object_t obj, off_t noff)
-{
-	vm_page_t m;
-	vm_pindex_t p, p_swp;
-
-	for (;; noff = tmpfs_seek_next(noff)) {
-		/*
-		 * Walk over the largest sequential run of the valid pages.
-		 */
-		for (m = vm_page_lookup(obj, OFF_TO_IDX(noff));
-		    m != NULL && vm_page_any_valid(m);
-		    m = vm_page_next(m), noff = tmpfs_seek_next(noff))
-			;
-
-		/*
-		 * Found a hole in the object's page queue.  Check if
-		 * there is a hole in the swap at the same place.
-		 */
-		p = OFF_TO_IDX(noff);
-		p_swp = swap_pager_find_least(obj, p);
-		if (p_swp != p) {
-			noff = IDX_TO_OFF(p);
-			break;
-		}
-	}
-	return (noff);
-}
-
-static int
-tmpfs_seek_datahole(struct vnode *vp, off_t *off, bool seekdata)
-{
-	struct tmpfs_node *tn;
-	vm_object_t obj;
-	off_t noff;
-	int error;
-
-	if (vp->v_type != VREG)
-		return (ENOTTY);
-	tn = VP_TO_TMPFS_NODE(vp);
-	noff = *off;
-	if (noff < 0)
-		return (ENXIO);
-	error = tmpfs_seek_clamp(tn, &noff, seekdata);
-	if (error != 0)
-		return (error);
-	obj = tn->tn_reg.tn_aobj;
-
-	VM_OBJECT_RLOCK(obj);
-	noff = seekdata ? tmpfs_seek_data_locked(obj, noff) :
-	    tmpfs_seek_hole_locked(obj, noff);
-	VM_OBJECT_RUNLOCK(obj);
-
-	error = tmpfs_seek_clamp(tn, &noff, seekdata);
-	if (error == 0)
-		*off = noff;
->>>>>>> origin/freebsd/current/main
 	return (error);
 }
 
 static int
-<<<<<<< HEAD
 tmpfs_setextattr(struct vop_setextattr_args *ap)
 {
 
@@ -2205,7 +2103,107 @@ tmpfs_deleteextattr(struct vop_deleteextattr_args *ap)
 	    ap->a_cred, ap->a_td));
 }
 
-=======
+static off_t
+tmpfs_seek_data_locked(vm_object_t obj, off_t noff)
+{
+	vm_page_t m;
+	vm_pindex_t p, p_m, p_swp;
+
+	p = OFF_TO_IDX(noff);
+	m = vm_page_find_least(obj, p);
+
+	/*
+	 * Microoptimize the most common case for SEEK_DATA, where
+	 * there is no hole and the page is resident.
+	 */
+	if (m != NULL && vm_page_any_valid(m) && m->pindex == p)
+		return (noff);
+
+	p_swp = swap_pager_find_least(obj, p);
+	if (p_swp == p)
+		return (noff);
+
+	p_m = m == NULL ? obj->size : m->pindex;
+	return (IDX_TO_OFF(MIN(p_m, p_swp)));
+}
+
+static off_t
+tmpfs_seek_next(off_t noff)
+{
+	return (noff + PAGE_SIZE - (noff & PAGE_MASK));
+}
+
+static int
+tmpfs_seek_clamp(struct tmpfs_node *tn, off_t *noff, bool seekdata)
+{
+	if (*noff < tn->tn_size)
+		return (0);
+	if (seekdata)
+		return (ENXIO);
+	*noff = tn->tn_size;
+	return (0);
+}
+
+static off_t
+tmpfs_seek_hole_locked(vm_object_t obj, off_t noff)
+{
+	vm_page_t m;
+	vm_pindex_t p, p_swp;
+
+	for (;; noff = tmpfs_seek_next(noff)) {
+		/*
+		 * Walk over the largest sequential run of the valid pages.
+		 */
+		for (m = vm_page_lookup(obj, OFF_TO_IDX(noff));
+		    m != NULL && vm_page_any_valid(m);
+		    m = vm_page_next(m), noff = tmpfs_seek_next(noff))
+			;
+
+		/*
+		 * Found a hole in the object's page queue.  Check if
+		 * there is a hole in the swap at the same place.
+		 */
+		p = OFF_TO_IDX(noff);
+		p_swp = swap_pager_find_least(obj, p);
+		if (p_swp != p) {
+			noff = IDX_TO_OFF(p);
+			break;
+		}
+	}
+	return (noff);
+}
+
+static int
+tmpfs_seek_datahole(struct vnode *vp, off_t *off, bool seekdata)
+{
+	struct tmpfs_node *tn;
+	vm_object_t obj;
+	off_t noff;
+	int error;
+
+	if (vp->v_type != VREG)
+		return (ENOTTY);
+	tn = VP_TO_TMPFS_NODE(vp);
+	noff = *off;
+	if (noff < 0)
+		return (ENXIO);
+	error = tmpfs_seek_clamp(tn, &noff, seekdata);
+	if (error != 0)
+		return (error);
+	obj = tn->tn_reg.tn_aobj;
+
+	VM_OBJECT_RLOCK(obj);
+	noff = seekdata ? tmpfs_seek_data_locked(obj, noff) :
+	    tmpfs_seek_hole_locked(obj, noff);
+	VM_OBJECT_RUNLOCK(obj);
+
+	error = tmpfs_seek_clamp(tn, &noff, seekdata);
+	if (error == 0)
+		*off = noff;
+	return (error);
+}
+
+static int
 tmpfs_ioctl(struct vop_ioctl_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
@@ -2230,7 +2228,6 @@ tmpfs_ioctl(struct vop_ioctl_args *ap)
 	return (error);
 }
 
->>>>>>> origin/freebsd/current/main
 /*
  * Vnode operations vector used for files stored in a tmpfs file system.
  */
