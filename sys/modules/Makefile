@@ -66,7 +66,7 @@ SUBDIR=	\
 	${_bxe} \
 	${_bios} \
 	${_blake2} \
-	bnxt \
+	${_bnxt} \
 	bridgestp \
 	bwi \
 	bwn \
@@ -419,6 +419,12 @@ _autofs=	autofs
 SUBDIR+=	dtrace
 .endif
 SUBDIR+=	opensolaris
+.endif
+
+# Requires bus_space_read_8
+.if ${MACHINE_ARCH} == "amd64" || ${MACHINE_ARCH} == "aarch64" || \
+	${MACHINE_ARCH} == "powerpc64" || ${MACHINE_ARCH} == "powerpc64le"
+_bnxt=		bnxt
 .endif
 
 .if ${MK_CRYPT} != "no" || defined(ALL_MODULES)
