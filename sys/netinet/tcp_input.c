@@ -209,20 +209,6 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, abc_l_var, CTLFLAG_VNET | CTLFLAG_RW,
     &VNET_NAME(tcp_abc_l_var), 2,
     "Cap the max cwnd increment during slow-start to this number of segments");
 
-static SYSCTL_NODE(_net_inet_tcp, OID_AUTO, ecn,
-    CTLFLAG_RW | CTLFLAG_MPSAFE, 0,
-    "TCP ECN");
-
-VNET_DEFINE(int, tcp_do_ecn) = 2;
-SYSCTL_INT(_net_inet_tcp_ecn, OID_AUTO, enable, CTLFLAG_VNET | CTLFLAG_RW,
-    &VNET_NAME(tcp_do_ecn), 0,
-    "TCP ECN support");
-
-VNET_DEFINE(int, tcp_ecn_maxretries) = 1;
-SYSCTL_INT(_net_inet_tcp_ecn, OID_AUTO, maxretries, CTLFLAG_VNET | CTLFLAG_RW,
-    &VNET_NAME(tcp_ecn_maxretries), 0,
-    "Max retries before giving up on ECN");
-
 VNET_DEFINE(int, tcp_insecure_syn) = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, insecure_syn, CTLFLAG_VNET | CTLFLAG_RW,
     &VNET_NAME(tcp_insecure_syn), 0,
@@ -1632,7 +1618,9 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 	/*
 	 * TCP ECN processing.
 	 */
-	if (tcp_ecn_input_segment(tp, thflags, iptos))
+	if (tcp_ecn_input_segment(tp, thflags, tlen,
+	    tcp_packets_this_ack(tp, th->th_ack),
+	    iptos))
 		cc_cong_signal(tp, th, CC_ECN);
 
 	/*
