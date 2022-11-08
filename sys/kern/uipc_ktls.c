@@ -1748,7 +1748,7 @@ ktls_reset_send_tag(void *context, int pending)
 		if (!in_pcbrele_wlocked(inp)) {
 			if (!(inp->inp_flags & INP_DROPPED)) {
 				tp = intotcpcb(inp);
-				CURVNET_SET(tp->t_vnet);
+				CURVNET_SET(inp->inp_vnet);
 				tp = tcp_drop(tp, ECONNABORTED);
 				CURVNET_RESTORE();
 				if (tp != NULL)
@@ -3225,7 +3225,7 @@ ktls_disable_ifnet(void *arg)
 	struct ktls_session *tls;
 
 	tp = arg;
-	inp = tp->t_inpcb;
+	inp = tptoinpcb(tp);
 	INP_WLOCK_ASSERT(inp);
 	so = inp->inp_socket;
 	SOCK_LOCK(so);
