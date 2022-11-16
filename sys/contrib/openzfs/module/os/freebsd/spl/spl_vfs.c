@@ -125,10 +125,6 @@ mount_snapshot(kthread_t *td, vnode_t **vpp, const char *fstype, char *fspath,
 	struct vfsconf *vfsp;
 	struct mount *mp;
 	vnode_t *vp, *mvp;
-<<<<<<< HEAD
-	struct ucred *cr;
-=======
->>>>>>> origin/freebsd/current/main
 	int error;
 
 	ASSERT_VOP_ELOCKED(*vpp, "mount_snapshot");
@@ -197,20 +193,8 @@ mount_snapshot(kthread_t *td, vnode_t **vpp, const char *fstype, char *fspath,
 	 * mount(8) and df(1) output.
 	 */
 	mp->mnt_flag |= MNT_IGNORE;
-<<<<<<< HEAD
-	/*
-	 * XXX: This is evil, but we can't mount a snapshot as a regular user.
-	 * XXX: Is is safe when snapshot is mounted from within a jail?
-	 */
-	cr = td->td_ucred;
-	td->td_ucred = kcred;
-	error = VFS_MOUNT(mp);
-	td->td_ucred = cr;
-
-=======
 
 	error = VFS_MOUNT(mp);
->>>>>>> origin/freebsd/current/main
 	if (error != 0) {
 		/*
 		 * Clear VI_MOUNT and decrement the use count "atomically",
