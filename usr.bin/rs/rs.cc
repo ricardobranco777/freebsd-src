@@ -38,10 +38,11 @@
 #include <err.h>
 #include <ctype.h>
 #include <limits.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <vector>
 
 static long	flags;
 #define	TRANSPOSE	000001
@@ -63,39 +64,26 @@ static long	flags;
 #define NOARGS		0200000
 
 static short	*colwidths;
-static short	*cord;
-static short	*icbd;
-static short	*ocbd;
-static int	nelem;
-static char	**elem;
-static char	**endelem;
+static std::vector<char *> elem;
 static char	*curline;
-static int	allocsize = BUFSIZ;
-static int	curlen;
-static int	irows, icols;
-static int	orows = 0, ocols = 0;
-static int	maxlen;
+static size_t	curlen;
+static size_t	irows, icols;
+static size_t	orows = 0, ocols = 0;
+static size_t	maxlen;
 static int	skip;
 static int	propgutter;
 static char	isep = ' ', osep = ' ';
 static char	blank[] = "";
-static int	owidth = 80, gutter = 2;
+static size_t	owidth = 80, gutter = 2;
 
 static void	  getargs(int, char *[]);
 static void	  getfile(void);
 static int	  get_line(void);
-static char	 *getlist(short **, char *);
-static char	 *getnum(int *, char *, int);
-static char	**getptrs(char **);
+static long	  getnum(const char *);
 static void	  prepfile(void);
 static void	  prints(char *, int);
 static void	  putfile(void);
 static void usage(void);
-
-#define	INCR(ep) do {			\
-	if (++ep >= endelem)		\
-		ep = getptrs(ep);	\
-} while(0)
 
 int
 main(int argc, char *argv[])
@@ -103,7 +91,7 @@ main(int argc, char *argv[])
 	getargs(argc, argv);
 	getfile();
 	if (flags & SHAPEONLY) {
-		printf("%d %d\n", irows, icols);
+		printf("%zu %zu\n", irows, icols);
 		exit(0);
 	}
 	prepfile();
@@ -116,12 +104,10 @@ getfile(void)
 {
 	char *p, *sp;
 	char *endp;
-	char **ep;
 	int c;
-	int len;
 	int multisep = (flags & ONEISEPONLY ? 0 : 1);
 	int nullpad = flags & NULLPAD;
-	char **padto;
+	size_t len, padto;
 
 	while (skip--) {
 		c = get_line();
@@ -143,11 +129,9 @@ getfile(void)
 			while (*p && *p != isep)
 				p++;
 		}
-	ep = getptrs(elem);
 	do {
 		if (flags & ONEPERLINE) {
-			*ep = curline;
-			INCR(ep);		/* prepare for next entry */
+			elem.push_back(curline);
 			if (maxlen < curlen)
 				maxlen = curlen;
 			irows++;
@@ -157,9 +141,9 @@ getfile(void)
 			if (*p == isep && multisep)
 				continue;	/* eat up column separators */
 			if (*p == isep)		/* must be an empty column */
-				*ep = blank;
+				elem.push_back(blank);
 			else			/* store column entry */
-				*ep = p;
+				elem.push_back(p);
 			sp = p;
 			while (p < endp && *p != isep)
 				p++;		/* find end of entry */
@@ -167,39 +151,31 @@ getfile(void)
 			len = p - sp;
 			if (maxlen < len)	/* update maxlen */
 				maxlen = len;
-			INCR(ep);		/* prepare for next entry */
 		}
 		irows++;			/* update row count */
 		if (nullpad) {			/* pad missing entries */
-			padto = elem + irows * icols;
-			while (ep < padto) {
-				*ep = blank;
-				INCR(ep);
-			}
+			padto = irows * icols;
+			elem.resize(padto, blank);
 		}
 	} while (get_line() != EOF);
-	*ep = 0;				/* mark end of pointers */
-	nelem = ep - elem;
 }
 
 static void
 putfile(void)
 {
-	char **ep;
-	int i, j, k;
+	size_t i, j, k;
 
-	ep = elem;
 	if (flags & TRANSPOSE)
 		for (i = 0; i < orows; i++) {
-			for (j = i; j < nelem; j += orows)
-				prints(ep[j], (j - i) / orows);
+			for (j = i; j < elem.size(); j += orows)
+				prints(elem[j], (j - i) / orows);
 			putchar('\n');
 		}
 	else
 		for (i = k = 0; i < orows; i++) {
 			for (j = 0; j < ocols; j++, k++)
-				if (k < nelem)
-					prints(ep[k], j);
+				if (k < elem.size())
+					prints(elem[k], j);
 			putchar('\n');
 		}
 }
@@ -233,15 +209,10 @@ usage(void)
 static void
 prepfile(void)
 {
-	char **ep;
-	int  i;
-	int  j;
-	char **lp;
-	int colw;
-	int max;
-	int n;
+	size_t i, j;
+	size_t colw, max, n, orig_size, padto;
 
-	if (!nelem)
+	if (elem.empty())
 		exit(0);
 	gutter += maxlen * propgutter / 100.0;
 	colw = maxlen + gutter;
@@ -252,58 +223,56 @@ prepfile(void)
 	else if (orows == 0 && ocols == 0) {	/* decide rows and cols */
 		ocols = owidth / colw;
 		if (ocols == 0) {
-			warnx("display width %d is less than column width %d",
+			warnx("display width %zu is less than column width %zu",
 					owidth, colw);
 			ocols = 1;
 		}
-		if (ocols > nelem)
-			ocols = nelem;
-		orows = nelem / ocols + (nelem % ocols ? 1 : 0);
+		if (ocols > elem.size())
+			ocols = elem.size();
+		orows = elem.size() / ocols + (elem.size() % ocols ? 1 : 0);
 	}
 	else if (orows == 0)			/* decide on rows */
-		orows = nelem / ocols + (nelem % ocols ? 1 : 0);
+		orows = elem.size() / ocols + (elem.size() % ocols ? 1 : 0);
 	else if (ocols == 0)			/* decide on cols */
-		ocols = nelem / orows + (nelem % orows ? 1 : 0);
-	lp = elem + orows * ocols;
-	while (lp > endelem) {
-		getptrs(elem + nelem);
-		lp = elem + orows * ocols;
-	}
+		ocols = elem.size() / orows + (elem.size() % orows ? 1 : 0);
+	padto = orows * ocols;
+	orig_size = elem.size();
 	if (flags & RECYCLE) {
-		for (ep = elem + nelem; ep < lp; ep++)
-			*ep = *(ep - nelem);
-		nelem = lp - elem;
+		for (i = 0; elem.size() < padto; i++)
+			elem.push_back(elem[i % orig_size]);
 	}
 	if (!(colwidths = (short *) malloc(ocols * sizeof(short))))
 		errx(1, "malloc");
 	if (flags & SQUEEZE) {
-		ep = elem;
-		if (flags & TRANSPOSE)
+		if (flags & TRANSPOSE) {
+			auto it = elem.begin();
 			for (i = 0; i < ocols; i++) {
 				max = 0;
-				for (j = 0; *ep != NULL && j < orows; j++)
-					if ((n = strlen(*ep++)) > max)
+				for (j = 0; it != elem.end() && j < orows; j++)
+					if ((n = strlen(*it++)) > max)
 						max = n;
 				colwidths[i] = max + gutter;
 			}
-		else
+		} else {
 			for (i = 0; i < ocols; i++) {
 				max = 0;
-				for (j = i; j < nelem; j += ocols)
-					if ((n = strlen(ep[j])) > max)
+				for (j = i; j < elem.size(); j += ocols)
+					if ((n = strlen(elem[j])) > max)
 						max = n;
 				colwidths[i] = max + gutter;
 			}
+		}
 	}
 	/*	for (i = 0; i < orows; i++) {
-			for (j = i; j < nelem; j += orows)
-				prints(ep[j], (j - i) / orows);
+			for (j = i; j < elem.size(); j += orows)
+				prints(elem[j], (j - i) / orows);
 			putchar('\n');
 		}
-	else
+	else {
+		auto it = elem.begin();
 		for (i = 0; i < orows; i++) {
 			for (j = 0; j < ocols; j++)
-				prints(*ep++, j);
+				prints(*it++, j);
 			putchar('\n');
 		}*/
 	else
@@ -315,11 +284,8 @@ prepfile(void)
 		else
 			colwidths[ocols - 1] = 0;
 	}
-	n = orows * ocols;
-	if (n > nelem && (flags & RECYCLE))
-		nelem = n;
 	/*for (i = 0; i < ocols; i++)
-		warnx("%d is colwidths, nelem %d", colwidths[i], nelem);*/
+		warnx("%d is colwidths, nelem %zu", colwidths[i], elem.size());*/
 }
 
 #define	BSIZE	(LINE_MAX * 2)
@@ -333,14 +299,14 @@ get_line(void)	/* get line; maintain curline, curlen; manage storage */
 	char *p;
 	int c, i;
 
-	if (!irows) {
+	if (irows == 0) {
 		curline = ibuf;
 		putlength = flags & DETAILSHAPE;
 	}
 	else if (skip <= 0) {			/* don't waste storage */
 		curline += curlen + 1;
 		if (putlength) {	/* print length, recycle storage */
-			printf(" %d line %d\n", curlen, irows);
+			printf(" %zu line %zu\n", curlen, irows);
 			curline = ibuf;
 		}
 	}
@@ -365,121 +331,99 @@ get_line(void)	/* get line; maintain curline, curlen; manage storage */
 	return(c);
 }
 
-static char **
-getptrs(char **sp)
-{
-	char **p;
-	ptrdiff_t offset;
-
-	offset = sp - elem;
-	allocsize += allocsize;
-	p = (char **)realloc(elem, allocsize * sizeof(char *));
-	if (p == NULL)
-		err(1, "no memory");
-
-	sp = p + offset;
-	endelem = (elem = p) + allocsize;
-	return(sp);
-}
-
 static void
 getargs(int ac, char *av[])
 {
-	char *p;
+	long val;
+	int ch;
 
 	if (ac == 1) {
 		flags |= NOARGS | TRANSPOSE;
 	}
-	while (--ac && **++av == '-')
-		for (p = *av+1; *p; p++)
-			switch (*p) {
-			case 'T':
-				flags |= MTRANSPOSE;
-				/* FALLTHROUGH */
-			case 't':
-				flags |= TRANSPOSE;
-				break;
-			case 'c':		/* input col. separator */
-				flags |= ONEISEPONLY;
-				/* FALLTHROUGH */
-			case 's':		/* one or more allowed */
-				if (p[1])
-					isep = *++p;
-				else
-					isep = '\t';	/* default is ^I */
-				break;
-			case 'C':
-				flags |= ONEOSEPONLY;
-				/* FALLTHROUGH */
-			case 'S':
-				if (p[1])
-					osep = *++p;
-				else
-					osep = '\t';	/* default is ^I */
-				break;
-			case 'w':		/* window width, default 80 */
-				p = getnum(&owidth, p, 0);
-				if (owidth <= 0)
-					errx(1, "width must be a positive integer");
-				break;
-			case 'K':			/* skip N lines */
-				flags |= SKIPPRINT;
-				/* FALLTHROUGH */
-			case 'k':			/* skip, do not print */
-				p = getnum(&skip, p, 0);
-				if (!skip)
-					skip = 1;
-				break;
-			case 'm':
-				flags |= NOTRIMENDCOL;
-				break;
-			case 'g':		/* gutter space */
-				p = getnum(&gutter, p, 0);
-				break;
-			case 'G':
-				p = getnum(&propgutter, p, 0);
-				break;
-			case 'e':		/* each line is an entry */
-				flags |= ONEPERLINE;
-				break;
-			case 'E':
-				flags |= ONEPERCHAR;
-				break;
-			case 'j':			/* right adjust */
-				flags |= RIGHTADJUST;
-				break;
-			case 'n':	/* null padding for missing values */
-				flags |= NULLPAD;
-				break;
-			case 'y':
-				flags |= RECYCLE;
-				break;
-			case 'H':			/* print shape only */
-				flags |= DETAILSHAPE;
-				/* FALLTHROUGH */
-			case 'h':
-				flags |= SHAPEONLY;
-				break;
-			case 'z':			/* squeeze col width */
-				flags |= SQUEEZE;
-				break;
-			/*case 'p':
-				ipagespace = atoi(++p);	(default is 1)
-				break;*/
-			case 'o':			/* col order */
-				p = getlist(&cord, p);
-				break;
-			case 'b':
-				flags |= ICOLBOUNDS;
-				p = getlist(&icbd, p);
-				break;
-			case 'B':
-				flags |= OCOLBOUNDS;
-				p = getlist(&ocbd, p);
-				break;
-			default:
-				usage();
-			}
+
+	while ((ch = getopt(ac, av, "C::EG:HK:S::Tc::eg:hjk:mns::tw:yz")) != -1)
+		switch (ch) {
+		case 'T':
+			flags |= MTRANSPOSE;
+			/* FALLTHROUGH */
+		case 't':
+			flags |= TRANSPOSE;
+			break;
+		case 'c':		/* input col. separator */
+			flags |= ONEISEPONLY;
+			/* FALLTHROUGH */
+		case 's':		/* one or more allowed */
+			if (optarg != NULL)
+				isep = *optarg;
+			else
+				isep = '\t';	/* default is ^I */
+			break;
+		case 'C':
+			flags |= ONEOSEPONLY;
+			/* FALLTHROUGH */
+		case 'S':
+			if (optarg != NULL)
+				osep = *optarg;
+			else
+				osep = '\t';	/* default is ^I */
+			break;
+		case 'w':		/* window width, default 80 */
+			val = getnum(optarg);
+			if (val <= 0)
+				errx(1, "width must be a positive integer");
+			owidth = val;
+			break;
+		case 'K':			/* skip N lines */
+			flags |= SKIPPRINT;
+			/* FALLTHROUGH */
+		case 'k':			/* skip, do not print */
+			skip = getnum(optarg);
+			if (skip < 1)
+				skip = 1;
+			break;
+		case 'm':
+			flags |= NOTRIMENDCOL;
+			break;
+		case 'g':		/* gutter space */
+			gutter = getnum(optarg);
+			break;
+		case 'G':
+			propgutter = getnum(optarg);
+			break;
+		case 'e':		/* each line is an entry */
+			flags |= ONEPERLINE;
+			break;
+		case 'E':
+			flags |= ONEPERCHAR;
+			break;
+		case 'j':			/* right adjust */
+			flags |= RIGHTADJUST;
+			break;
+		case 'n':	/* null padding for missing values */
+			flags |= NULLPAD;
+			break;
+		case 'y':
+			flags |= RECYCLE;
+			break;
+		case 'H':			/* print shape only */
+			flags |= DETAILSHAPE;
+			/* FALLTHROUGH */
+		case 'h':
+			flags |= SHAPEONLY;
+			break;
+		case 'z':			/* squeeze col width */
+			flags |= SQUEEZE;
+			break;
+		/*case 'p':
+			ipagespace = atoi(optarg);	(default is 1)
+			break;*/
+		default:
+			usage();
+		}
+
+	av += optind;
+	ac -= optind;
+
 	/*if (!osep)
 		osep = isep;*/
 	switch (ac) {
@@ -489,12 +433,14 @@ getargs(int ac, char *av[])
 		/* FALLTHROUGH */
 #endif
 	case 2:
-		if ((ocols = atoi(av[1])) < 0)
-			ocols = 0;
+		val = strtol(av[1], NULL, 10);
+		if (val >= 0)
+			ocols = val;
 		/* FALLTHROUGH */
 	case 1:
-		if ((orows = atoi(av[0])) < 0)
-			orows = 0;
+		val = strtol(av[0], NULL, 10);
+		if (val >= 0)
+			orows = val;
 		/* FALLTHROUGH */
 	case 0:
 		break;
@@ -503,56 +449,14 @@ getargs(int ac, char *av[])
 	}
 }
 
-static char *
-getlist(short **list, char *p)
+static long
+getnum(const char *p)
 {
-	int count = 1;
-	char *t;
+	char *ep;
+	long val;
 
-	for (t = p + 1; *t; t++) {
-		if (!isdigit((unsigned char)*t))
-			errx(1,
-	"option %.1s requires a list of unsigned numbers separated by commas", t);
-		count++;
-		while (*t && isdigit((unsigned char)*t))
-			t++;
-		if (*t != ',')
-			break;
-	}
-	if (!(*list = (short *) malloc(count * sizeof(short))))
-		errx(1, "no list space");
-	count = 0;
-	for (t = p + 1; *t; t++) {
-		(*list)[count++] = atoi(t);
-		printf("++ %d ", (*list)[count-1]);
-		fflush(stdout);
-		while (*t && isdigit((unsigned char)*t))
-			t++;
-		if (*t != ',')
-			break;
-	}
-	(*list)[count] = 0;
-	return(t - 1);
-}
-
-/*
- * num = number p points to; if (strict) complain
- * returns pointer to end of num
- */
-static char *
-getnum(int *num, char *p, int strict)
-{
-	char *t = p;
-
-	if (!isdigit((unsigned char)*++t)) {
-		if (strict || *t == '-' || *t == '+')
-			errx(1, "option %.1s requires an unsigned integer", p);
-		*num = 0;
-		return(p);
-	}
-	*num = atoi(t);
-	while (*++t)
-		if (!isdigit((unsigned char)*t))
-			break;
-	return(--t);
+	val = strtol(p, &ep, 10);
+	if (*ep != '\0')
+		errx(1, "invalid integer %s", p);
+	return (val);
 }
