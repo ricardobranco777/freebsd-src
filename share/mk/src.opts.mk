@@ -210,12 +210,7 @@ __DEFAULT_NO_OPTIONS = \
     EXPERIMENTAL \
     FREEBSD_UPDATE \
     HESIOD \
-<<<<<<< HEAD
     LIB32 \
-    HTTPD \
-    LOADER_FIREWIRE \
-=======
->>>>>>> origin/freebsd/current/main
     LOADER_VERBOSE \
     LOADER_VERIEXEC_PASS_MANIFEST \
     MALLOC_PRODUCTION \
