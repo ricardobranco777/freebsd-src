@@ -36,11 +36,9 @@ SRCS+=		sanitizer_common/sanitizer_thread_registry.cpp
 SRCS+=		sanitizer_common/sanitizer_tls_get_addr.cpp
 SRCS+=		sanitizer_common/sanitizer_type_traits.cpp
 
-.if ${MK_LLD_IS_LD} != "no" && ${MK_CLANG_IS_CC} != "no" # && ${MK_CROSS_DSO_CFI} == "no"
 CFLAGS+=	-flto
 CXXFLAGS+=	-flto
 LDFLAGS+=	-flto
-.endif
 
 FILESDIR=	${SANITIZER_SHAREDIR}
 FILES+=		cfi/cfi_ignorelist.txt
