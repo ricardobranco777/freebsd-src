@@ -92,10 +92,16 @@ struct image_params {
 	bool opened;			/* we have opened executable vnode */
 	bool textset;
 	u_int map_flags;
+<<<<<<< HEAD
 	struct _pax {
 		uint32_t req_acl_flags; /* Requested PaX settings from ACL */
 		uint32_t req_extattr_flags; /* Req. PaX setting from extattr */
 	} pax;
+=======
+#define IMGP_ASLR_SHARED_PAGE	0x1
+	uint32_t imgp_flags;
+	struct vnode *interpreter_vp;	/* vnode of the interpreter */
+>>>>>>> freebsd/main
 };
 
 #ifdef _KERNEL
