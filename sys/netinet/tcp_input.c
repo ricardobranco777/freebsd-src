@@ -55,8 +55,11 @@ __FBSDID("$FreeBSD$");
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
+<<<<<<< HEAD
 #include "opt_pax.h"
 #include "opt_tcpdebug.h"
+=======
+>>>>>>> freebsd/main
 
 #include <sys/param.h>
 #include <sys/arb.h>
@@ -118,7 +121,6 @@ __FBSDID("$FreeBSD$");
 #include <netinet/tcp_pcap.h>
 #endif
 #include <netinet/tcp_syncache.h>
-#include <netinet/tcp_debug.h>
 #ifdef TCP_OFFLOAD
 #include <netinet/tcp_offload.h>
 #endif
@@ -637,15 +639,6 @@ tcp_input_with_port(struct mbuf **mp, int *offp, int proto, uint16_t port)
 #endif /* INET6 */
 	struct tcpopt to;		/* options in this segment */
 	char *s = NULL;			/* address and port logging */
-#ifdef TCPDEBUG
-	/*
-	 * The size of tcp_saveipgen must be the size of the max ip header,
-	 * now IPv6.
-	 */
-	u_char tcp_saveipgen[IP6_HDR_LEN];
-	struct tcphdr tcp_savetcp;
-	short ostate = 0;
-#endif
 
 	NET_EPOCH_ASSERT();
 
@@ -1026,18 +1019,6 @@ findpcb:
 #endif
 	so = inp->inp_socket;
 	KASSERT(so != NULL, ("%s: so == NULL", __func__));
-#ifdef TCPDEBUG
-	if (so->so_options & SO_DEBUG) {
-		ostate = tp->t_state;
-#ifdef INET6
-		if (isipv6) {
-			bcopy((char *)ip6, (char *)tcp_saveipgen, sizeof(*ip6));
-		} else
-#endif
-			bcopy((char *)ip, (char *)tcp_saveipgen, sizeof(*ip));
-		tcp_savetcp = *th;
-	}
-#endif /* TCPDEBUG */
 	/*
 	 * When the socket is accepting connections (the INPCB is in LISTEN
 	 * state) we look into the SYN cache if this is a new connection
@@ -1349,11 +1330,6 @@ tfo_socket_result:
 		 * SYN appears to be valid.  Create compressed TCP state
 		 * for syncache.
 		 */
-#ifdef TCPDEBUG
-		if (so->so_options & SO_DEBUG)
-			tcp_trace(TA_INPUT, ostate, tp,
-			    (void *)tcp_saveipgen, &tcp_savetcp, 0);
-#endif
 		TCP_PROBE3(debug__input, tp, th, m);
 		tcp_dooptions(&to, optp, optlen, TO_SYN);
 		if ((so = syncache_add(&inc, &to, th, inp, so, m, NULL, NULL,
@@ -1533,15 +1509,6 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 	int tfo_syn;
 	u_int maxseg;
 
-#ifdef TCPDEBUG
-	/*
-	 * The size of tcp_saveipgen must be the size of the max ip header,
-	 * now IPv6.
-	 */
-	u_char tcp_saveipgen[IP6_HDR_LEN];
-	struct tcphdr tcp_savetcp;
-	short ostate = 0;
-#endif
 	thflags = tcp_get_flags(th);
 	tp->sackhint.last_sack_ack = 0;
 	sack_changed = 0;
@@ -1861,12 +1828,6 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 				 * are ready to send, let tcp_output
 				 * decide between more output or persist.
 				 */
-#ifdef TCPDEBUG
-				if (so->so_options & SO_DEBUG)
-					tcp_trace(TA_INPUT, ostate, tp,
-					    (void *)tcp_saveipgen,
-					    &tcp_savetcp, 0);
-#endif
 				TCP_PROBE3(debug__input, tp, th, m);
 				/*
 				 * Clear t_acktime if remote side has ACKd
@@ -1923,11 +1884,6 @@ tcp_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 			tp->rcv_up = tp->rcv_nxt;
 			TCPSTAT_ADD(tcps_rcvpack, nsegs);
 			TCPSTAT_ADD(tcps_rcvbyte, tlen);
-#ifdef TCPDEBUG
-			if (so->so_options & SO_DEBUG)
-				tcp_trace(TA_INPUT, ostate, tp,
-				    (void *)tcp_saveipgen, &tcp_savetcp, 0);
-#endif
 			TCP_PROBE3(debug__input, tp, th, m);
 
 			newsize = tcp_autorcvbuf(m, th, so, tp, tlen);
@@ -3303,11 +3259,6 @@ dodata:							/* XXX */
 			return;
 		}
 	}
-#ifdef TCPDEBUG
-	if (so->so_options & SO_DEBUG)
-		tcp_trace(TA_INPUT, ostate, tp, (void *)tcp_saveipgen,
-			  &tcp_savetcp, 0);
-#endif
 	TCP_PROBE3(debug__input, tp, th, m);
 
 	/*
@@ -3349,11 +3300,6 @@ dropafterack:
 		tcp_log_end_status(tp, TCP_EI_STATUS_RST_IN_FRONT);
 		goto dropwithreset;
 	}
-#ifdef TCPDEBUG
-	if (so->so_options & SO_DEBUG)
-		tcp_trace(TA_DROP, ostate, tp, (void *)tcp_saveipgen,
-			  &tcp_savetcp, 0);
-#endif
 	TCP_PROBE3(debug__input, tp, th, m);
 	tp->t_flags |= TF_ACKNOW;
 	(void) tcp_output(tp);
@@ -3373,11 +3319,6 @@ drop:
 	/*
 	 * Drop space held by incoming segment and return.
 	 */
-#ifdef TCPDEBUG
-	if (tp == NULL || (inp->inp_socket->so_options & SO_DEBUG))
-		tcp_trace(TA_DROP, ostate, tp, (void *)tcp_saveipgen,
-			  &tcp_savetcp, 0);
-#endif
 	TCP_PROBE3(debug__input, tp, th, m);
 	if (tp != NULL) {
 		INP_WUNLOCK(inp);
