@@ -4954,7 +4954,7 @@ db_show_prison(struct prison *pr)
 			db_printf(" %s %s\n",
 			    ii == 0 ? "ip4.addr        =" : "                 ",
 			    inet_ntoa_r(
-			    *(const struct in_addr *)PR_IP(pr, ii),
+			    *(const struct in_addr *)PR_IP(pr->pr_addrs[af], ii),
 			    ip4buf));
 	}
 #endif
@@ -4967,7 +4967,7 @@ db_show_prison(struct prison *pr)
 			db_printf(" %s %s\n",
 			    ii == 0 ? "ip6.addr        =" : "                 ",
 			    ip6_sprintf(ip6buf,
-			    (const struct in6_addr *)PR_IP(pr, ii)));
+			    (const struct in6_addr *)PR_IP(pr->pr_addrs[af], ii)));
 	}
 #endif
 #ifdef PAX
