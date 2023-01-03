@@ -1,5 +1,9 @@
-#-
-# Copyright 2016 Michal Meloun <mmel@FreeBSD.org>
+#!/bin/sh
+
+#
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# Copyright (c) 2023 Peter Holm <pho@FreeBSD.org>
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,47 +27,39 @@
 # SUCH DAMAGE.
 #
 
-INTERFACE phynode;
+# growfs(8) test with output to FS to be grown.
+# A regression test for D37896 ufs/suspend: deny suspension if calling
+# process has file from mp opened for write
+# Before D37896 this would result in growfs(8) hanging.
 
-HEADER {
-	#include <dev/extres/phy/phy.h>
+. ../default.cfg
+[ `id -u ` -ne 0 ] && echo "Must be root!" && exit 1
 
-	struct phynode;
-}
+log=/tmp/growfs2.sh.log
+s=0
+set -eu
+mount | grep "on $mntpoint " | grep -q /dev/md && umount -f $mntpoint
+[ -c /dev/md$mdstart ] &&  mdconfig -d -u $mdstart
+mdconfig -a -t swap -s 32g -u $mdstart
+/sbin/gpart create -s GPT md$mdstart > /dev/null
+/sbin/gpart add -t freebsd-ufs -s 2g -a 4k md$mdstart > /dev/null
+set +e
 
-#
-# Init/deinit phy
-# Returns 0 on success or a standard errno value.
-#
-METHOD int init {
-	struct phynode	*phynode;
-};
+newfs $newfs_flags md${mdstart}p1 > /dev/null
+mount /dev/md${mdstart}p1 $mntpoint
+cp -r /usr/include $mntpoint/inc1
 
-#
-# Enable/disable phy
-# Returns 0 on success or a standard errno value.
-#
-METHOD int enable {
-	struct phynode	*phynode;
-	bool		enable;
-};
+gpart resize -i 1 -s 31g -a 4k md$mdstart
+echo "Expect: growfs: UFSSUSPEND: Resource deadlock avoided"
+growfs -y md${mdstart}p1 > $mntpoint/log && s=1 ||  s=0
 
-#
-# Get phy status
-# Returns 0 on success or a standard errno value.
-#
-METHOD int status {
-	struct phynode	*phynode;
-	int		*status;    /* PHY_STATUS_* */
-};
+cp -r /usr/include $mntpoint/inc2
+umount $mntpoint
+fsck -fy /dev/md${mdstart}p1 > $log 2>&1
+grep -q "WAS MODIFIED" $log && s=2
+grep -q CLEAN $log || s=3
+[ $s -ne 0 ] && cat $log
 
-
-#
-# Set mode/submode for multiprotocol phy
-# Returns 0 on success or a standard errno value.
-#
-METHOD int set_mode  {
-	struct phynode	*phynode;
-	phy_mode_t	mode;
-	phy_submode_t	submode;
-};
+mdconfig -d -u $mdstart
+rm -f $log
+exit $s
