@@ -25,6 +25,8 @@
  * SUCH DAMAGE.
  */
 
+#include "opt_pax.h"
+
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 #include <sys/param.h>
@@ -105,6 +107,9 @@ nlmsg_get_ns_buf(struct nl_writer *nw, int size, bool waitok)
 	nw->hdr = NULL;
 	nw->data = nw->_storage;
 	nw->writer_type = NS_WRITER_TYPE_BUF;
+#ifdef PAX_HARDENING
+	mflag |= M_ZERO;
+#endif
 	nw->malloc_flag = mflag;
 	nw->num_messages = 0;
 	nw->enomem = false;
@@ -203,6 +208,9 @@ nlmsg_get_ns_mbuf(struct nl_writer *nw, int size, bool waitok)
 	struct mbuf *m;
 
 	int mflag = waitok ? M_WAITOK : M_NOWAIT;
+#ifdef PAX_HARDENING
+	mflag |= M_ZERO;
+#endif
 	m = m_get2(size, mflag, MT_DATA, M_PKTHDR);
 	if (__predict_false(m == NULL))
 		return (false);
@@ -310,6 +318,9 @@ nlmsg_get_ns_lbuf(struct nl_writer *nw, int size, bool waitok)
 	nw->hdr = NULL;
 	nw->_storage = buf;
 	nw->data = (char *)(lb + 1);
+#ifdef PAX_HARDENING
+	mflag |= M_ZERO;
+#endif
 	nw->malloc_flag = mflag;
 	nw->writer_type = NS_WRITER_TYPE_LBUF;
 	nw->num_messages = 0;
