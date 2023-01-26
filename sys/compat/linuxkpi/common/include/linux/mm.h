@@ -218,11 +218,15 @@ apply_to_page_range(struct mm_struct *mm, unsigned long address,
 int zap_vma_ptes(struct vm_area_struct *vma, unsigned long address,
     unsigned long size);
 
+int lkpi_remap_pfn_range(struct vm_area_struct *vma,
+    unsigned long start_addr, unsigned long start_pfn, unsigned long size,
+    pgprot_t prot);
+
 static inline int
 remap_pfn_range(struct vm_area_struct *vma, unsigned long addr,
     unsigned long pfn, unsigned long size, pgprot_t prot)
 {
-	return (-ENOTSUP);
+	return (lkpi_remap_pfn_range(vma, addr, pfn, size, prot));
 }
 
 static inline unsigned long
@@ -312,5 +316,7 @@ void lkpi_unmap_mapping_range(void *obj, loff_t const holebegin __unused,
 #define PAGE_ALIGNED(p)	__is_aligned(p, PAGE_SIZE)
 
 void vma_set_file(struct vm_area_struct *vma, struct linux_file *file);
+
+#define	is_cow_mapping(flags)	(false)
 
 #endif					/* _LINUXKPI_LINUX_MM_H_ */

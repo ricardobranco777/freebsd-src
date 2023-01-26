@@ -106,6 +106,7 @@ MODULE_PNP_INFO("U32:vendor;U32:device;V32:subvendor;V32:subdevice",	\
 
 #define	to_pci_dev(n)	container_of(n, struct pci_dev, dev)
 
+#define	PCI_STD_NUM_BARS	6
 #define	PCI_VENDOR_ID		PCIR_VENDOR
 #define	PCI_DEVICE_ID		PCIR_DEVICE
 #define	PCI_COMMAND		PCIR_COMMAND
@@ -170,6 +171,8 @@ MODULE_PNP_INFO("U32:vendor;U32:device;V32:subvendor;V32:subdevice",	\
 #define	PCI_MSI_ADDRESS_HI	PCIR_MSI_ADDR_HIGH
 #define	PCI_MSI_FLAGS		PCIR_MSI_CTRL
 #define	PCI_MSI_FLAGS_ENABLE	PCIM_MSICTRL_MSI_ENABLE
+#define	PCI_MSIX_FLAGS		PCIR_MSIX_CTRL
+#define	PCI_MSIX_FLAGS_ENABLE	PCIM_MSIXCTRL_MSIX_ENABLE
 
 #define PCI_EXP_LNKCAP_CLKPM	0x00040000
 #define PCI_EXP_DEVSTA_TRPND	0x0020
@@ -323,6 +326,7 @@ struct pci_dev {
 	uint32_t		class;
 	uint8_t			revision;
 	uint8_t			msi_cap;
+	uint8_t			msix_cap;
 	bool			managed;	/* devres "pcim_*(). */
 	bool			want_iomap_res;
 	bool			msi_enabled;
@@ -1671,5 +1675,14 @@ pci_is_enabled(struct pci_dev *pdev)
 	return ((pci_read_config(pdev->dev.bsddev, PCIR_COMMAND, 2) &
 	    PCIM_CMD_BUSMASTEREN) != 0);
 }
+
+static inline int
+pci_wait_for_pending_transaction(struct pci_dev *pdev)
+{
+
+	return (0);
+}
+
+bool pci_device_is_present(struct pci_dev *pdev);
 
 #endif	/* _LINUXKPI_LINUX_PCI_H_ */
