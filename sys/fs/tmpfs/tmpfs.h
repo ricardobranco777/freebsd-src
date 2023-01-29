@@ -133,29 +133,6 @@ RB_HEAD(tmpfs_dir, tmpfs_dirent);
 	(TMPFS_DIRCOOKIE_DUP | TMPFS_DIRCOOKIE_MASK)
 
 /*
-<<<<<<< HEAD
- * Extended attribute support.
- *
- * A good portion of this support is based upon the UFS
- * implementation. Stand on the shoulders of giants. This
- * implementation aims to only provide support for applying extended
- * attributes to files (VREG).
- */
-
-#define	TMPFS_EXTATTR_MAXNAME		33 /* Includes terminating NUL */
-#define	TMPFS_EXTATTR_MAXVALUESIZE	64
-
-struct tmpfs_extattr_list_entry {
-	LIST_ENTRY(tmpfs_extattr_list_entry)	 tele_entries;
-	int					 tele_attrnamespace;
-	char					 tele_attrname[TMPFS_EXTATTR_MAXNAME];
-	void					*tele_value;
-	size_t					 tele_value_size;
-};
-
-LIST_HEAD(tmpfs_extattr_list_head, tmpfs_extattr_list_entry);
-
-=======
  * Internal representation of a tmpfs extended attribute entry.
  */
 LIST_HEAD(tmpfs_extattr_list, tmpfs_extattr);
@@ -169,7 +146,6 @@ struct tmpfs_extattr {
 	ssize_t			ea_size;	/* attr value size */
 };
 
->>>>>>> freebsd/main
 /*
  * Internal representation of a tmpfs file system node.
  *
@@ -342,12 +318,6 @@ struct tmpfs_node {
 			vm_object_t		tn_aobj;	/* (c) */
 			struct tmpfs_mount	*tn_tmp;	/* (c) */
 			vm_pindex_t		tn_pages;	/* (v) */
-
-			/*
-			 * The extended attributes list, which may be
-			 * empty.
-			 */
-			struct tmpfs_extattr_list_head	 tn_extattr_list; /* (i) */
 		} tn_reg;
 	} tn_spec;	/* (v) */
 };

@@ -655,7 +655,6 @@ tmpfs_alloc_node(struct mount *mp, struct tmpfs_mount *tmp, enum vtype type,
 		break;
 
 	case VREG:
-		LIST_INIT(&(nnode->tn_reg.tn_extattr_list));
 		nnode->tn_reg.tn_aobj =
 		    vm_pager_allocate(tmpfs_pager_type, NULL, 0,
 		    VM_PROT_DEFAULT, 0,
@@ -704,11 +703,7 @@ bool
 tmpfs_free_node_locked(struct tmpfs_mount *tmp, struct tmpfs_node *node,
     bool detach)
 {
-<<<<<<< HEAD
-	struct tmpfs_extattr_list_entry *attr, *tattr;
-=======
 	struct tmpfs_extattr *ea;
->>>>>>> freebsd/main
 	vm_object_t uobj;
 	char *symlink;
 	bool last;
@@ -762,11 +757,6 @@ tmpfs_free_node_locked(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 
 	switch (node->tn_type) {
 	case VREG:
-		LIST_FOREACH_SAFE(attr, &(node->tn_reg.tn_extattr_list),
-		    tele_entries, tattr) {
-			free(attr->tele_value, M_TEMP);
-			free(attr, M_TEMP);
-		}
 		uobj = node->tn_reg.tn_aobj;
 		node->tn_reg.tn_aobj = NULL;
 		if (uobj != NULL) {

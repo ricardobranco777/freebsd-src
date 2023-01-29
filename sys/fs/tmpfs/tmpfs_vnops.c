@@ -80,26 +80,7 @@ SYSCTL_INT(_vfs_tmpfs, OID_AUTO, rename_restarts, CTLFLAG_RD,
     __DEVOLATILE(int *, &tmpfs_rename_restarts), 0,
     "Times rename had to restart due to lock contention");
 
-<<<<<<< HEAD
-static struct tmpfs_extattr_list_entry *tmpfs_node_has_extattr(
-    struct tmpfs_node *, int, const char *, bool);
-
-static int tmpfs_extattr_set(struct vnode *, int, const char *,
-    struct uio *, struct ucred *, struct thread *);
-
-static int tmpfs_extattr_get(struct vnode *, int, const char *,
-    struct uio *, size_t *, struct ucred *, struct thread *);
-
-static int tmpfs_listextattr(struct vop_listextattr_args *);
-
-static int tmpfs_extattr_list(struct vnode *, int, struct uio *,
-    size_t *, struct ucred *, struct thread *);
-
-static int tmpfs_extattr_delete(struct vnode *, int, const char *,
-    struct ucred *, struct thread *);
-=======
 MALLOC_DEFINE(M_TMPFSEA, "tmpfs extattr", "tmpfs extattr structure");
->>>>>>> freebsd/main
 
 static int
 tmpfs_vn_get_ino_alloc(struct mount *mp, void *arg, int lkflags,
@@ -1877,34 +1858,6 @@ restart_locked:
 	return (ENOENT);
 }
 
-<<<<<<< HEAD
-static struct tmpfs_extattr_list_entry *
-tmpfs_node_has_extattr(struct tmpfs_node *node, int attrnamespace,
-    const char *name, bool dolock)
-{
-	struct tmpfs_extattr_list_entry *entry, *tentry;
-
-	entry = NULL;
-
-	if (dolock) {
-		TMPFS_NODE_LOCK(node);
-	}
-	LIST_FOREACH_SAFE(entry, &(node->tn_reg.tn_extattr_list),
-	    tele_entries, tentry) {
-		if (attrnamespace != entry->tele_attrnamespace) {
-			continue;
-		}
-
-		if (!strcmp(name, entry->tele_attrname)) {
-			break;
-		}
-	}
-	if (dolock) {
-		TMPFS_NODE_UNLOCK(node);
-	}
-
-	return (entry);
-=======
 void
 tmpfs_extattr_free(struct tmpfs_extattr *ea)
 {
@@ -1970,54 +1923,11 @@ tmpfs_deleteextattr(struct vop_deleteextattr_args *ap)
 	tmpfs_extattr_update_mem(tmp, diff);
 	tmpfs_extattr_free(ea);
 	return (0);
->>>>>>> freebsd/main
 }
 
 static int
 tmpfs_getextattr(struct vop_getextattr_args *ap)
 {
-<<<<<<< HEAD
-
-	return (tmpfs_extattr_get(ap->a_vp, ap->a_attrnamespace,
-	    ap->a_name, ap->a_uio, ap->a_size, ap->a_cred, ap->a_td));
-}
-
-static int
-tmpfs_extattr_get(struct vnode *vp, int attrnamespace, const char *name,
-    struct uio *uio, size_t *size, struct ucred *cred, struct thread *td)
-{
-	struct tmpfs_extattr_list_entry *attr;
-	struct tmpfs_node *node;
-	size_t len;
-	int error;
-
-	if (vp->v_type != VREG) {
-		return (EOPNOTSUPP);
-	}
-
-	error = extattr_check_cred(vp, attrnamespace, cred, td, VREAD);
-	if (error) {
-		return (error);
-	}
-
-	node = VP_TO_TMPFS_NODE(vp);
-
-	attr = tmpfs_node_has_extattr(node, attrnamespace, name, true);
-	if (attr == NULL) {
-		return (ENOATTR);
-	}
-
-	if (size) {
-		*size = attr->tele_value_size;
-	}
-
-	if (uio != NULL) {
-		len = MIN(attr->tele_value_size, uio->uio_resid);
-		uio->uio_resid = len;
-		uio->uio_offset = 0;
-		error = uiomove(attr->tele_value, len, uio);
-	}
-=======
 	struct vnode *vp = ap->a_vp;
 	struct tmpfs_node *node;
 	struct tmpfs_extattr *ea;
@@ -2086,195 +1996,12 @@ tmpfs_listextattr(struct vop_listextattr_args *ap)
 		}
 	}
 
->>>>>>> freebsd/main
 	return (error);
 }
 
 static int
 tmpfs_setextattr(struct vop_setextattr_args *ap)
 {
-<<<<<<< HEAD
-
-	return (tmpfs_extattr_set(ap->a_vp, ap->a_attrnamespace,
-	    ap->a_name, ap->a_uio, ap->a_cred, ap->a_td));
-}
-
-static int
-tmpfs_extattr_set(struct vnode *vp, int attrnamespace, const char *name,
-    struct uio *uio, struct ucred *cred, struct thread *td)
-{
-	struct tmpfs_extattr_list_entry *attr;
-	struct tmpfs_node *node;
-	size_t sz;
-	int error;
-
-	if (vp->v_type != VREG) {
-		return (EOPNOTSUPP);
-	}
-
-	error = extattr_check_cred(vp, attrnamespace, cred, td, VWRITE);
-	if (error) {
-		return (error);
-	}
-
-	if (uio->uio_resid > TMPFS_EXTATTR_MAXVALUESIZE) {
-		return (EINVAL);
-	}
-
-	if (strlen(name) == 0) {
-		return (EINVAL);
-	}
-
-	if (strlen(name) >= TMPFS_EXTATTR_MAXNAME) {
-		return (EINVAL);
-	}
-
-	node = VP_TO_TMPFS_NODE(vp);
-
-	attr = tmpfs_node_has_extattr(node, attrnamespace, name, true);
-	if (attr == NULL) {
-		sz = MIN(TMPFS_EXTATTR_MAXVALUESIZE, uio->uio_resid);
-		attr = malloc(sizeof(*attr), M_TEMP, M_WAITOK|M_ZERO);
-
-		attr->tele_value = malloc(sz, M_TEMP, M_WAITOK);
-		attr->tele_value_size = sz;
-		attr->tele_attrnamespace = attrnamespace;
-		strncpy(attr->tele_attrname, name,
-		    sizeof(attr->tele_attrname)-1);
-
-		uiomove(attr->tele_value, sz, uio);
-
-		TMPFS_NODE_LOCK(node);
-		LIST_INSERT_HEAD(&(node->tn_reg.tn_extattr_list),
-		    attr, tele_entries);
-		TMPFS_NODE_UNLOCK(node);
-	}
-
-	return (0);
-}
-
-static int
-tmpfs_listextattr(struct vop_listextattr_args *ap)
-{
-
-	return tmpfs_extattr_list(ap->a_vp, ap->a_attrnamespace,
-	    ap->a_uio, ap->a_size, ap->a_cred, ap->a_td);
-}
-
-static int
-tmpfs_extattr_list(struct vnode *vp, int attrnamespace, struct uio *uio,
-    size_t *size, struct ucred *cred, struct thread *td)
-{
-	struct tmpfs_extattr_list_entry *attr, *tattr;
-	struct tmpfs_node *node;
-	size_t namelen;
-	uint8_t namelen8;
-	int error;
-
-	if (vp->v_type != VREG) {
-		return (EOPNOTSUPP);
-	}
-
-	error = extattr_check_cred(vp, attrnamespace, cred, td, VREAD);
-	if (error) {
-		return (error);
-	}
-
-	node = VP_TO_TMPFS_NODE(vp);
-
-	if (size) {
-		*size = 0;
-	}
-
-	TMPFS_NODE_LOCK(node);
-	LIST_FOREACH_SAFE(attr, &(node->tn_reg.tn_extattr_list),
-	    tele_entries, tattr) {
-		if (attr->tele_attrnamespace != attrnamespace) {
-			continue;
-		}
-
-		namelen = strlen(attr->tele_attrname);
-		if (size) {
-			*size += namelen + sizeof(namelen8);
-		} else if (uio != NULL) {
-			namelen8 = namelen;
-			TMPFS_NODE_UNLOCK(node);
-			error = uiomove(&namelen8, sizeof(namelen8), uio);
-			if (error) {
-				TMPFS_NODE_LOCK(node);
-				break;
-			}
-			error = uiomove(attr->tele_attrname, namelen, uio);
-			if (error) {
-				TMPFS_NODE_LOCK(node);
-				break;
-			}
-			TMPFS_NODE_LOCK(node);
-		}
-
-		if (error) {
-			break;
-		}
-	}
-	TMPFS_NODE_UNLOCK(node);
-
-	return (error);
-}
-
-static int
-tmpfs_extattr_delete(struct vnode *vp, int attrnamespace, const char *name,
-    struct ucred *cred, struct thread *td)
-{
-	struct tmpfs_extattr_list_entry *attr;
-	struct tmpfs_node *node;
-	int error;
-
-	if (vp->v_type != VREG) {
-		return (EOPNOTSUPP);
-	}
-
-	error = extattr_check_cred(vp, attrnamespace, cred, td, VWRITE);
-	if (error) {
-		return (error);
-	}
-
-	node = VP_TO_TMPFS_NODE(vp);
-
-	TMPFS_NODE_LOCK(node);
-	attr = tmpfs_node_has_extattr(node, attrnamespace, name, false);
-	if (attr == NULL) {
-		TMPFS_NODE_UNLOCK(node);
-		return (EINVAL);
-	}
-
-	LIST_REMOVE(attr, tele_entries);
-	TMPFS_NODE_UNLOCK(node);
-
-	free(attr->tele_value, M_TEMP);
-	memset(attr, 0, sizeof(*attr));
-	free(attr, M_TEMP);
-
-	return (0);
-}
-
-static int
-tmpfs_deleteextattr(struct vop_deleteextattr_args *ap)
-/*
- * vop_deleteextattr {
- *	IN struct vnode *a_vp;
- *	IN int a_attrnamespace;
- *	IN const char *a_name;
- *	IN struct ucred *a_cred;
- *	IN struct thread *a_td;
- * }
- */
-{
-
-	return (tmpfs_extattr_delete(ap->a_vp, ap->a_attrnamespace, ap->a_name,
-	    ap->a_cred, ap->a_td));
-}
-
-=======
 	struct vnode *vp = ap->a_vp;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
@@ -2340,7 +2067,6 @@ tmpfs_deleteextattr(struct vop_deleteextattr_args *ap)
 	return (0);
 }
 
->>>>>>> freebsd/main
 static off_t
 tmpfs_seek_data_locked(vm_object_t obj, off_t noff)
 {
@@ -2483,10 +2209,6 @@ struct vop_vector tmpfs_vnodeop_entries = {
 	.vop_stat =			tmpfs_stat,
 	.vop_getattr =			tmpfs_getattr,
 	.vop_setattr =			tmpfs_setattr,
-	.vop_getextattr =		tmpfs_getextattr,
-	.vop_setextattr =		tmpfs_setextattr,
-	.vop_listextattr =		tmpfs_listextattr,
-	.vop_deleteextattr =		tmpfs_deleteextattr,
 	.vop_read =			tmpfs_read,
 	.vop_read_pgcache =		tmpfs_read_pgcache,
 	.vop_write =			tmpfs_write,
