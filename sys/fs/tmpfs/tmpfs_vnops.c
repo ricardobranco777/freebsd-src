@@ -1863,6 +1863,7 @@ tmpfs_extattr_free(struct tmpfs_extattr *ea)
 {
 	free(ea->ea_name, M_TMPFSEA);
 	free(ea->ea_value, M_TMPFSEA);
+	memset(ea, 0, sizeof(*ea));
 	free(ea, M_TMPFSEA);
 }
 
