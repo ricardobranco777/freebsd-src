@@ -312,9 +312,6 @@ nlmsg_get_ns_lbuf(struct nl_writer *nw, int size, bool waitok)
 	nw->hdr = NULL;
 	nw->_storage = buf;
 	nw->data = (char *)(lb + 1);
-#ifdef PAX_HARDENING
-	mflag |= M_ZERO;
-#endif
 	nw->malloc_flag = mflag;
 	nw->writer_type = NS_WRITER_TYPE_LBUF;
 	nw->num_messages = 0;
