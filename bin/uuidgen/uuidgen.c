@@ -89,7 +89,7 @@ main(int argc, char *argv[])
 	count = -1;  /* no count yet */
 	fp = stdout; /* default output file */
 	iterate = 0; /* not one at a time */
-	version = 4; /* create uuid v1 by default */
+	version = 4; /* create uuid v4 by default */
 	while ((ch = getopt(argc, argv, "1Rrn:o:")) != -1)
 		switch (ch) {
 		case '1':
