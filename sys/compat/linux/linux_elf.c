@@ -59,13 +59,9 @@ __FBSDID("$FreeBSD$");
 
 #include <machine/elf.h>
 
-<<<<<<< HEAD
 int __insecure_kmod = 1;
 
-#if __ELF_WORD_SIZE == 32
-=======
 #ifdef COMPAT_LINUX32
->>>>>>> freebsd/main
 #define linux_pt_regset linux_pt_regset32
 #define bsd_to_linux_regset bsd_to_linux_regset32
 #include <machine/../linux32/linux.h>
