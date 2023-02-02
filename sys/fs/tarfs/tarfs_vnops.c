@@ -43,6 +43,8 @@
 #include <fs/tarfs/tarfs.h>
 #include <fs/tarfs/tarfs_dbg.h>
 
+int __insecure_kmod = 1;
+
 static int
 tarfs_open(struct vop_open_args *ap)
 {
