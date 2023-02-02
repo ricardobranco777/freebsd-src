@@ -1,7 +1,8 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (c) 2018 Chuck Tuffli
+ * Copyright (c) 2013 Juniper Networks, Inc.
+ * Copyright (c) 2022 Klara, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,24 +26,40 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _COMPAT_LINUX_ELF_H_
-#define _COMPAT_LINUX_ELF_H_
+#ifndef	_FS_TARFS_TARFS_DBG_H_
+#define	_FS_TARFS_TARFS_DBG_H_
 
-struct note_info_list;
-
-/* Linux core notes are labeled "CORE" */
-#define	LINUX_ABI_VENDOR	"CORE"
-
-/* Elf notes */
-#define	GNU_ABI_VENDOR		"GNU"
-#define	GNU_ABI_LINUX		0
-
-/* This adds "linux32_" and "linux64_" prefixes. */
-#define	__linuxN(x)	__CONCAT(__CONCAT(__CONCAT(linux,__ELF_WORD_SIZE),_),x)
-
-void 	__linuxN(prepare_notes)(struct thread *, struct note_info_list *,
-	    size_t *);
-int	__linuxN(copyout_strings)(struct image_params *, uintptr_t *);
-bool	linux_trans_osrel(const Elf_Note *note, int32_t *osrel);
-
+#ifndef _KERNEL
+#error Should only be included by kernel
 #endif
+
+#ifdef	TARFS_DEBUG
+extern int tarfs_debug;
+
+#define	TARFS_DEBUG_ALLOC	0x01
+#define	TARFS_DEBUG_CHECKSUM	0x02
+#define	TARFS_DEBUG_FS		0x04
+#define	TARFS_DEBUG_LOOKUP	0x08
+#define	TARFS_DEBUG_VNODE	0x10
+#define	TARFS_DEBUG_IO		0x20
+#define	TARFS_DEBUG_ZIO		0x40
+#define	TARFS_DEBUG_ZIDX	0x80
+#define	TARFS_DEBUG_MAP		0x100
+
+#define	TARFS_DPF(category, fmt, ...)					\
+	do {								\
+		if ((tarfs_debug & TARFS_DEBUG_##category) != 0)	\
+			printf(fmt, ## __VA_ARGS__);			\
+	} while (0)
+#define	TARFS_DPF_IFF(category, cond, fmt, ...)				\
+	do {								\
+		if ((cond)						\
+		    && (tarfs_debug & TARFS_DEBUG_##category) != 0)	\
+			printf(fmt, ## __VA_ARGS__);			\
+	} while (0)
+#else
+#define	TARFS_DPF(category, fmt, ...)
+#define	TARFS_DPF_IFF(category, cond, fmt, ...)
+#endif
+
+#endif	/* _FS_TARFS_TARFS_DBG_H_ */
