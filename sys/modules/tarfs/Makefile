@@ -20,4 +20,6 @@ CFLAGS+=	-DTARFS_DEBUG
 SRCS+=	opt_zstdio.h
 CFLAGS+=	-I${SRCTOP}/sys/contrib/zstd/lib/freebsd
 
+TRIVIAL_VAR_AUTO_INIT_ZERO_SAFE=	yes
+
 .include <bsd.kmod.mk>
