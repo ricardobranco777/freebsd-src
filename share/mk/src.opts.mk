@@ -338,8 +338,8 @@ __DEFAULT_NO_OPTIONS+=CLANG_EXTRAS
 .if ${__T:Mpowerpc*} == ""
 BROKEN_OPTIONS+=LOADER_OFW
 .endif
-# KBOOT is only for powerpc64 (powerpc64le broken) and kinda for amd64
-.if ${__T} != "powerpc64" && ${__T} != "amd64"
+# KBOOT is only for powerpc64 (powerpc64le broken) amd64 and aarch64
+.if ${__T} != "powerpc64" && ${__T} != "amd64" && ${__T} != "aarch64"
 BROKEN_OPTIONS+=LOADER_KBOOT
 .endif
 # UBOOT is only for arm, and big-endian powerpc
