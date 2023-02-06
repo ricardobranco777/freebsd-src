@@ -296,6 +296,7 @@ tarfs_readdir(struct vop_readdir_args *ap)
 		cde.d_reclen = GENERIC_DIRSIZ(&cde);
 		if (cde.d_reclen > uio->uio_resid)
 			goto full;
+		dirent_terminate(&cde);
 		error = uiomove(&cde, cde.d_reclen, uio);
 		if (error)
 			return (error);
@@ -319,6 +320,7 @@ tarfs_readdir(struct vop_readdir_args *ap)
 		cde.d_reclen = GENERIC_DIRSIZ(&cde);
 		if (cde.d_reclen > uio->uio_resid)
 			goto full;
+		dirent_terminate(&cde);
 		error = uiomove(&cde, cde.d_reclen, uio);
 		if (error)
 			return (error);
@@ -376,6 +378,7 @@ tarfs_readdir(struct vop_readdir_args *ap)
 		cde.d_reclen = GENERIC_DIRSIZ(&cde);
 		if (cde.d_reclen > uio->uio_resid)
 			goto full;
+		dirent_terminate(&cde);
 		error = uiomove(&cde, cde.d_reclen, uio);
 		if (error != 0)
 			goto done;
@@ -523,8 +526,6 @@ tarfs_reclaim(struct vop_reclaim_args *ap)
 	tnp = VP_TO_TARFS_NODE(vp);
 
 	vfs_hash_remove(vp);
-	vnode_destroy_vobject(vp);
-	cache_purge(vp);
 
 	TARFS_NODE_LOCK(tnp);
 	tnp->vnode = NULLVP;
