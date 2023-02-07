@@ -88,11 +88,7 @@ AuthorizedKeysFile	.ssh/authorized_keys
 AllowAgentForwarding no
 AllowTcpForwarding no
 #GatewayPorts no
-<<<<<<< HEAD
 X11Forwarding no
-=======
-#X11Forwarding no
->>>>>>> freebsd/main
 #X11DisplayOffset 10
 #X11UseLocalhost yes
 #PermitTTY yes
