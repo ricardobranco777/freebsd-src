@@ -736,7 +736,11 @@ create_nexthop_one(struct nl_parsed_route *attrs, struct rta_mpath_nh *mpnh,
 	if (nh == NULL)
 		return (ENOMEM);
 
-	nhop_set_gw(nh, mpnh->gw, true);
+	error = nl_set_nexthop_gw(nh, mpnh->gw, mpnh->ifp, npt);
+	if (error != 0) {
+		nhop_free(nh);
+		return (error);
+	}
 	if (mpnh->ifp != NULL)
 		nhop_set_transmit_ifp(nh, mpnh->ifp);
 	nhop_set_rtflags(nh, attrs->rta_rtflags);
@@ -800,8 +804,13 @@ create_nexthop_from_attrs(struct nl_parsed_route *attrs,
 			*perror = ENOMEM;
 			return (NULL);
 		}
-		if (attrs->rta_gw != NULL)
-			nhop_set_gw(nh, attrs->rta_gw, true);
+		if (attrs->rta_gw != NULL) {
+			*perror = nl_set_nexthop_gw(nh, attrs->rta_gw, attrs->rta_oif, npt);
+			if (*perror != 0) {
+				nhop_free(nh);
+				return (NULL);
+			}
+		}
 		if (attrs->rta_oif != NULL)
 			nhop_set_transmit_ifp(nh, attrs->rta_oif);
 		if (attrs->rtax_mtu != 0)
@@ -837,6 +846,11 @@ rtnl_handle_newroute(struct nlmsghdr *hdr, struct nlpcb *nlp,
 	/* Check if we have enough data */
 	if (attrs.rta_dst == NULL) {
 		NL_LOG(LOG_DEBUG, "missing RTA_DST");
+		return (EINVAL);
+	}
+
+	if (attrs.rta_table >= V_rt_numfibs) {
+		NLMSG_REPORT_ERR_MSG(npt, "invalid fib");
 		return (EINVAL);
 	}
 
@@ -898,6 +912,11 @@ rtnl_handle_delroute(struct nlmsghdr *hdr, struct nlpcb *nlp,
 		return (ESRCH);
 	}
 
+	if (attrs.rta_table >= V_rt_numfibs) {
+		NLMSG_REPORT_ERR_MSG(npt, "invalid fib");
+		return (EINVAL);
+	}
+
 	error = rib_del_route_px(attrs.rta_table, attrs.rta_dst,
 	    attrs.rtm_dst_len, path_match_func, &attrs, 0, &rc);
 	if (error == 0)
@@ -914,6 +933,11 @@ rtnl_handle_getroute(struct nlmsghdr *hdr, struct nlpcb *nlp, struct nl_pstate *
 	error = nl_parse_nlmsg(hdr, &rtm_parser, npt, &attrs);
 	if (error != 0)
 		return (error);
+
+	if (attrs.rta_table >= V_rt_numfibs) {
+		NLMSG_REPORT_ERR_MSG(npt, "invalid fib");
+		return (EINVAL);
+	}
 
 	if (hdr->nlmsg_flags & NLM_F_DUMP)
 		error = handle_rtm_dump(nlp, attrs.rta_table, attrs.rtm_family, hdr, npt->nw);
