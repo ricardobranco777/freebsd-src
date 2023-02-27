@@ -786,9 +786,6 @@ VT_TWOBUTTON_MOUSE	opt_syscons.h
 DEV_SC			opt_syscons.h
 DEV_VT			opt_syscons.h
 
-# kbdmux options
-KBDMUX_DFLT_KEYMAP	opt_kbdmux.h
-
 # teken terminal emulator options
 TEKEN_CONS25		opt_teken.h
 TEKEN_UTF8		opt_teken.h
@@ -809,10 +806,7 @@ KBD_RESETDELAY		opt_kbd.h
 KBD_DELAY1		opt_kbd.h
 KBD_DELAY2		opt_kbd.h
 KBDIO_DEBUG		opt_kbd.h
-<<<<<<< HEAD
-=======
 KBDMUX_DFLT_KEYMAP	opt_kbdmux.h
->>>>>>> freebsd/main
 
 # options for the Atheros driver
 ATH_DEBUG		opt_ath.h
