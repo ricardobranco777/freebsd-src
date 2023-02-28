@@ -121,6 +121,7 @@ SUBDIR=	\
 	firewire \
 	firmware \
 	flash \
+	${_ftgpio} \
 	${_ftwd} \
 	fusefs \
 	${_fxp} \
@@ -675,6 +676,7 @@ _cpufreq=	cpufreq
 _dpms=		dpms
 _em=		em
 _et=		et
+_ftgpio=	ftgpio
 _ftwd=		ftwd
 _exca=		exca
 _igc=		igc
