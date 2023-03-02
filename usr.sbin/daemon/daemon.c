@@ -47,6 +47,7 @@ __FBSDID("$FreeBSD$");
 #include <pwd.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -59,11 +60,13 @@ __FBSDID("$FreeBSD$");
 #define LBUF_SIZE 4096
 
 struct log_params {
-	int dosyslog;
-	int logpri;
-	int noclose;
-	int outfd;
-	const char *outfn;
+	const char *output_filename;
+	const char *syslog_tag;
+	int syslog_priority;
+	int syslog_facility;
+	int keep_fds_open;
+	int output_fd;
+	bool syslog_enabled;
 };
 
 static void restrict_process(const char *);
@@ -79,8 +82,10 @@ static void open_pid_files(const char *, const char *, struct pidfh **,
 static void do_output(const unsigned char *, size_t, struct log_params *);
 static void daemon_sleep(time_t, long);
 
-static volatile sig_atomic_t terminate = 0, child_gone = 0, pid = 0,
-  do_log_reopen = 0;
+static volatile sig_atomic_t terminate = 0;
+static volatile sig_atomic_t child_gone = 0;
+static volatile sig_atomic_t pid = -1;
+static volatile sig_atomic_t do_log_reopen = 0;
 
 static const char shortopts[] = "+cfHSp:P:ru:o:s:l:t:m:R:T:h";
 
@@ -139,81 +144,98 @@ usage(int exitcode)
 int
 main(int argc, char *argv[])
 {
-	const char *pidfile, *ppidfile, *title, *user, *outfn, *logtag;
-	int ch, nochdir, noclose, restart, dosyslog, child_eof;
-	sigset_t mask_susp, mask_orig, mask_read, mask_term;
-	struct log_params logpar;
-	int pfd[2] = { -1, -1 }, outfd = -1;
-	int stdmask, logpri, logfac, log_reopen;
-	struct pidfh *ppfh, *pfh;
-	char *p;
+	bool supervision_enabled = false;
+	bool log_reopen = false;
+	char *p = NULL;
+	const char *child_pidfile = NULL;
+	const char *parent_pidfile = NULL;
+	const char *title = NULL;
+	const char *user = NULL;
+	int ch = 0;
+	int child_eof = 0;
+	int keep_cur_workdir = 1;
+	int pfd[2] = { -1, -1 };
+	int restart = 0;
+	int stdmask = STDOUT_FILENO | STDERR_FILENO;
+	struct log_params logparams = {
+		.syslog_enabled = false,
+		.syslog_priority = LOG_NOTICE,
+		.syslog_tag = "daemon",
+		.syslog_facility = LOG_DAEMON,
+		.keep_fds_open = 1,
+		.output_fd = -1,
+		.output_filename = NULL
+        };
+	struct pidfh *parent_pidfh = NULL;
+	struct pidfh *child_pidfh = NULL;
+	sigset_t mask_orig;
+	sigset_t mask_read;
+	sigset_t mask_term;
+	sigset_t mask_susp;
 
-	memset(&logpar, 0, sizeof(logpar));
-	stdmask = STDOUT_FILENO | STDERR_FILENO;
-	ppidfile = pidfile = user = NULL;
-	nochdir = noclose = 1;
-	logpri = LOG_NOTICE;
-	logfac = LOG_DAEMON;
-	logtag = "daemon";
-	restart = 0;
-	dosyslog = 0;
-	log_reopen = 0;
-	outfn = NULL;
-	title = NULL;
+	sigemptyset(&mask_susp);
+	sigemptyset(&mask_read);
+	sigemptyset(&mask_term);
+	sigemptyset(&mask_orig);
+
 	while ((ch = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'c':
-			nochdir = 0;
+			keep_cur_workdir = 0;
 			break;
 		case 'f':
-			noclose = 0;
+			logparams.keep_fds_open = 0;
 			break;
 		case 'H':
-			log_reopen = 1;
+			log_reopen = true;
 			break;
 		case 'l':
-			logfac = get_log_mapping(optarg, facilitynames);
-			if (logfac == -1)
+			logparams.syslog_facility = get_log_mapping(optarg, facilitynames);
+			if (logparams.syslog_facility == -1) {
 				errx(5, "unrecognized syslog facility");
-			dosyslog = 1;
+                        }
+			logparams.syslog_enabled = true;
 			break;
 		case 'm':
 			stdmask = strtol(optarg, &p, 10);
-			if (p == optarg || stdmask < 0 || stdmask > 3)
+			if (p == optarg || stdmask < 0 || stdmask > 3) {
 				errx(6, "unrecognized listening mask");
+                        }
 			break;
 		case 'o':
-			outfn = optarg;
+			logparams.output_filename = optarg;
 			break;
 		case 'p':
-			pidfile = optarg;
+			child_pidfile = optarg;
 			break;
 		case 'P':
-			ppidfile = optarg;
+			parent_pidfile = optarg;
 			break;
 		case 'r':
 			restart = 1;
 			break;
 		case 'R':
 			restart = strtol(optarg, &p, 0);
-			if (p == optarg || restart < 1)
+			if (p == optarg || restart < 1) {
 				errx(6, "invalid restart delay");
+                        }
 			break;
 		case 's':
-			logpri = get_log_mapping(optarg, prioritynames);
-			if (logpri == -1)
+			logparams.syslog_priority = get_log_mapping(optarg, prioritynames);
+			if (logparams.syslog_priority == -1) {
 				errx(4, "unrecognized syslog priority");
-			dosyslog = 1;
+                        }
+			logparams.syslog_enabled = true;
 			break;
 		case 'S':
-			dosyslog = 1;
+			logparams.syslog_enabled = true;
 			break;
 		case 't':
 			title = optarg;
 			break;
 		case 'T':
-			logtag = optarg;
-			dosyslog = 1;
+			logparams.syslog_tag = optarg;
+			logparams.syslog_enabled = true;
 			break;
 		case 'u':
 			user = optarg;
@@ -228,76 +250,87 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if (argc == 0)
+	if (argc == 0) {
 		usage(1);
+        }
 
-	if (!title)
+	if (!title) {
 		title = argv[0];
+        }
 
-	if (outfn) {
-		outfd = open_log(outfn);
-		if (outfd == -1)
+	if (logparams.output_filename) {
+		logparams.output_fd = open_log(logparams.output_filename);
+		if (logparams.output_fd == -1) {
 			err(7, "open");
+                }
 	}
 
-	if (dosyslog)
-		openlog(logtag, LOG_PID | LOG_NDELAY, logfac);
+	if (logparams.syslog_enabled) {
+		openlog(logparams.syslog_tag, LOG_PID | LOG_NDELAY, logparams.syslog_facility);
+        }
 
-	ppfh = pfh = NULL;
 	/*
 	 * Try to open the pidfile before calling daemon(3),
 	 * to be able to report the error intelligently
 	 */
-	open_pid_files(pidfile, ppidfile, &pfh, &ppfh);
-	if (daemon(nochdir, noclose) == -1) {
+	open_pid_files(child_pidfile, parent_pidfile, &child_pidfh, &parent_pidfh);
+	if (daemon(keep_cur_workdir, logparams.keep_fds_open) == -1) {
 		warn("daemon");
 		goto exit;
 	}
 	/* Write out parent pidfile if needed. */
-	pidfile_write(ppfh);
+	pidfile_write(parent_pidfh);
+
 	/*
-	 * If the pidfile or restart option is specified the daemon
-	 * executes the command in a forked process and wait on child
-	 * exit to remove the pidfile or restart the command. Normally
-	 * we don't want the monitoring daemon to be terminated
-	 * leaving the running process and the stale pidfile, so we
-	 * catch SIGTERM and forward it to the children expecting to
-	 * get SIGCHLD eventually. We also must fork() to obtain a
-	 * readable pipe with the child for writing to a log file
-	 * and syslog.
+	 * Supervision mode is enabled if one of the following options are used:
+	 * --child-pidfile -p
+	 * --supervisor-pidfile -P
+	 * --restart -r / --restart-delay -R
+	 * --syslog -S
+	 * --syslog-facility -l
+	 * --syslog-priority -s
+	 * --syslog-tag -T
+	 *
+	 * In supervision mode daemon executes the command in a forked process
+	 * and observes the child by waiting for SIGCHILD. In supervision mode
+	 * daemon must never exit before the child, this is necessary  to prevent
+	 * orphaning the child and leaving a stale pid file.
+	 * To achieve this daemon catches SIGTERM and
+	 * forwards it to the child, expecting to get SIGCHLD eventually.
 	 */
-	pid = -1;
-	if (pidfile || ppidfile || restart || outfd != -1 || dosyslog) {
-		struct sigaction act_term, act_chld, act_hup;
+	supervision_enabled = child_pidfile != NULL ||
+		parent_pidfile != NULL ||
+		restart != 0 ||
+		logparams.output_fd != -1   ||
+		logparams.syslog_enabled == true;
+
+	if (supervision_enabled) {
+		struct sigaction act_term = { 0 };
+		struct sigaction act_chld = { 0 };
+		struct sigaction act_hup = { 0 };
 
 		/* Avoid PID racing with SIGCHLD and SIGTERM. */
-		memset(&act_term, 0, sizeof(act_term));
 		act_term.sa_handler = handle_term;
 		sigemptyset(&act_term.sa_mask);
 		sigaddset(&act_term.sa_mask, SIGCHLD);
 
-		memset(&act_chld, 0, sizeof(act_chld));
 		act_chld.sa_handler = handle_chld;
 		sigemptyset(&act_chld.sa_mask);
 		sigaddset(&act_chld.sa_mask, SIGTERM);
 
-		memset(&act_hup, 0, sizeof(act_hup));
 		act_hup.sa_handler = handle_hup;
 		sigemptyset(&act_hup.sa_mask);
 
 		/* Block these when avoiding racing before sigsuspend(). */
-		sigemptyset(&mask_susp);
 		sigaddset(&mask_susp, SIGTERM);
 		sigaddset(&mask_susp, SIGCHLD);
 		/* Block SIGTERM when we lack a valid child PID. */
-		sigemptyset(&mask_term);
 		sigaddset(&mask_term, SIGTERM);
 		/*
 		 * When reading, we wish to avoid SIGCHLD. SIGTERM
 		 * has to be caught, otherwise we'll be stuck until
 		 * the read() returns - if it returns.
 		 */
-		sigemptyset(&mask_read);
 		sigaddset(&mask_read, SIGCHLD);
 		/* Block SIGTERM to avoid racing until we have forked. */
 		if (sigprocmask(SIG_BLOCK, &mask_term, &mask_orig)) {
@@ -318,19 +351,15 @@ main(int argc, char *argv[])
 		 * not have superuser privileges.
 		 */
 		(void)madvise(NULL, 0, MADV_PROTECT);
-		logpar.outfd = outfd;
-		logpar.dosyslog = dosyslog;
-		logpar.logpri = logpri;
-		logpar.noclose = noclose;
-		logpar.outfn = outfn;
-		if (log_reopen && outfd >= 0 &&
+		if (log_reopen && logparams.output_fd >= 0 &&
 		    sigaction(SIGHUP, &act_hup, NULL) == -1) {
 			warn("sigaction");
 			goto exit;
 		}
 restart:
-		if (pipe(pfd))
+		if (pipe(pfd)) {
 			err(1, "pipe");
+                }
 		/*
 		 * Spawn a child to exec the command.
 		 */
@@ -354,29 +383,34 @@ restart:
 	}
 	if (pid <= 0) {
 		/* Now that we are the child, write out the pid. */
-		pidfile_write(pfh);
+		pidfile_write(child_pidfh);
 
-		if (user != NULL)
+		if (user != NULL) {
 			restrict_process(user);
+                }
 		/*
 		 * When forking, the child gets the original sigmask,
 		 * and dup'd pipes.
 		 */
 		if (pid == 0) {
 			close(pfd[0]);
-			if (sigprocmask(SIG_SETMASK, &mask_orig, NULL))
+			if (sigprocmask(SIG_SETMASK, &mask_orig, NULL)) {
 				err(1, "sigprogmask");
+                        }
 			if (stdmask & STDERR_FILENO) {
-				if (dup2(pfd[1], STDERR_FILENO) == -1)
+				if (dup2(pfd[1], STDERR_FILENO) == -1) {
 					err(1, "dup2");
+                                }
 			}
 			if (stdmask & STDOUT_FILENO) {
-				if (dup2(pfd[1], STDOUT_FILENO) == -1)
+				if (dup2(pfd[1], STDOUT_FILENO) == -1) {
 					err(1, "dup2");
+                                }
 			}
 			if (pfd[1] != STDERR_FILENO &&
-			    pfd[1] != STDOUT_FILENO)
+			    pfd[1] != STDOUT_FILENO) {
 				close(pfd[1]);
+                        }
 		}
 		execvp(argv[0], argv);
 		/*
@@ -392,7 +426,6 @@ restart:
 	 * might have closed its stdout and stderr, so we must wait for
 	 * the SIGCHLD to ensure that the process is actually gone.
 	 */
-	child_eof = 0;
 	for (;;) {
 		/*
 		 * We block SIGCHLD when listening, but SIGTERM we accept
@@ -418,7 +451,7 @@ restart:
 				warn("sigprocmask");
 				goto exit;
 			}
-			child_eof = !listen_child(pfd[0], &logpar);
+			child_eof = !listen_child(pfd[0], &logparams);
 			if (sigprocmask(SIG_UNBLOCK, &mask_read, NULL)) {
 				warn("sigprocmask");
 				goto exit;
@@ -436,8 +469,9 @@ restart:
 			}
 		}
 	}
-	if (restart && !terminate)
+	if (restart && !terminate) {
 		daemon_sleep(restart, 0);
+        }
 	if (sigprocmask(SIG_BLOCK, &mask_term, NULL)) {
 		warn("sigprocmask");
 		goto exit;
@@ -448,13 +482,14 @@ restart:
 		goto restart;
 	}
 exit:
-	close(outfd);
+	close(logparams.output_fd);
 	close(pfd[0]);
 	close(pfd[1]);
-	if (dosyslog)
+	if (logparams.syslog_enabled) {
 		closelog();
-	pidfile_remove(pfh);
-	pidfile_remove(ppfh);
+        }
+	pidfile_remove(child_pidfh);
+	pidfile_remove(parent_pidfh);
 	exit(1); /* If daemon(3) succeeded exit status does not matter. */
 }
 
@@ -464,8 +499,9 @@ daemon_sleep(time_t secs, long nsecs)
 	struct timespec ts = { secs, nsecs };
 
 	while (!terminate && nanosleep(&ts, &ts) == -1) {
-		if (errno != EINTR)
+		if (errno != EINTR) {
 			err(1, "nanosleep");
+                }
 	}
 }
 
@@ -507,8 +543,9 @@ get_log_mapping(const char *str, const CODE *c)
 {
 	const CODE *cp;
 	for (cp = c; cp->c_name; cp++)
-		if (strcmp(cp->c_name, str) == 0)
+		if (strcmp(cp->c_name, str) == 0) {
 			return cp->c_val;
+                }
 	return -1;
 }
 
@@ -518,11 +555,13 @@ restrict_process(const char *user)
 	struct passwd *pw = NULL;
 
 	pw = getpwnam(user);
-	if (pw == NULL)
+	if (pw == NULL) {
 		errx(1, "unknown user: %s", user);
+        }
 
-	if (setusercontext(NULL, pw, pw->pw_uid, LOGIN_SETALL) != 0)
+	if (setusercontext(NULL, pw, pw->pw_uid, LOGIN_SETALL) != 0) {
 		errx(1, "failed to set user environment");
+        }
 
 	setenv("USER", pw->pw_name, 1);
 	setenv("HOME", pw->pw_dir, 1);
@@ -546,8 +585,9 @@ listen_child(int fd, struct log_params *logpar)
 	assert(logpar);
 	assert(bytes_read < LBUF_SIZE - 1);
 
-	if (do_log_reopen)
+	if (do_log_reopen) {
 		reopen_log(logpar);
+        }
 	rv = read(fd, buf + bytes_read, LBUF_SIZE - bytes_read - 1);
 	if (rv > 0) {
 		unsigned char *cp;
@@ -568,8 +608,9 @@ listen_child(int fd, struct log_params *logpar)
 			memmove(buf, cp + 1, bytes_read);
 		}
 		/* Wait until the buffer is full. */
-		if (bytes_read < LBUF_SIZE - 1)
+		if (bytes_read < LBUF_SIZE - 1) {
 			return 1;
+                }
 		do_output(buf, bytes_read, logpar);
 		bytes_read = 0;
 		return 1;
@@ -601,16 +642,19 @@ do_output(const unsigned char *buf, size_t len, struct log_params *logpar)
 	assert(len <= LBUF_SIZE);
 	assert(logpar);
 
-	if (len < 1)
+	if (len < 1) {
 		return;
-	if (logpar->dosyslog)
-		syslog(logpar->logpri, "%.*s", (int)len, buf);
-	if (logpar->outfd != -1) {
-		if (write(logpar->outfd, buf, len) == -1)
+        }
+	if (logpar->syslog_enabled) {
+		syslog(logpar->syslog_priority, "%.*s", (int)len, buf);
+        }
+	if (logpar->output_fd != -1) {
+		if (write(logpar->output_fd, buf, len) == -1)
 			warn("write");
 	}
-	if (logpar->noclose && !logpar->dosyslog && logpar->outfd == -1)
+	if (logpar->keep_fds_open && !logpar->syslog_enabled && logpar->output_fd == -1) {
 		printf("%.*s", (int)len, buf);
+        }
 }
 
 /*
@@ -620,8 +664,9 @@ do_output(const unsigned char *buf, size_t len, struct log_params *logpar)
 static void
 handle_term(int signo)
 {
-	if (pid > 0 && !child_gone)
+	if (pid > 0 && !child_gone) {
 		kill(pid, signo);
+        }
 	terminate = 1;
 }
 
@@ -656,14 +701,15 @@ open_log(const char *outfn)
 }
 
 static void
-reopen_log(struct log_params *lpp)
+reopen_log(struct log_params *logparams)
 {
 	int outfd;
 
 	do_log_reopen = 0;
-	outfd = open_log(lpp->outfn);
-	if (lpp->outfd >= 0)
-		close(lpp->outfd);
-	lpp->outfd = outfd;
+	outfd = open_log(logparams->output_filename);
+	if (logparams->output_fd >= 0) {
+		close(logparams->output_fd);
+        }
+	logparams->output_fd = outfd;
 }
 
