@@ -197,11 +197,8 @@ __DEFAULT_YES_OPTIONS = \
     ZONEINFO
 
 __DEFAULT_NO_OPTIONS = \
-<<<<<<< HEAD
     ASAN \
-=======
     ATM \
->>>>>>> freebsd/main
     BEARSSL \
     BHYVE_SNAPSHOT \
     CLANG_FORMAT \
