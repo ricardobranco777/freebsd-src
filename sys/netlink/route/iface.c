@@ -449,54 +449,7 @@ rtnl_handle_getlink(struct nlmsghdr *hdr, struct nlpcb *nlp, struct nl_pstate *n
 	 */
 
 	NL_LOG(LOG_DEBUG2, "Start dump");
-<<<<<<< HEAD
-
-	struct ifnet **match_array = NULL;
-	int offset = 0, base_count = 0;
-
-	NLP_LOG(LOG_DEBUG3, nlp, "MATCHING: index=%u type=%d name=%s",
-	    attrs.ifi_index, attrs.ifi_type, attrs.ifla_ifname);
-	NET_EPOCH_ENTER(et);
-        CK_STAILQ_FOREACH(ifp, &V_ifnet, if_link) {
-		wa.count++;
-		if (match_iface(&attrs, ifp)) {
-			if (offset >= base_count) {
-				/* Too many matches, need to reallocate */
-				struct ifnet **new_array;
-				/* Start with 128 bytes, do 2x increase on each realloc */
-				base_count = (base_count != 0) ? base_count * 2 : 16;
-				new_array = malloc(base_count * sizeof(void *), M_TEMP, M_NOWAIT);
-				if (new_array == NULL) {
-					error = ENOMEM;
-					break;
-				}
-				if (match_array != NULL) {
-					memcpy(new_array, match_array, offset * sizeof(void *));
-					free(match_array, M_TEMP);
-				}
-				match_array = new_array;
-			}
-
-			if (match_array != NULL && if_try_ref(ifp))
-				match_array[offset++] = ifp;
-                }
-        }
-	NET_EPOCH_EXIT(et);
-
-	NL_LOG(LOG_DEBUG2, "Matched %d interface(s), dumping", offset);
-	if (match_array != NULL) {
-		for (int i = 0; error == 0 && i < offset; i++) {
-			if (!dump_iface(wa.nw, match_array[i], &wa.hdr, 0))
-				error = ENOMEM;
-		}
-		for (int i = 0; i < offset; i++)
-			if_rele(match_array[i]);
-		free(match_array, M_TEMP);
-	}
-
-=======
 	if_foreach_sleep(match_iface, &attrs, dump_cb, &wa);
->>>>>>> freebsd/main
 	NL_LOG(LOG_DEBUG2, "End dump, iterated %d dumped %d", wa.count, wa.dumped);
 
 	if (!nlmsg_end_dump(wa.nw, error, &wa.hdr)) {
