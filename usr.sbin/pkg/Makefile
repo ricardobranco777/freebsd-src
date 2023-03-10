@@ -2,20 +2,14 @@
 
 PACKAGE=	pkg-bootstrap
 
-PROG=		pkg
-SRCS=		pkg.c dns_utils.c config.c
-MAN=		pkg.7
+PROG=	pkg
+SRCS=	pkg.c dns_utils.c config.c hash.c
+MAN=	pkg.7
 
 CONFS=		HardenedBSD.conf HardenedBSD.tor.conf
 PKGCONF?=	HardenedBSD.conf
 CONFSDIR=	/etc/pkg
 CONFSMODE=	644
-<<<<<<< HEAD
-=======
-PROG=	pkg
-SRCS=	pkg.c dns_utils.c config.c hash.c
-MAN=	pkg.7
->>>>>>> freebsd/main
 
 CFLAGS+=-I${SRCTOP}/contrib/libucl/include
 .PATH:	${SRCTOP}/contrib/libucl/include
