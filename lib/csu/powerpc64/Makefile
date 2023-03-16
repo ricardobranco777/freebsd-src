@@ -4,7 +4,7 @@
 
 OBJS+=		crtsavres.o
 CFLAGS+=	-I${.CURDIR} \
-		-mlongcall
+		-mlongcall -DCRT_IRELOC_RELA
 
 CLEANFILES+=	crtsavres.S
 
