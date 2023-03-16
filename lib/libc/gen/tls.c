@@ -401,6 +401,8 @@ __libc_free_tls(void *tcb __unused, size_t tcbsize __unused,
 
 #endif /* PIC */
 
+extern char **environ;
+
 void
 _init_tls(void)
 {

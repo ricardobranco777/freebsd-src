@@ -39,6 +39,7 @@ __FBSDID("$FreeBSD$");
 #include "un-namespace.h"
 #include "libc_private.h"
 
+extern char **environ;
 extern int _DYNAMIC;
 #pragma weak _DYNAMIC
 
