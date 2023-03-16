@@ -97,26 +97,25 @@ __FBSDID("$FreeBSD$");
 #define	GT_CNTKCTL_PL0VCTEN	(1 << 1) /* PL0 CNTVCT and CNTFRQ access */
 #define	GT_CNTKCTL_PL0PCTEN	(1 << 0) /* PL0 CNTPCT and CNTFRQ access */
 
+struct arm_tmr_softc;
+
+struct arm_tmr_irq {
+	struct resource	*res;
+	void		*ihl;
+	int		 rid;
+	int		 idx;
+};
+
 struct arm_tmr_softc {
-	struct resource		*res[GT_IRQ_COUNT];
-	void			*ihl[GT_IRQ_COUNT];
+	struct arm_tmr_irq	irqs[GT_IRQ_COUNT];
 	uint64_t		(*get_cntxct)(bool);
 	uint32_t		clkfreq;
+	int			irq_count;
 	struct eventtimer	et;
 	bool			physical;
 };
 
 static struct arm_tmr_softc *arm_tmr_sc = NULL;
-
-#ifdef DEV_ACPI
-static struct resource_spec timer_acpi_spec[] = {
-	{ SYS_RES_IRQ,	GT_PHYS_SECURE,		RF_ACTIVE | RF_OPTIONAL },
-	{ SYS_RES_IRQ,	GT_PHYS_NONSECURE,	RF_ACTIVE },
-	{ SYS_RES_IRQ,	GT_VIRT,		RF_ACTIVE },
-	{ SYS_RES_IRQ,	GT_HYP_PHYS,		RF_ACTIVE | RF_OPTIONAL	},
-	{ -1, 0 }
-};
-#endif
 
 static const struct arm_tmr_irq_defs {
 	int idx;
@@ -402,6 +401,37 @@ arm_tmr_intr(void *arg)
 	return (FILTER_HANDLED);
 }
 
+static int
+arm_tmr_attach_irq(device_t dev, struct arm_tmr_softc *sc,
+    const struct arm_tmr_irq_defs *irq_def, int rid, int flags)
+{
+	struct arm_tmr_irq *irq;
+
+	irq = &sc->irqs[sc->irq_count];
+	irq->res = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+	    &rid, flags);
+	if (irq->res == NULL) {
+		if (bootverbose || (flags & RF_OPTIONAL) == 0) {
+			device_printf(dev,
+			    "could not allocate irq for %s interrupt '%s'\n",
+			    (flags & RF_OPTIONAL) != 0 ? "optional" :
+			    "required", irq_def->name);
+		}
+
+		if ((flags & RF_OPTIONAL) == 0)
+			return (ENXIO);
+	} else {
+		if (bootverbose)
+			device_printf(dev, "allocated irq for '%s'\n",
+			    irq_def->name);
+		irq->rid = rid;
+		irq->idx = irq_def->idx;
+		sc->irq_count++;
+	}
+
+	return (0);
+}
+
 #ifdef FDT
 static int
 arm_tmr_fdt_probe(device_t dev)
@@ -479,43 +509,17 @@ arm_tmr_fdt_attach(device_t dev)
 			flags &= ~RF_OPTIONAL;
 		}
 
-		sc->res[irq_def->idx] = bus_alloc_resource_any(dev,
-		    SYS_RES_IRQ, &rid, flags);
-
-		if (sc->res[irq_def->idx] == NULL) {
-			device_printf(dev,
-			    "could not allocate irq for %s interrupt '%s'\n",
-			    (flags & RF_OPTIONAL) != 0 ? "optional" :
-			    "required", irq_def->name);
-
-			if ((flags & RF_OPTIONAL) == 0) {
-				error = ENXIO;
-				goto out;
-			}
-
-			continue;
-		}
-
-		if (bootverbose) {
-			device_printf(dev,
-			    "allocated irq for '%s'\n", irq_def->name);
-		}
+		error = arm_tmr_attach_irq(dev, sc, irq_def, rid, flags);
+		if (error != 0)
+			goto out;
 	}
 
 	error = arm_tmr_attach(dev);
 out:
 	if (error != 0) {
-		for (i = 0; i < GT_IRQ_COUNT; i++) {
-			if (sc->res[i] != NULL) {
-				/*
-				 * rid may not match the index into sc->res in
-				 * a number of cases; e.g., optional sec-phys or
-				 * interrupt-names specifying them in a
-				 * different order than expected.
-				 */
-				bus_release_resource(dev, SYS_RES_IRQ,
-				    rman_get_rid(sc->res[i]), sc->res[i]);
-			}
+		for (i = 0; i < sc->irq_count; i++) {
+			bus_release_resource(dev, SYS_RES_IRQ, sc->irqs[i].rid,
+			    sc->irqs[i].res);
 		}
 	}
 
@@ -578,18 +582,27 @@ arm_tmr_acpi_probe(device_t dev)
 static int
 arm_tmr_acpi_attach(device_t dev)
 {
+	const struct arm_tmr_irq_defs *irq_def;
 	struct arm_tmr_softc *sc;
 	int error;
 
 	sc = device_get_softc(dev);
-	if (bus_alloc_resources(dev, timer_acpi_spec, sc->res)) {
-		device_printf(dev, "could not allocate resources\n");
-		return (ENXIO);
+	for (int i = 0; i < nitems(arm_tmr_irq_defs); i++) {
+		irq_def = &arm_tmr_irq_defs[i];
+		error = arm_tmr_attach_irq(dev, sc, irq_def, irq_def->idx,
+		    irq_def->flags);
+		if (error != 0)
+			goto out;
 	}
 
 	error = arm_tmr_attach(dev);
-	if (error != 0)
-		bus_release_resources(dev, timer_acpi_spec, sc->res);
+out:
+	if (error != 0) {
+		for (int i = 0; i < sc->irq_count; i++) {
+			bus_release_resource(dev, SYS_RES_IRQ,
+			    sc->irqs[i].rid, sc->irqs[i].res);
+		}
+	}
 	return (error);
 }
 #endif
@@ -598,7 +611,9 @@ static int
 arm_tmr_attach(device_t dev)
 {
 	struct arm_tmr_softc *sc;
+#ifdef INVARIANTS
 	const struct arm_tmr_irq_defs *irq_def;
+#endif
 #ifdef FDT
 	phandle_t node;
 	pcell_t clock;
@@ -639,17 +654,34 @@ arm_tmr_attach(device_t dev)
 		return (ENXIO);
 	}
 
+#ifdef INVARIANTS
 	/* Confirm that non-optional irqs were allocated before coming in. */
 	for (i = 0; i < nitems(arm_tmr_irq_defs); i++) {
+		int j;
+
 		irq_def = &arm_tmr_irq_defs[i];
 
-		MPASS(sc->res[irq_def->idx] != NULL ||
-		    (irq_def->flags & RF_OPTIONAL) != 0);
+		/* Skip optional interrupts */
+		if ((irq_def->flags & RF_OPTIONAL) != 0)
+			continue;
+
+		for (j = 0; j < sc->irq_count; j++) {
+			if (sc->irqs[j].idx == irq_def->idx)
+				break;
+		}
+		KASSERT(j < sc->irq_count, ("%s: Missing required interrupt %s",
+		    __func__, irq_def->name));
 	}
+#endif
 
 #ifdef __aarch64__
-	/* Use the virtual timer if we have one. */
-	if (sc->res[GT_VIRT] != NULL) {
+	/*
+	 * Use the virtual timer when we can't use the hypervisor.
+	 * A hypervisor guest may change the virtual timer registers while
+	 * executing so any use of the virtual timer interrupt needs to be
+	 * coordinated with the virtual machine manager.
+	 */
+	if (!HAS_PHYS) {
 		sc->physical = false;
 		first_timer = GT_VIRT;
 		last_timer = GT_VIRT;
@@ -665,26 +697,25 @@ arm_tmr_attach(device_t dev)
 	arm_tmr_sc = sc;
 
 	/* Setup secure, non-secure and virtual IRQs handler */
-	for (i = first_timer; i <= last_timer; i++) {
-		/* If we do not have the interrupt, skip it. */
-		if (sc->res[i] == NULL)
+	for (i = 0; i < sc->irq_count; i++) {
+		/* Only enable IRQs on timers we expect to use */
+		if (sc->irqs[i].idx < first_timer ||
+		    sc->irqs[i].idx > last_timer)
 			continue;
-		error = bus_setup_intr(dev, sc->res[i], INTR_TYPE_CLK,
-		    arm_tmr_intr, NULL, sc, &sc->ihl[i]);
+		error = bus_setup_intr(dev, sc->irqs[i].res, INTR_TYPE_CLK,
+		    arm_tmr_intr, NULL, sc, &sc->irqs[i].ihl);
 		if (error) {
 			device_printf(dev, "Unable to alloc int resource.\n");
-			for (int j = first_timer; j < i; j++)
-				bus_teardown_intr(dev, sc->res[j], &sc->ihl[j]);
+			for (int j = 0; j < i; j++)
+				bus_teardown_intr(dev, sc->irqs[j].res,
+				    &sc->irqs[j].ihl);
 			return (ENXIO);
 		}
 	}
 
-	/* Disable the virtual timer until we are ready */
-	if (sc->res[GT_VIRT] != NULL)
-		arm_tmr_disable(false);
-	/* And the physical */
-	if ((sc->res[GT_PHYS_SECURE] != NULL ||
-	    sc->res[GT_PHYS_NONSECURE] != NULL) && HAS_PHYS)
+	/* Disable the timers until we are ready */
+	arm_tmr_disable(false);
+	if (HAS_PHYS)
 		arm_tmr_disable(true);
 
 	arm_tmr_timecount.tc_frequency = sc->clkfreq;

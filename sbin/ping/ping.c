@@ -1189,12 +1189,8 @@ pr_pack(char *buf, ssize_t cc, struct sockaddr_in *from, struct timespec *tv)
 		return;
 	}
 
-#ifndef icmp_data
-	icmp_data_raw = buf + hlen + offsetof(struct icmp, icmp_ip);
-#else
 	icmp_data_raw_len = cc - (hlen + offsetof(struct icmp, icmp_data));
 	icmp_data_raw = buf + hlen + offsetof(struct icmp, icmp_data);
-#endif
 
 	/* Now the ICMP part */
 	cc -= hlen;
@@ -1680,9 +1676,9 @@ pr_iph(struct ip *ip)
 	(void)printf(" %1x  %1x  %02x %04x %04x",
 	    ip->ip_v, ip->ip_hl, ip->ip_tos, ntohs(ip->ip_len),
 	    ntohs(ip->ip_id));
-	(void)printf("   %1lx %04lx",
-	    (u_long) (ntohl(ip->ip_off) & 0xe000) >> 13,
-	    (u_long) ntohl(ip->ip_off) & 0x1fff);
+	(void)printf("   %1x %04x",
+	    (ntohs(ip->ip_off) & 0xe000) >> 13,
+	    ntohs(ip->ip_off) & 0x1fff);
 	(void)printf("  %02x  %02x %04x", ip->ip_ttl, ip->ip_p,
 							    ntohs(ip->ip_sum));
 	memcpy(&ina, &ip->ip_src.s_addr, sizeof ina);
