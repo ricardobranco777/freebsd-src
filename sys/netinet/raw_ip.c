@@ -200,13 +200,13 @@ static void
 defttl_init(void)
 {
 #ifdef HBSD_RESIST_FINGERPRINTING
-	int val;
+	unsigned int val;
 
 	val = 0;
 	while (val < V_ip_minrandttl) {
-		val = (arc4random() % (254 - V_ip_minrandttl)) + 1;
+		val = (arc4random() % (254 - (unsigned)V_ip_minrandttl)) + 1;
 	}
-	V_ip_defttl = val;
+	V_ip_defttl = (int)val;
 #else
 	V_ip_defttl = IPDEFTTL;
 #endif
