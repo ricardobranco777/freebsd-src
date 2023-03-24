@@ -7674,9 +7674,6 @@ pmap_is_valid_memattr(pmap_t pmap __unused, vm_memattr_t mode)
 	return (mode >= VM_MEMATTR_DEVICE && mode <= VM_MEMATTR_WRITE_THROUGH);
 }
 
-<<<<<<< HEAD
-#ifndef PAX_HARDENING
-=======
 #if defined(KASAN)
 static vm_paddr_t	pmap_san_early_kernstart;
 static pd_entry_t	*pmap_san_early_l2;
@@ -7822,7 +7819,7 @@ pmap_san_enter(vm_offset_t va)
 }
 #endif /* KASAN */
 
->>>>>>> freebsd/main
+#ifndef PAX_HARDENING
 /*
  * Track a range of the kernel's virtual address space that is contiguous
  * in various mapping attributes.
