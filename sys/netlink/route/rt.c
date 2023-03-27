@@ -513,6 +513,8 @@ dump_rtentry(struct rtentry *rt, void *_arg)
 	wa->count++;
 	if (wa->error != 0)
 		return (0);
+	if (!rt_is_exportable(rt, nlp_get_cred(wa->nlp)))
+		return (0);
 	wa->dumped++;
 
 	rt_get_rnd(rt, &wa->rnd);
@@ -586,8 +588,6 @@ handle_rtm_getroute(struct nlpcb *nlp, struct nl_parsed_route *attrs,
 			return (EINVAL);
 	}
 
-	FIB_LOG(LOG_DEBUG, fibnum, family, "getroute called");
-
 	rnh = rt_tables_get_rnh(fibnum, family);
 	if (rnh == NULL)
 		return (EAFNOSUPPORT);
@@ -605,6 +605,9 @@ handle_rtm_getroute(struct nlpcb *nlp, struct nl_parsed_route *attrs,
 	rnd.rnd_nhop = nhop_select_func(rnd.rnd_nhop, 0);
 
 	RIB_RUNLOCK(rnh);
+
+	if (!rt_is_exportable(rt, nlp_get_cred(nlp)))
+		return (ESRCH);
 
 	IF_DEBUG_LEVEL(LOG_DEBUG2) {
 		char rtbuf[NHOP_PRINT_BUFSIZE] __unused, nhbuf[NHOP_PRINT_BUFSIZE] __unused;
@@ -1026,6 +1029,7 @@ static const struct rtnl_cmd_handler cmd_handlers[] = {
 		.cmd = NL_RTM_GETROUTE,
 		.name = "RTM_GETROUTE",
 		.cb = &rtnl_handle_getroute,
+		.flags = RTNL_F_ALLOW_NONVNET_JAIL,
 	},
 	{
 		.cmd = NL_RTM_DELROUTE,
