@@ -25,11 +25,8 @@
  * SUCH DAMAGE.
  */
 
-<<<<<<< HEAD
-#include "opt_pax.h"
-=======
 #include "opt_netlink.h"
->>>>>>> freebsd/main
+#include "opt_pax.h"
 
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");

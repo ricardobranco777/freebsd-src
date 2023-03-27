@@ -51,45 +51,8 @@ __FBSDID("$FreeBSD$");
 #include <netlink/netlink_debug.h>
 _DECLARE_DEBUG(LOG_DEBUG);
 
-<<<<<<< HEAD
-#define	CTRL_FAMILY_NAME	"nlctrl"
-
-#define	MAX_FAMILIES	20
-#define	MAX_GROUPS	64
-
-#define	MIN_GROUP_NUM	48
-
 int __insecure_kmod = 1;
-static struct sx sx_lock;
 
-#define	GENL_LOCK_INIT()	sx_init(&sx_lock, "genetlink lock")
-#define	GENL_LOCK_DESTROY()	sx_destroy(&sx_lock)
-#define	GENL_LOCK()		sx_xlock(&sx_lock)
-#define	GENL_UNLOCK()		sx_xunlock(&sx_lock)
-
-struct genl_family {
-	const char	*family_name;
-	uint16_t	family_hdrsize;
-	uint16_t	family_id;
-	uint16_t	family_version;
-	uint16_t	family_attr_max;
-	uint16_t	family_cmd_size;
-	uint16_t	family_num_groups;
-	struct genl_cmd	*family_cmds;
-};
-
-static struct genl_family	families[MAX_FAMILIES];
-
-
-struct genl_group {
-	struct genl_family	*group_family;
-	const char		*group_name;
-};
-static struct genl_group	groups[MAX_GROUPS];
-
-
-=======
->>>>>>> freebsd/main
 static int dump_family(struct nlmsghdr *hdr, struct genlmsghdr *ghdr,
     const struct genl_family *gf, struct nl_writer *nw);
 
