@@ -209,6 +209,8 @@ __DEFAULT_NO_OPTIONS = \
     LOADER_VERBOSE \
     LOADER_VERIEXEC_PASS_MANIFEST \
     MALLOC_PRODUCTION \
+    NETLINK \
+    NETLINK_SUPPORT \
     OFED \
     OFED_EXTRA \
     OPENLDAP \
@@ -391,14 +393,6 @@ __DEFAULT_NO_OPTIONS+=OPENMP
 # Broken on 32-bit arm, kernel module compile errors
 .if ${__T:Marm*} != ""
 BROKEN_OPTIONS+= OFED
-.endif
-
-.if ${__T} == "i386" || ${__T} == "amd64"
-__DEFAULT_YES_OPTIONS+=NETLINK
-__DEFAULT_YES_OPTIONS+=NETLINK_SUPPORT
-.else
-__DEFAULT_NO_OPTIONS+=NETLINK
-__DEFAULT_NO_OPTIONS+=NETLINK_SUPPORT
 .endif
 
 .include <bsd.mkopt.mk>
