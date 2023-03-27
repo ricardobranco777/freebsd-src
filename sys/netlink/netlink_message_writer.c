@@ -25,7 +25,11 @@
  * SUCH DAMAGE.
  */
 
+<<<<<<< HEAD
 #include "opt_pax.h"
+=======
+#include "opt_netlink.h"
+>>>>>>> freebsd/main
 
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
@@ -436,7 +440,7 @@ nlmsg_get_buf(struct nl_writer *nw, int size, bool waitok, bool is_linux)
 }
 
 bool
-nlmsg_get_unicast_writer(struct nl_writer *nw, int size, struct nlpcb *nlp)
+_nlmsg_get_unicast_writer(struct nl_writer *nw, int size, struct nlpcb *nlp)
 {
 	if (!nlmsg_get_buf(nw, size, false, nlp->nl_linux))
 		return (false);
@@ -447,7 +451,7 @@ nlmsg_get_unicast_writer(struct nl_writer *nw, int size, struct nlpcb *nlp)
 }
 
 bool
-nlmsg_get_group_writer(struct nl_writer *nw, int size, int protocol, int group_id)
+_nlmsg_get_group_writer(struct nl_writer *nw, int size, int protocol, int group_id)
 {
 	if (!nlmsg_get_buf(nw, size, false, false))
 		return (false);
@@ -458,7 +462,7 @@ nlmsg_get_group_writer(struct nl_writer *nw, int size, int protocol, int group_i
 }
 
 bool
-nlmsg_get_chain_writer(struct nl_writer *nw, int size, struct mbuf **pm)
+_nlmsg_get_chain_writer(struct nl_writer *nw, int size, struct mbuf **pm)
 {
 	if (!nlmsg_get_buf(nw, size, false, false))
 		return (false);
@@ -471,13 +475,13 @@ nlmsg_get_chain_writer(struct nl_writer *nw, int size, struct mbuf **pm)
 }
 
 void
-nlmsg_ignore_limit(struct nl_writer *nw)
+_nlmsg_ignore_limit(struct nl_writer *nw)
 {
 	nw->ignore_limit = true;
 }
 
 bool
-nlmsg_flush(struct nl_writer *nw)
+_nlmsg_flush(struct nl_writer *nw)
 {
 
 	if (__predict_false(nw->hdr != NULL)) {
@@ -505,7 +509,7 @@ nlmsg_flush(struct nl_writer *nw)
  * Return true on success.
  */
 bool
-nlmsg_refill_buffer(struct nl_writer *nw, int required_len)
+_nlmsg_refill_buffer(struct nl_writer *nw, int required_len)
 {
 	struct nl_writer ns_new = {};
 	int completed_len, new_len;
@@ -563,7 +567,7 @@ nlmsg_refill_buffer(struct nl_writer *nw, int required_len)
 }
 
 bool
-nlmsg_add(struct nl_writer *nw, uint32_t portid, uint32_t seq, uint16_t type,
+_nlmsg_add(struct nl_writer *nw, uint32_t portid, uint32_t seq, uint16_t type,
     uint16_t flags, uint32_t len)
 {
 	struct nlmsghdr *hdr;
@@ -591,7 +595,7 @@ nlmsg_add(struct nl_writer *nw, uint32_t portid, uint32_t seq, uint16_t type,
 }
 
 bool
-nlmsg_end(struct nl_writer *nw)
+_nlmsg_end(struct nl_writer *nw)
 {
 	MPASS(nw->hdr != NULL);
 
@@ -611,7 +615,7 @@ nlmsg_end(struct nl_writer *nw)
 }
 
 void
-nlmsg_abort(struct nl_writer *nw)
+_nlmsg_abort(struct nl_writer *nw)
 {
 	if (nw->hdr != NULL) {
 		nw->offset = (uint32_t)((char *)nw->hdr - nw->data);
@@ -672,7 +676,7 @@ enomem:
 }
 
 bool
-nlmsg_end_dump(struct nl_writer *nw, int error, struct nlmsghdr *hdr)
+_nlmsg_end_dump(struct nl_writer *nw, int error, struct nlmsghdr *hdr)
 {
 	if (!nlmsg_add(nw, hdr->nlmsg_pid, hdr->nlmsg_seq, NLMSG_DONE, 0, sizeof(int))) {
 		NL_LOG(LOG_DEBUG, "Error finalizing table dump");
