@@ -215,6 +215,7 @@ SUBDIR=	\
 	libmchain \
 	lindebugfs \
 	linuxkpi \
+	linuxkpi_hdmi \
 	linuxkpi_wlan \
 	${_lio} \
 	lpt \
