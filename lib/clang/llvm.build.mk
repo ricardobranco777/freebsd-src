@@ -123,14 +123,6 @@ CFLAGS+=	-DBOOTSTRAPPING_WANT_NATIVE_SYSCTL
 .if defined(BOOTSTRAPPING) && ${.MAKE.OS} == "Linux"
 LIBADD+=	dl
 .endif
-<<<<<<< HEAD
 
 NOCFI=		yes
 MK_LTOLIB=	no
-
-.if ${MACHINE_ARCH:Mmips64}
-STATIC_CFLAGS+= -mxgot
-STATIC_CXXFLAGS+= -mxgot
-.endif
-=======
->>>>>>> freebsd/main
