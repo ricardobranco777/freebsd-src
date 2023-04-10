@@ -448,14 +448,13 @@ rack_cong_signal(struct tcpcb *tp,
 		 uint32_t type, uint32_t ack, int );
 static void rack_counter_destroy(void);
 static int
-rack_ctloutput(struct inpcb *inp, struct sockopt *sopt);
+rack_ctloutput(struct tcpcb *tp, struct sockopt *sopt);
 static int32_t rack_ctor(void *mem, int32_t size, void *arg, int32_t how);
 static void
 rack_set_pace_segments(struct tcpcb *tp, struct tcp_rack *rack, uint32_t line, uint64_t *fill_override);
 static void
-rack_do_segment(struct mbuf *m, struct tcphdr *th,
-    struct socket *so, struct tcpcb *tp, int32_t drop_hdrlen, int32_t tlen,
-    uint8_t iptos);
+rack_do_segment(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
+    int32_t drop_hdrlen, int32_t tlen, uint8_t iptos);
 static void rack_dtor(void *mem, int32_t size, void *arg);
 static void
 rack_log_alt_to_to_cancel(struct tcp_rack *rack,
@@ -474,7 +473,7 @@ rack_find_high_nonack(struct tcp_rack *rack,
 static struct rack_sendmap *rack_find_lowest_rsm(struct tcp_rack *rack);
 static void rack_free(struct tcp_rack *rack, struct rack_sendmap *rsm);
 static void rack_fini(struct tcpcb *tp, int32_t tcb_is_purged);
-static int rack_get_sockopt(struct inpcb *inp, struct sockopt *sopt);
+static int rack_get_sockopt(struct tcpcb *tp, struct sockopt *sopt);
 static void
 rack_do_goodput_measurement(struct tcpcb *tp, struct tcp_rack *rack,
 			    tcp_seq th_ack, int line, uint8_t quality);
@@ -510,7 +509,7 @@ rack_proc_sack_blk(struct tcpcb *tp, struct tcp_rack *rack,
     uint32_t cts, int *no_extra, int *moved_two, uint32_t segsiz);
 static void rack_post_recovery(struct tcpcb *tp, uint32_t th_seq);
 static void rack_remxt_tmr(struct tcpcb *tp);
-static int rack_set_sockopt(struct inpcb *inp, struct sockopt *sopt);
+static int rack_set_sockopt(struct tcpcb *tp, struct sockopt *sopt);
 static void rack_set_state(struct tcpcb *tp, struct tcp_rack *rack);
 static int32_t rack_stopall(struct tcpcb *tp);
 static void rack_timer_cancel(struct tcpcb *tp, struct tcp_rack *rack, uint32_t cts, int line);
@@ -16436,11 +16435,12 @@ rack_do_compressed_ack_processing(struct tcpcb *tp, struct socket *so, struct mb
 
 
 static int
-rack_do_segment_nounlock(struct mbuf *m, struct tcphdr *th, struct socket *so,
-    struct tcpcb *tp, int32_t drop_hdrlen, int32_t tlen, uint8_t iptos,
-    int32_t nxt_pkt, struct timeval *tv)
+rack_do_segment_nounlock(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
+    int32_t drop_hdrlen, int32_t tlen, uint8_t iptos, int32_t nxt_pkt,
+    struct timeval *tv)
 {
 	struct inpcb *inp = tptoinpcb(tp);
+	struct socket *so = tptosocket(tp);
 #ifdef TCP_ACCOUNTING
 	uint64_t ts_val;
 #endif
@@ -16823,7 +16823,7 @@ rack_do_segment_nounlock(struct mbuf *m, struct tcphdr *th, struct socket *so,
 		if ((rack_sack_not_required == 0) &&
 		    ((tp->t_flags & TF_SACK_PERMIT) == 0)) {
 			tcp_switch_back_to_default(tp);
-			(*tp->t_fb->tfb_tcp_do_segment) (m, th, so, tp, drop_hdrlen,
+			(*tp->t_fb->tfb_tcp_do_segment)(tp, m, th, drop_hdrlen,
 			    tlen, iptos);
 #ifdef TCP_ACCOUNTING
 			sched_unpin();
@@ -17006,15 +17006,15 @@ do_output_now:
 	return (retval);
 }
 
-void
-rack_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
-    struct tcpcb *tp, int32_t drop_hdrlen, int32_t tlen, uint8_t iptos)
+static void
+rack_do_segment(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
+    int32_t drop_hdrlen, int32_t tlen, uint8_t iptos)
 {
 	struct timeval tv;
 
 	/* First lets see if we have old packets */
 	if (tp->t_in_pkt) {
-		if (ctf_do_queued_segments(so, tp, 1)) {
+		if (ctf_do_queued_segments(tp, 1)) {
 			m_freem(m);
 			return;
 		}
@@ -17025,8 +17025,8 @@ rack_do_segment(struct mbuf *m, struct tcphdr *th, struct socket *so,
 		/* Should not be should we kassert instead? */
 		tcp_get_usecs(&tv);
 	}
-	if (rack_do_segment_nounlock(m, th, so, tp,
-				     drop_hdrlen, tlen, iptos, 0, &tv) == 0) {
+	if (rack_do_segment_nounlock(tp, m, th, drop_hdrlen, tlen, iptos, 0,
+	    &tv) == 0) {
 		INP_WUNLOCK(tptoinpcb(tp));
 	}
 }
@@ -23364,21 +23364,20 @@ static struct tcp_function_block __tcp_rack = {
  * option.
  */
 static int
-rack_set_sockopt(struct inpcb *inp, struct sockopt *sopt)
+rack_set_sockopt(struct tcpcb *tp, struct sockopt *sopt)
 {
+	struct inpcb *inp = tptoinpcb(tp);
 #ifdef INET6
 	struct ip6_hdr *ip6;
 #endif
 #ifdef INET
 	struct ip *ip;
 #endif
-	struct tcpcb *tp;
 	struct tcp_rack *rack;
 	struct tcp_hybrid_req hybrid;
 	uint64_t loptval;
 	int32_t error = 0, mask, optval, tclass;
 
-	tp = intotcpcb(inp);
 	rack = (struct tcp_rack *)tp->t_fb_ptr;
 	if (rack == NULL) {
 		INP_WUNLOCK(inp);
@@ -23514,7 +23513,7 @@ rack_set_sockopt(struct inpcb *inp, struct sockopt *sopt)
 			break;
 		default:
 			/* Filter off all unknown options to the base stack */
-			return (tcp_default_ctloutput(inp, sopt));
+			return (tcp_default_ctloutput(tp, sopt));
 			break;
 		}
 
@@ -23623,9 +23622,9 @@ rack_fill_info(struct tcpcb *tp, struct tcp_info *ti)
 }
 
 static int
-rack_get_sockopt(struct inpcb *inp, struct sockopt *sopt)
+rack_get_sockopt(struct tcpcb *tp, struct sockopt *sopt)
 {
-	struct tcpcb *tp;
+	struct inpcb *inp = tptoinpcb(tp);
 	struct tcp_rack *rack;
 	int32_t error, optval;
 	uint64_t val, loptval;
@@ -23637,7 +23636,6 @@ rack_get_sockopt(struct inpcb *inp, struct sockopt *sopt)
 	 * impact to this routine.
 	 */
 	error = 0;
-	tp = intotcpcb(inp);
 	rack = (struct tcp_rack *)tp->t_fb_ptr;
 	if (rack == NULL) {
 		INP_WUNLOCK(inp);
@@ -23903,7 +23901,7 @@ rack_get_sockopt(struct inpcb *inp, struct sockopt *sopt)
 		optval = rack->r_ctl.timer_slop;
 		break;
 	default:
-		return (tcp_default_ctloutput(inp, sopt));
+		return (tcp_default_ctloutput(tp, sopt));
 		break;
 	}
 	INP_WUNLOCK(inp);
@@ -23917,12 +23915,12 @@ rack_get_sockopt(struct inpcb *inp, struct sockopt *sopt)
 }
 
 static int
-rack_ctloutput(struct inpcb *inp, struct sockopt *sopt)
+rack_ctloutput(struct tcpcb *tp, struct sockopt *sopt)
 {
 	if (sopt->sopt_dir == SOPT_SET) {
-		return (rack_set_sockopt(inp, sopt));
+		return (rack_set_sockopt(tp, sopt));
 	} else if (sopt->sopt_dir == SOPT_GET) {
-		return (rack_get_sockopt(inp, sopt));
+		return (rack_get_sockopt(tp, sopt));
 	} else {
 		panic("%s: sopt_dir $%d", __func__, sopt->sopt_dir);
 	}
