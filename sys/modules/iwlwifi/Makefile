@@ -66,11 +66,9 @@ CFLAGS+=	-DCONFIG_IWLWIFI_DEVICE_TRACING=1
 # GCC warns about NULL format strings passed to iwl_fw_dbg_collect_trig
 CWARNFLAGS.gcc+= -Wno-format
 
-<<<<<<< HEAD
-TRIVIAL_VAR_AUTO_INIT_ZERO_SAFE=	yes
-=======
 # GCC warns about set but unused vaf variables
 CWARNFLAGS.iwl-debug.c+= ${NO_WUNUSED_BUT_SET_VARIABLE}
->>>>>>> freebsd/main
+
+TRIVIAL_VAR_AUTO_INIT_ZERO_SAFE=	yes
 
 .include <bsd.kmod.mk>
