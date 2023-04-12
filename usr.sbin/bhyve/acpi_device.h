@@ -16,9 +16,22 @@ struct vmctx;
 
 struct acpi_device;
 
+/**
+ * Device specific information and emulation.
+ *
+ * @param name        Used as device name in the DSDT.
+ * @param hid         Used as _HID in the DSDT.
+ * @param build_table Called to build a device specific ACPI table like the TPM2
+ *                    table.
+ * @param write_dsdt  Called to append the DSDT with device specific
+ *                    information.
+ */
 struct acpi_device_emul {
 	const char *name;
 	const char *hid;
+
+	int (*build_table)(const struct acpi_device *dev);
+	int (*write_dsdt)(const struct acpi_device *dev);
 };
 
 /**
@@ -39,4 +52,5 @@ int acpi_device_add_res_fixed_ioport(struct acpi_device *dev, UINT16 port,
 int acpi_device_add_res_fixed_memory32(struct acpi_device *dev,
     UINT8 write_protected, UINT32 address, UINT32 length);
 
-void acpi_device_write_dsdt(const struct acpi_device *dev);
+int acpi_device_build_table(const struct acpi_device *dev);
+int acpi_device_write_dsdt(const struct acpi_device *dev);

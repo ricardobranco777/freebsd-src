@@ -17,6 +17,7 @@
 
 #include "acpi.h"
 #include "acpi_device.h"
+#include "basl.h"
 
 /**
  * List entry to enumerate all resources used by an ACPI device.
@@ -135,7 +136,20 @@ acpi_device_add_res_fixed_memory32(struct acpi_device *const dev,
 	return (0);
 }
 
-static void
+int
+acpi_device_build_table(const struct acpi_device *const dev)
+{
+	assert(dev != NULL);
+	assert(dev->emul != NULL);
+
+	if (dev->emul->build_table != NULL) {
+		return (dev->emul->build_table(dev));
+	}
+
+	return (0);
+}
+
+static int
 acpi_device_write_dsdt_crs(const struct acpi_device *const dev)
 {
 	const struct acpi_resource_list_entry *res;
@@ -154,14 +168,14 @@ acpi_device_write_dsdt_crs(const struct acpi_device *const dev)
 			break;
 		}
 	}
+
+	return (0);
 }
 
-void
+int
 acpi_device_write_dsdt(const struct acpi_device *const dev)
 {
-	if (dev == NULL) {
-		return;
-	}
+	assert(dev != NULL);
 
 	dsdt_line("");
 	dsdt_line("  Scope (\\_SB)");
@@ -173,9 +187,16 @@ acpi_device_write_dsdt(const struct acpi_device *const dev)
 	dsdt_line("      Name (_CRS, ResourceTemplate ()");
 	dsdt_line("      {");
 	dsdt_indent(4);
-	acpi_device_write_dsdt_crs(dev);
+	BASL_EXEC(acpi_device_write_dsdt_crs(dev));
 	dsdt_unindent(4);
 	dsdt_line("      })");
+	if (dev->emul->write_dsdt != NULL) {
+		dsdt_indent(3);
+		BASL_EXEC(dev->emul->write_dsdt(dev));
+		dsdt_unindent(3);
+	}
 	dsdt_line("    }");
 	dsdt_line("  }");
+
+	return (0);
 }
