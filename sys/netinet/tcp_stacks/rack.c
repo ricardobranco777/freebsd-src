@@ -8113,6 +8113,9 @@ rack_stop_all_timers(struct tcpcb *tp, struct tcp_rack *rack)
 		/* We enter in persists, set the flag appropriately */
 		rack->rc_in_persist = 1;
 	}
+	if (tcp_in_hpts(rack->rc_inp)) {
+		tcp_hpts_remove(rack->rc_inp);
+	}
 }
 
 static void
@@ -11578,7 +11581,7 @@ rack_log_hybrid(struct tcp_rack *rack, uint32_t seq,
 			log.u_bbr.lt_epoch = (uint32_t)((cur->deadline >> 32) & 0x00000000ffffffff) ;
 			log.u_bbr.bbr_state = 1;
 			off = (uint64_t)(cur) - (uint64_t)(&rack->rc_tp->t_http_info[0]);
-			log.u_bbr.bbr_substate = (uint8_t)(off / sizeof(struct http_sendfile_track));
+			log.u_bbr.use_lt_bw = (uint8_t)(off / sizeof(struct http_sendfile_track));
 		} else {
 			log.u_bbr.flex2 = err;
 		}
@@ -16493,6 +16496,7 @@ rack_do_segment_nounlock(struct tcpcb *tp, struct mbuf *m, struct tcphdr *th,
 	 */
 	us_cts = tcp_tv_to_usectick(tv);
 	if ((rack->rc_always_pace == 1) &&
+	    (rack->rc_ack_can_sendout_data == 0) &&
 	    (rack->r_ctl.rc_hpts_flags & PACE_PKT_OUTPUT) &&
 	    (TSTMP_LT(us_cts, rack->r_ctl.rc_last_output_to))) {
 		/*
