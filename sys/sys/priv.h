@@ -518,10 +518,6 @@
 #define	PRIV_KMEM_READ		680	/* Open mem/kmem for reading. */
 #define	PRIV_KMEM_WRITE		681	/* Open mem/kmem for writing. */
 
-/* sysctl(9) privileges.
- */
-#define	PRIV_SYSCTL_ROOTONLY	800
-
 /*
  * Kernel debugger privileges.
  */
@@ -535,13 +531,14 @@
 #define	PRIV_VERIEXEC_CONTROL	702	/* Can configure veriexec */
 
 /*
+ * sysctl(9) privileges.
+ */
+#define	PRIV_SYSCTL_ROOTONLY	800
+
+/*
  * Track end of privilege list.
  */
-<<<<<<< HEAD
 #define	_PRIV_HIGHEST		801
-=======
-#define	_PRIV_HIGHEST		703
->>>>>>> freebsd/main
 
 /*
  * Validate that a named privilege is known by the privilege system.  Invalid
