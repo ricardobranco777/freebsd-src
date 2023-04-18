@@ -248,8 +248,6 @@ __DEFAULT_DEPENDENT_OPTIONS= \
 __DEFAULT_DEPENDENT_OPTIONS+= ${var}_SUPPORT/${var}
 .endfor
 
-.-include <site.src.opts.mk>
-
 #
 # Default behaviour of some options depends on the architecture.  Unfortunately
 # this means that we have to test TARGET_ARCH (the buildworld case) as well
@@ -395,6 +393,19 @@ __DEFAULT_NO_OPTIONS+=OPENMP
 BROKEN_OPTIONS+= OFED
 .endif
 
+<<<<<<< HEAD
+=======
+.if ${__T} == "i386" || ${__T} == "amd64"
+__DEFAULT_YES_OPTIONS+=NETLINK
+__DEFAULT_YES_OPTIONS+=NETLINK_SUPPORT
+.else
+__DEFAULT_NO_OPTIONS+=NETLINK
+__DEFAULT_NO_OPTIONS+=NETLINK_SUPPORT
+.endif
+
+.-include <site.src.opts.mk>
+
+>>>>>>> freebsd/main
 .include <bsd.mkopt.mk>
 
 #
