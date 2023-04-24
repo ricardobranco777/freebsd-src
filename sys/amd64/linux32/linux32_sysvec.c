@@ -803,13 +803,8 @@ struct sysentvec elf_linux_sysvec = {
 	.sv_usrstack	= LINUX32_USRSTACK,
 	.sv_psstrings	= LINUX32_PS_STRINGS,
 	.sv_psstringssz	= sizeof(struct linux32_ps_strings),
-<<<<<<< HEAD
 	.sv_stackprot	= VM_PROT_READ | VM_PROT_WRITE,
-	.sv_copyout_auxargs = linux_copyout_auxargs,
-=======
-	.sv_stackprot	= VM_PROT_ALL,
 	.sv_copyout_auxargs = __linuxN(copyout_auxargs),
->>>>>>> freebsd/main
 	.sv_copyout_strings = linux_copyout_strings,
 	.sv_setregs	= linux_exec_setregs,
 	.sv_fixlimit	= linux32_fixlimit,

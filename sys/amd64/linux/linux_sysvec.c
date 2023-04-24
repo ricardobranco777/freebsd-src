@@ -587,13 +587,8 @@ struct sysentvec elf_linux_sysvec = {
 	.sv_usrstack	= LINUX_USRSTACK_LA48,
 	.sv_psstrings	= LINUX_PS_STRINGS_LA48,
 	.sv_psstringssz	= sizeof(struct ps_strings),
-<<<<<<< HEAD
 	.sv_stackprot	= VM_PROT_READ | VM_PROT_WRITE,
-	.sv_copyout_auxargs = linux_copyout_auxargs,
-=======
-	.sv_stackprot	= VM_PROT_ALL,
 	.sv_copyout_auxargs = __linuxN(copyout_auxargs),
->>>>>>> freebsd/main
 	.sv_copyout_strings = __linuxN(copyout_strings),
 	.sv_setregs	= linux_exec_setregs,
 	.sv_fixlimit	= NULL,
@@ -608,12 +603,9 @@ struct sysentvec elf_linux_sysvec = {
 	.sv_schedtail	= linux_schedtail,
 	.sv_thread_detach = linux_thread_detach,
 	.sv_trap	= linux_vsyscall,
-<<<<<<< HEAD
 	.sv_pax_aslr_init = pax_aslr_init_vmspace,
-=======
 	.sv_hwcap	= NULL,
 	.sv_hwcap2	= NULL,
->>>>>>> freebsd/main
 	.sv_onexec	= linux_on_exec_vmspace,
 	.sv_onexit	= linux_on_exit,
 	.sv_ontdexit	= linux_thread_dtor,
