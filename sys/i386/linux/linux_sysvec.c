@@ -140,60 +140,14 @@ linux_fixup(uintptr_t *stack_base, struct image_params *imgp)
 	return (0);
 }
 
-static int
-linux_copyout_auxargs(struct image_params *imgp, uintptr_t base)
+void
+linux32_arch_copyout_auxargs(struct image_params *imgp, Elf_Auxinfo **pos)
 {
-	Elf32_Auxargs *args;
-	Elf32_Auxinfo *argarray, *pos;
-	int error, issetugid;
 
-	issetugid = imgp->proc->p_flag & P_SUGID ? 1 : 0;
-	args = (Elf32_Auxargs *)imgp->auxargs;
-	argarray = pos = malloc(LINUX_AT_COUNT * sizeof(*pos), M_TEMP,
-	    M_WAITOK | M_ZERO);
-
-	AUXARGS_ENTRY(pos, LINUX_AT_SYSINFO_EHDR, linux_vdso_base);
-	AUXARGS_ENTRY(pos, LINUX_AT_SYSINFO, __kernel_vsyscall);
-	AUXARGS_ENTRY(pos, LINUX_AT_HWCAP, cpu_feature);
-
-	/*
-	 * Do not export AT_CLKTCK when emulating Linux kernel prior to 2.4.0,
-	 * as it has appeared in the 2.4.0-rc7 first time.
-	 * Being exported, AT_CLKTCK is returned by sysconf(_SC_CLK_TCK),
-	 * glibc falls back to the hard-coded CLK_TCK value when aux entry
-	 * is not present.
-	 * Also see linux_times() implementation.
-	 */
-	if (linux_kernver(curthread) >= LINUX_KERNVER_2004000)
-		AUXARGS_ENTRY(pos, LINUX_AT_CLKTCK, stclohz);
-	AUXARGS_ENTRY(pos, AT_PHDR, args->phdr);
-	AUXARGS_ENTRY(pos, AT_PHENT, args->phent);
-	AUXARGS_ENTRY(pos, AT_PHNUM, args->phnum);
-	AUXARGS_ENTRY(pos, AT_PAGESZ, args->pagesz);
-	AUXARGS_ENTRY(pos, AT_FLAGS, args->flags);
-	AUXARGS_ENTRY(pos, AT_ENTRY, args->entry);
-	AUXARGS_ENTRY(pos, AT_BASE, args->base);
-	AUXARGS_ENTRY(pos, LINUX_AT_SECURE, issetugid);
-	AUXARGS_ENTRY(pos, AT_UID, imgp->proc->p_ucred->cr_ruid);
-	AUXARGS_ENTRY(pos, AT_EUID, imgp->proc->p_ucred->cr_svuid);
-	AUXARGS_ENTRY(pos, AT_GID, imgp->proc->p_ucred->cr_rgid);
-	AUXARGS_ENTRY(pos, AT_EGID, imgp->proc->p_ucred->cr_svgid);
-	AUXARGS_ENTRY(pos, LINUX_AT_PLATFORM, PTROUT(linux_platform));
-	AUXARGS_ENTRY_PTR(pos, LINUX_AT_RANDOM, imgp->canary);
-	if (imgp->execpathp != 0)
-		AUXARGS_ENTRY_PTR(pos, LINUX_AT_EXECFN, imgp->execpathp);
-	if (args->execfd != -1)
-		AUXARGS_ENTRY(pos, AT_EXECFD, args->execfd);
-	AUXARGS_ENTRY(pos, AT_NULL, 0);
-
-	free(imgp->auxargs, M_TEMP);
-	imgp->auxargs = NULL;
-	KASSERT(pos - argarray <= LINUX_AT_COUNT, ("Too many auxargs"));
-
-	error = copyout(argarray, (void *)base,
-	    sizeof(*argarray) * LINUX_AT_COUNT);
-	free(argarray, M_TEMP);
-	return (error);
+	AUXARGS_ENTRY((*pos), LINUX_AT_SYSINFO_EHDR, linux_vdso_base);
+	AUXARGS_ENTRY((*pos), LINUX_AT_SYSINFO, __kernel_vsyscall);
+	AUXARGS_ENTRY((*pos), LINUX_AT_HWCAP, cpu_feature);
+	AUXARGS_ENTRY((*pos), LINUX_AT_PLATFORM, PTROUT(linux_platform));
 }
 
 static void
@@ -623,6 +577,48 @@ linux_exec_setregs(struct thread *td, struct image_params *imgp,
 	pcb->pcb_initial_npxcw = __LINUX_NPXCW__;
 }
 
+<<<<<<< HEAD
+=======
+struct sysentvec linux_sysvec = {
+	.sv_size	= LINUX_SYS_MAXSYSCALL,
+	.sv_table	= linux_sysent,
+	.sv_fixup	= linux_fixup,
+	.sv_sendsig	= linux_sendsig,
+	.sv_sigcode	= &_binary_linux_vdso_so_o_start,
+	.sv_szsigcode	= &linux_szsigcode,
+	.sv_name	= "Linux a.out",
+	.sv_coredump	= NULL,
+	.sv_imgact_try	= linux_exec_imgact_try,
+	.sv_minsigstksz	= LINUX_MINSIGSTKSZ,
+	.sv_minuser	= VM_MIN_ADDRESS,
+	.sv_maxuser	= VM_MAXUSER_ADDRESS,
+	.sv_usrstack	= LINUX_USRSTACK,
+	.sv_psstrings	= PS_STRINGS,
+	.sv_psstringssz	= sizeof(struct ps_strings),
+	.sv_stackprot	= VM_PROT_ALL,
+	.sv_copyout_strings = exec_copyout_strings,
+	.sv_setregs	= linux_exec_setregs,
+	.sv_fixlimit	= NULL,
+	.sv_maxssiz	= NULL,
+	.sv_flags	= SV_ABI_LINUX | SV_AOUT | SV_IA32 | SV_ILP32 |
+	    SV_SIG_DISCIGN | SV_SIG_WAITNDQ,
+	.sv_set_syscall_retval = linux_set_syscall_retval,
+	.sv_fetch_syscall_args = linux_fetch_syscall_args,
+	.sv_syscallnames = linux_syscallnames,
+	.sv_schedtail	= linux_schedtail,
+	.sv_thread_detach = linux_thread_detach,
+	.sv_trap	= NULL,
+	.sv_hwcap	= NULL,
+	.sv_hwcap2	= NULL,
+	.sv_onexec	= linux_on_exec_vmspace,
+	.sv_onexit	= linux_on_exit,
+	.sv_ontdexit	= linux_thread_dtor,
+	.sv_setid_allowed = &linux_setid_allowed_query,
+	.sv_set_fork_retval = linux_set_fork_retval,
+};
+INIT_SYSENTVEC(aout_sysvec, &linux_sysvec);
+
+>>>>>>> freebsd/main
 struct sysentvec elf_linux_sysvec = {
 	.sv_size	= LINUX_SYS_MAXSYSCALL,
 	.sv_table	= linux_sysent,
@@ -642,8 +638,13 @@ struct sysentvec elf_linux_sysvec = {
 	.sv_usrstack	= LINUX_USRSTACK,
 	.sv_psstrings	= LINUX_PS_STRINGS,
 	.sv_psstringssz	= sizeof(struct ps_strings),
+<<<<<<< HEAD
 	.sv_stackprot	= VM_PROT_READ | VM_PROT_WRITE,
 	.sv_copyout_auxargs = linux_copyout_auxargs,
+=======
+	.sv_stackprot	= VM_PROT_ALL,
+	.sv_copyout_auxargs = __linuxN(copyout_auxargs),
+>>>>>>> freebsd/main
 	.sv_copyout_strings = __linuxN(copyout_strings),
 	.sv_setregs	= linux_exec_setregs,
 	.sv_fixlimit	= NULL,
@@ -658,7 +659,12 @@ struct sysentvec elf_linux_sysvec = {
 	.sv_schedtail	= linux_schedtail,
 	.sv_thread_detach = linux_thread_detach,
 	.sv_trap	= NULL,
+<<<<<<< HEAD
 	.sv_pax_aslr_init = pax_aslr_init_vmspace,
+=======
+	.sv_hwcap	= NULL,
+	.sv_hwcap2	= NULL,
+>>>>>>> freebsd/main
 	.sv_onexec	= linux_on_exec_vmspace,
 	.sv_onexit	= linux_on_exit,
 	.sv_ontdexit	= linux_thread_dtor,

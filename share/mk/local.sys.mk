@@ -62,7 +62,7 @@ _PREMK_LIBDIR:=	${LIBDIR}
 .if make(*-jobs) && empty(JOB_MAX)
 # provide a reasonable? default for JOB_MAX based on ncpu
 JOB_MAX_FACTOR?= 1.33
-NPROC?= ${(type nproc) 2> /dev/null:L:sh:M/*:[1]}
+NPROC?= ${(type nproc || true) 2> /dev/null:L:sh:M/*:[1]}
 NPROC:= ${NPROC}
 .if !empty(NPROC)
 ncpu!= ${NPROC}
@@ -78,6 +78,14 @@ JOB_MAX:= ${jm:R}
 .endif
 .endif
 .endif
+
+.if ${MK_DIRDEPS_BUILD} == "yes"
+.if ${.MAKE.OS} != "FreeBSD" || ${_HOST_OSREL:R} < ${OS_REVISION:R}
+# a pseudo option to indicate we need libegacy for host
+MK_host_egacy= yes
+.endif
+.endif
+MK_host_egacy?= no
 
 .if ${.MAKE.MODE:Mmeta*} != ""
 # we can afford to use cookies to prevent some targets
