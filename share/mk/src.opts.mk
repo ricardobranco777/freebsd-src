@@ -392,21 +392,12 @@ __DEFAULT_NO_OPTIONS+=OPENMP
 BROKEN_OPTIONS+= OFED
 .endif
 
-<<<<<<< HEAD
-=======
-.if ${__T} == "i386" || ${__T} == "amd64"
-__DEFAULT_YES_OPTIONS+=NETLINK_SUPPORT
-.else
-__DEFAULT_NO_OPTIONS+=NETLINK_SUPPORT
-.endif
-
 # MK_host_egacy is set by local.sys.mk so is valid here
 .if ${MACHINE} == "host" && ${MK_host_egacy} == "yes"
 # we cannot expect tests to work
 BROKEN_OPTIONS+= TESTS
 .endif
 
->>>>>>> freebsd/main
 .-include <site.src.opts.mk>
 
 .include <bsd.mkopt.mk>
