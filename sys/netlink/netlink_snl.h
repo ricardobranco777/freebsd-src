@@ -228,8 +228,14 @@ snl_init(struct snl_state *ss, int netlink_family)
 		return (false);
 	ss->init_done = true;
 
+	int val = 1;
+	socklen_t optlen = sizeof(val);
+	if (setsockopt(ss->fd, SOL_NETLINK, NETLINK_EXT_ACK, &val, optlen) == -1) {
+		snl_free(ss);
+		return (false);
+	}
+
 	int rcvbuf;
-	socklen_t optlen = sizeof(rcvbuf);
 	if (getsockopt(ss->fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &optlen) == -1) {
 		snl_free(ss);
 		return (false);
@@ -422,7 +428,8 @@ snl_parse_nlmsg(struct snl_state *ss, struct nlmsghdr *hdr,
 }
 
 static inline bool
-snl_attr_get_flag(struct snl_state *ss __unused, struct nlattr *nla, void *target)
+snl_attr_get_flag(struct snl_state *ss __unused, struct nlattr *nla, const void *arg __unused,
+    void *target)
 {
 	if (NLA_DATA_LEN(nla) == 0) {
 		*((uint8_t *)target) = 1;
