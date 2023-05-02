@@ -286,11 +286,13 @@
 
 #ifndef LOCORE
 
+#include <sys/kassert.h>
 #include <sys/queue.h>
 #include <sys/_cpuset.h>
 #include <sys/_lock.h>
 #include <sys/_mutex.h>
 #include <sys/_pctrie.h>
+#include <machine/_pmap.h>
 #include <sys/_pv_entry.h>
 #include <sys/_rangeset.h>
 #include <sys/_smr.h>
@@ -371,11 +373,6 @@ enum pmap_type {
 	PT_RVI,			/* AMD's nested page tables */
 };
 
-struct pmap_pcids {
-	uint32_t	pm_pcid;
-	uint32_t	pm_gen;
-};
-
 /*
  * The kernel virtual address (KVA) of the level 4 page table page is always
  * within the direct map (DMAP) region.
@@ -394,7 +391,7 @@ struct pmap {
 	long			pm_eptgen;	/* EPT pmap generation id */
 	smr_t			pm_eptsmr;
 	int			pm_flags;
-	struct pmap_pcids	pm_pcids[MAXCPU];
+	struct pmap_pcid	*pm_pcidp;
 	struct rangeset		pm_pkru;
 };
 
@@ -536,6 +533,17 @@ pmap_invlpg(pmap_t pmap, vm_offset_t va)
 	}
 }
 #endif /* sys/pcpu.h && machine/cpufunc.h */
+
+/* Return pcid for the pmap pmap on current cpu */
+static __inline uint32_t
+pmap_get_pcid(pmap_t pmap)
+{
+	struct pmap_pcid *pcidp;
+
+	MPASS(pmap_pcid_enabled);
+	pcidp = zpcpu_get(pmap->pm_pcidp);
+	return (pcidp->pm_pcid);
+}
 
 #endif /* _KERNEL */
 
