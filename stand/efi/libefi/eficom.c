@@ -34,8 +34,6 @@ __FBSDID("$FreeBSD$");
 #include <efi.h>
 #include <efilib.h>
 
-#include "loader_efi.h"
-
 static EFI_GUID serial = SERIAL_IO_PROTOCOL;
 
 #define	COMC_TXWAIT	0x40000		/* transmit timeout */
@@ -43,14 +41,13 @@ static EFI_GUID serial = SERIAL_IO_PROTOCOL;
 #define	PNP0501		0x501		/* 16550A-compatible COM port */
 
 struct serial {
+	uint64_t	newbaudrate;
 	uint64_t	baudrate;
 	uint32_t	timeout;
 	uint32_t	receivefifodepth;
 	uint32_t	databits;
 	EFI_PARITY_TYPE	parity;
 	EFI_STOP_BITS_TYPE stopbits;
-	uint32_t	ignore_cd;	/* boolean */
-	uint32_t	rtsdtr_off;	/* boolean */
 	int		ioaddr;		/* index in handles array */
 	EFI_HANDLE	currdev;	/* current serial device */
 	EFI_HANDLE	condev;		/* EFI Console device */
@@ -69,14 +66,9 @@ static int	comc_speed_set(struct env_var *, int, const void *);
 
 static struct serial	*comc_port;
 extern struct console efi_console;
-bool efi_comconsole_avail = false;
 
-#if defined(__amd64__)
-#define comconsole eficomconsole
-#endif
-
-struct console comconsole = {
-	.c_name = "comconsole",
+struct console eficom = {
+	.c_name = "eficom",
 	.c_desc = "serial port",
 	.c_flags = 0,
 	.c_probe = comc_probe,
@@ -85,6 +77,20 @@ struct console comconsole = {
 	.c_in = comc_getchar,
 	.c_ready = comc_ischar,
 };
+
+#if defined(__aarch64__) && __FreeBSD_version < 1500000
+static void	comc_probe_compat(struct console *);
+struct console comconsole = {
+	.c_name = "comconsole",
+	.c_desc = "serial port",
+	.c_flags = 0,
+	.c_probe = comc_probe_compat,
+	.c_init = comc_init,
+	.c_out = comc_putchar,
+	.c_in = comc_getchar,
+	.c_ready = comc_ischar,
+};
+#endif
 
 static EFI_STATUS
 efi_serial_init(EFI_HANDLE **handlep, int *nhandles)
@@ -259,18 +265,6 @@ comc_probe(struct console *sc)
 	char *env, *buf, *ep;
 	size_t sz;
 
-#if defined(__amd64__)
-	/*
-	 * For x86-64, don't use this driver if not running in Hyper-V.
-	 */
-	env = getenv("smbios.bios.version");
-	if (env == NULL || strncmp(env, "Hyper-V", 7) != 0) {
-		/* Disable being seen as "comconsole". */
-		comconsole.c_name = "efiserialio";
-		return;
-	}
-#endif
-
 	if (comc_port == NULL) {
 		comc_port = calloc(1, sizeof (struct serial));
 		if (comc_port == NULL)
@@ -281,8 +275,6 @@ comc_probe(struct console *sc)
 	comc_port->databits = 8;
 	comc_port->parity = DefaultParity;
 	comc_port->stopbits = DefaultStopBits;
-	comc_port->ignore_cd = 1;		/* ignore cd */
-	comc_port->rtsdtr_off = 0;		/* rts-dtr is on */
 
 	handle = NULL;
 	env = getenv("efi_com_port");
@@ -309,7 +301,8 @@ comc_probe(struct console *sc)
 		if (EFI_ERROR(status)) {
 			comc_port->sio = NULL;
 		} else {
-			comc_port->baudrate = comc_port->sio->Mode->BaudRate;
+			comc_port->newbaudrate =
+			    comc_port->baudrate = comc_port->sio->Mode->BaudRate;
 			comc_port->timeout = comc_port->sio->Mode->Timeout;
 			comc_port->receivefifodepth =
 			    comc_port->sio->Mode->ReceiveFifoDepth;
@@ -331,7 +324,7 @@ comc_probe(struct console *sc)
 		env = getenv("comconsole_speed");
 
 	if (comc_parse_intval(env, &val) == CMD_OK)
-		comc_port->baudrate = val;
+		comc_port->newbaudrate = val;
 
 	if (env != NULL)
 		unsetenv("efi_com_speed");
@@ -339,15 +332,22 @@ comc_probe(struct console *sc)
 	env_setenv("efi_com_speed", EV_VOLATILE, value,
 	    comc_speed_set, env_nounset);
 
-	comconsole.c_flags = 0;
+	eficom.c_flags = 0;
 	if (comc_setup()) {
 		sc->c_flags = C_PRESENTIN | C_PRESENTOUT;
-		efi_comconsole_avail = true;
-	} else {
-		/* disable being seen as "comconsole" */
-		comconsole.c_name = "efiserialio";
 	}
 }
+
+#if defined(__aarch64__) && __FreeBSD_version < 1500000
+static void
+comc_probe_compat(struct console *sc)
+{
+	comc_probe(sc);
+	if (sc->c_flags & (C_PRESENTIN | C_PRESENTOUT)) {
+		printf("comconsole: comconsole device name is deprecated, switch to eficom\n");
+	}
+}
+#endif
 
 static int
 comc_init(int arg __unused)
@@ -356,7 +356,7 @@ comc_init(int arg __unused)
 	if (comc_setup())
 		return (CMD_OK);
 
-	comconsole.c_flags = 0;
+	eficom.c_flags = 0;
 	return (CMD_ERROR);
 }
 
@@ -499,10 +499,9 @@ comc_speed_set(struct env_var *ev, int flags, const void *value)
 	if (comc_parse_intval(value, &speed) != CMD_OK) 
 		return (CMD_ERROR);
 
-	comc_port->baudrate = speed;
-	(void) comc_setup();
-
-	env_setenv(ev->ev_name, flags | EV_NOHOOK, value, NULL, NULL);
+	comc_port->newbaudrate = speed;
+	if (comc_setup())
+		env_setenv(ev->ev_name, flags | EV_NOHOOK, value, NULL, NULL);
 
 	return (CMD_OK);
 }
@@ -515,42 +514,50 @@ static bool
 comc_setup(void)
 {
 	EFI_STATUS status;
-	UINT32 control;
 	char *ev;
 
 	/* port is not usable */
 	if (comc_port->sio == NULL)
 		return (false);
 
-	status = comc_port->sio->Reset(comc_port->sio);
-	if (EFI_ERROR(status))
-		return (false);
-
-	ev = getenv("smbios.bios.version");
-	if (ev != NULL && strncmp(ev, "Hyper-V", 7) == 0) {
-		status = comc_port->sio->SetAttributes(comc_port->sio,
-	            0, 0, 0, DefaultParity, 0, DefaultStopBits);
-	} else {
-		status = comc_port->sio->SetAttributes(comc_port->sio,
-		    comc_port->baudrate, comc_port->receivefifodepth,
-		    comc_port->timeout, comc_port->parity,
-		    comc_port->databits, comc_port->stopbits);
+	if (comc_port->sio->Reset != NULL) {
+		status = comc_port->sio->Reset(comc_port->sio);
+		if (EFI_ERROR(status))
+			return (false);
 	}
 
-	if (EFI_ERROR(status))
-		return (false);
+	/*
+	 * Avoid setting the baud rate on Hyper-V. Also, only set the baud rate
+	 * if the baud rate has changed from the default. And pass in '0' or
+	 * DefaultFoo when we're not changing those values. Some EFI
+	 * implementations get cranky when you set things to the values reported
+	 * back even when they are unchanged.
+	 */
+	if (comc_port->sio->SetAttributes != NULL &&
+	    comc_port->newbaudrate != comc_port->baudrate) {
+		ev = getenv("smbios.bios.version");
+		if (ev != NULL && strncmp(ev, "Hyper-V", 7) != 0) {
+			status = comc_port->sio->SetAttributes(comc_port->sio,
+			    comc_port->newbaudrate, 0, 0, DefaultParity, 0,
+			    DefaultStopBits);
+			if (EFI_ERROR(status))
+				return (false);
+			comc_port->baudrate = comc_port->newbaudrate;
+		}
+	}
 
-	status = comc_port->sio->GetControl(comc_port->sio, &control);
-	if (EFI_ERROR(status))
-		return (false);
-	if (comc_port->rtsdtr_off) {
-		control &= ~(EFI_SERIAL_REQUEST_TO_SEND |
-		    EFI_SERIAL_DATA_TERMINAL_READY);
-	} else {
+#ifdef EFI_FORCE_RTS
+	if (comc_port->sio->GetControl != NULL && comc_port->sio->SetControl != NULL) {
+		UINT32 control;
+
+		status = comc_port->sio->GetControl(comc_port->sio, &control);
+		if (EFI_ERROR(status))
+			return (false);
 		control |= EFI_SERIAL_REQUEST_TO_SEND;
+		(void) comc_port->sio->SetControl(comc_port->sio, control);
 	}
-	(void) comc_port->sio->SetControl(comc_port->sio, control);
+#endif
 	/* Mark this port usable. */
-	comconsole.c_flags |= (C_PRESENTIN | C_PRESENTOUT);
+	eficom.c_flags |= (C_PRESENTIN | C_PRESENTOUT);
 	return (true);
 }
