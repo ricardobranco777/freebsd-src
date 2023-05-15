@@ -530,11 +530,7 @@ worlds: .PHONY
 # powerpcspe excluded from main list until clang fixed
 EXTRA_ARCHES_powerpc=	powerpcspe
 .endif
-<<<<<<< HEAD
-TARGETS?=amd64 arm arm64 powerpc riscv
-=======
 TARGETS?= ${TARGET_MACHINE_LIST}
->>>>>>> freebsd/main
 _UNIVERSE_TARGETS=	${TARGETS}
 .for target in ${TARGETS}
 TARGET_ARCHES_${target}= ${MACHINE_ARCH_LIST_${target}}
