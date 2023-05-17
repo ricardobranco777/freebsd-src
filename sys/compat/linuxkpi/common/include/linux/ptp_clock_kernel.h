@@ -1,7 +1,7 @@
 /*-
- * Copyright (c) 2014 The FreeBSD Foundation
+ * Copyright (c) 2023 The FreeBSD Foundation
  *
- * This software was developed by Andrew Turner under sponsorship from
+ * This software was developed by Björn Zeeb under sponsorship from
  * the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,36 +24,54 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD$
  */
 
-#include "assym.inc"
-#include <sys/syscall.h>
-#include <machine/asm.h>
+#ifndef	_LINUXKPI_LINUX_PTP_CLOCK_KERNEL_H
+#define	_LINUXKPI_LINUX_PTP_CLOCK_KERNEL_H
 
-	.section .rodata, "a", %progbits
-	.globl	sigcode
-	.align 2
-sigcode:
-	blr	x8
-	mov	x0, sp
-	add	x0, x0, #SF_UC
+#include <linux/types.h>
+#include <linux/device.h>
+#include <linux/kernel.h>	/* pr_debug */
+#include <linux/ktime.h>	/* system_device_crosststamp */
 
-1:
-	mov	x8, #SYS_sigreturn
-	svc	0
+/* This very likely belongs elsewhere. */
+struct system_device_crosststamp {
+	ktime_t	device;
+	ktime_t	sys_realtime;
+	ktime_t	sys_monotonic_raw;	/* name guessed based on comment */
+};
 
-	/* sigreturn failed, exit */
-	mov	x8, #SYS_exit
-	svc	0
+struct ptp_clock_info {
+	char		name[32];
+	int		max_adj;
+	void		*owner;			/* THIS_MODULE */
+	int (*adjfine)(struct ptp_clock_info *, long);
+	int (*adjtime)(struct ptp_clock_info *, s64);
+	int (*getcrosststamp)(struct ptp_clock_info *, struct system_device_crosststamp *);
+	int (*gettime64)(struct ptp_clock_info *, struct timespec *);
+};
 
-	b	1b
-	/* This may be copied to the stack, keep it 16-byte aligned */
-	.align	3
-	.size sigcode, . - sigcode
-esigcode:
+static inline struct ptp_clock *
+ptp_clock_register(struct ptp_clock_info *ptpci, struct device *dev)
+{
 
-	.data
-	.align	3
-	.global	szsigcode
-szsigcode:
-	.quad	esigcode - sigcode
+	pr_debug("%s: TODO\n", __func__);
+	return (NULL);
+}
+
+static inline void
+ptp_clock_unregister(struct ptp_clock *ptpc)
+{
+	pr_debug("%s: TODO\n", __func__);
+}
+
+static inline int
+ptp_clock_index(struct ptp_clock *ptpc)
+{
+	pr_debug("%s: TODO\n", __func__);
+	return (0);
+}
+
+#endif	/* _LINUXKPI_LINUX_PTP_CLOCK_KERNEL_H */
