@@ -55,11 +55,8 @@ __FBSDID("$FreeBSD$");
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
-<<<<<<< HEAD
 #include "opt_pax.h"
-=======
 #include "opt_rss.h"
->>>>>>> freebsd/main
 
 #include <sys/param.h>
 #include <sys/arb.h>
