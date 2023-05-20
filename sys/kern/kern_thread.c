@@ -349,6 +349,46 @@ tidbatch_final(struct tidbatch *tb)
 }
 
 /*
+ * Batching thread count free, for consistency
+ */
+struct tdcountbatch {
+	int n;
+};
+
+static void
+tdcountbatch_prep(struct tdcountbatch *tb)
+{
+
+	tb->n = 0;
+}
+
+static void
+tdcountbatch_add(struct tdcountbatch *tb, struct thread *td __unused)
+{
+
+	tb->n++;
+}
+
+static void
+tdcountbatch_process(struct tdcountbatch *tb)
+{
+
+	if (tb->n == 32) {
+		thread_count_sub(tb->n);
+		tb->n = 0;
+	}
+}
+
+static void
+tdcountbatch_final(struct tdcountbatch *tb)
+{
+
+	if (tb->n != 0) {
+		thread_count_sub(tb->n);
+	}
+}
+
+/*
  * Prepare a thread for use.
  */
 static int
@@ -598,9 +638,8 @@ thread_reap_domain(struct thread_domain_data *tdd)
 	struct thread *itd, *ntd;
 	struct tidbatch tidbatch;
 	struct credbatch credbatch;
-	int tdcount;
-	struct plimit *lim;
-	int limcount;
+	struct limbatch limbatch;
+	struct tdcountbatch tdcountbatch;
 
 	/*
 	 * Reading upfront is pessimal if followed by concurrent atomic_swap,
@@ -622,42 +661,32 @@ thread_reap_domain(struct thread_domain_data *tdd)
 
 	tidbatch_prep(&tidbatch);
 	credbatch_prep(&credbatch);
-	tdcount = 0;
-	lim = NULL;
-	limcount = 0;
+	limbatch_prep(&limbatch);
+	tdcountbatch_prep(&tdcountbatch);
 
 	while (itd != NULL) {
 		ntd = itd->td_zombie;
 		EVENTHANDLER_DIRECT_INVOKE(thread_dtor, itd);
+
 		tidbatch_add(&tidbatch, itd);
 		credbatch_add(&credbatch, itd);
-		MPASS(itd->td_limit != NULL);
-		if (lim != itd->td_limit) {
-			if (limcount != 0) {
-				lim_freen(lim, limcount);
-				limcount = 0;
-			}
-		}
-		lim = itd->td_limit;
-		limcount++;
+		limbatch_add(&limbatch, itd);
+		tdcountbatch_add(&tdcountbatch, itd);
+
 		thread_free_batched(itd);
+
 		tidbatch_process(&tidbatch);
 		credbatch_process(&credbatch);
-		tdcount++;
-		if (tdcount == 32) {
-			thread_count_sub(tdcount);
-			tdcount = 0;
-		}
+		limbatch_process(&limbatch);
+		tdcountbatch_process(&tdcountbatch);
+
 		itd = ntd;
 	}
 
 	tidbatch_final(&tidbatch);
 	credbatch_final(&credbatch);
-	if (tdcount != 0) {
-		thread_count_sub(tdcount);
-	}
-	MPASS(limcount != 0);
-	lim_freen(lim, limcount);
+	limbatch_final(&limbatch);
+	tdcountbatch_final(&tdcountbatch);
 }
 
 /*
