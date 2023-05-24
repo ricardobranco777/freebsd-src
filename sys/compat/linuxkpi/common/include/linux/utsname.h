@@ -1,8 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
- * Copyright (c) 2011 NetApp, Inc.
- * All rights reserved.
+ * Copyright (c) 2023 Bjoern A. Zeeb
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -13,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY NETAPP, INC ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL NETAPP, INC OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -28,26 +25,27 @@
  * $FreeBSD$
  */
 
-#ifndef	_FBSDRUN_H_
-#define	_FBSDRUN_H_
+#ifndef	_LINUXKPI_LINUX_UTSNAME_H
+#define	_LINUXKPI_LINUX_UTSNAME_H
 
-#define	VMEXIT_CONTINUE		(0)
-#define	VMEXIT_ABORT		(-1)
+#include <sys/types.h>
+#include <sys/jail.h>
 
-extern int guest_ncpus;
-extern uint16_t cpu_cores, cpu_sockets, cpu_threads;
+struct _utsname {
+	char			release[OSRELEASELEN];
+};
 
-struct vcpu;
-struct vmctx;
-struct vm_run;
+struct uts_namespace {
+	struct _utsname		name;
+};
 
-void *paddr_guest2host(struct vmctx *ctx, uintptr_t addr, size_t len);
-#ifdef BHYVE_SNAPSHOT
-uintptr_t paddr_host2guest(struct vmctx *ctx, void *addr);
-#endif
+extern struct uts_namespace init_uts_ns;
 
-int  fbsdrun_virtio_msix(void);
+static inline struct _utsname *
+init_utsname(void)
+{
 
-int vmexit_task_switch(struct vmctx *, struct vcpu *, struct vm_run *);
+	return &init_uts_ns.name;
+}
 
-#endif
+#endif	/* _LINUXKPI_LINUX_UTSNAME_H */
