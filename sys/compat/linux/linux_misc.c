@@ -32,6 +32,8 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 
+#include "opt_pax.h"
+
 #include <sys/param.h>
 #include <sys/fcntl.h>
 #include <sys/jail.h>
@@ -2603,15 +2605,20 @@ linux_exec_copyin_args(struct image_args *args, const char *fname,
 			goto err_exit;
 	}
 
-	/*
-	 * This comment is from Linux do_execveat_common:
-	 * When argv is empty, add an empty string ("") as argv[0] to
-	 * ensure confused userspace programs that start processing
-	 * from argv[1] won't end up walking envp.
-	 */
-	if (args->argc == 0 &&
-	    (error = exec_args_add_arg(args, "", UIO_SYSSPACE) != 0))
-		goto err_exit;
+	if (args->argc == 0) {
+		error = EINVAL;
+#ifndef PAX_HARDENING
+		/*
+		* This comment is from Linux do_execveat_common:
+		* When argv is empty, add an empty string ("") as argv[0] to
+		* ensure confused userspace programs that start processing
+		* from argv[1] won't end up walking envp.
+		*/
+		error = exec_args_add_arg(args, "", UIO_SYSSPACE);
+		if (error != 0)
+#endif
+			goto err_exit;
+	}
 
 	/*
 	 * extract environment strings
