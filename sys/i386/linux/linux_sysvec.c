@@ -577,6 +577,47 @@ linux_exec_setregs(struct thread *td, struct image_params *imgp,
 	pcb->pcb_initial_npxcw = __LINUX_NPXCW__;
 }
 
+<<<<<<< HEAD
+=======
+struct sysentvec linux_sysvec = {
+	.sv_size	= LINUX_SYS_MAXSYSCALL,
+	.sv_table	= linux_sysent,
+	.sv_fixup	= linux_fixup,
+	.sv_sendsig	= linux_sendsig,
+	.sv_sigcode	= &_binary_linux_vdso_so_o_start,
+	.sv_szsigcode	= &linux_szsigcode,
+	.sv_name	= "Linux a.out",
+	.sv_coredump	= NULL,
+	.sv_minsigstksz	= LINUX_MINSIGSTKSZ,
+	.sv_minuser	= VM_MIN_ADDRESS,
+	.sv_maxuser	= VM_MAXUSER_ADDRESS,
+	.sv_usrstack	= LINUX_USRSTACK,
+	.sv_psstrings	= PS_STRINGS,
+	.sv_psstringssz	= sizeof(struct ps_strings),
+	.sv_stackprot	= VM_PROT_ALL,
+	.sv_copyout_strings = exec_copyout_strings,
+	.sv_setregs	= linux_exec_setregs,
+	.sv_fixlimit	= NULL,
+	.sv_maxssiz	= NULL,
+	.sv_flags	= SV_ABI_LINUX | SV_AOUT | SV_IA32 | SV_ILP32 |
+	    SV_SIG_DISCIGN | SV_SIG_WAITNDQ,
+	.sv_set_syscall_retval = linux_set_syscall_retval,
+	.sv_fetch_syscall_args = linux_fetch_syscall_args,
+	.sv_syscallnames = linux_syscallnames,
+	.sv_schedtail	= linux_schedtail,
+	.sv_thread_detach = linux_thread_detach,
+	.sv_trap	= NULL,
+	.sv_hwcap	= NULL,
+	.sv_hwcap2	= NULL,
+	.sv_onexec	= linux_on_exec_vmspace,
+	.sv_onexit	= linux_on_exit,
+	.sv_ontdexit	= linux_thread_dtor,
+	.sv_setid_allowed = &linux_setid_allowed_query,
+	.sv_set_fork_retval = linux_set_fork_retval,
+};
+INIT_SYSENTVEC(aout_sysvec, &linux_sysvec);
+
+>>>>>>> freebsd/main
 struct sysentvec elf_linux_sysvec = {
 	.sv_size	= LINUX_SYS_MAXSYSCALL,
 	.sv_table	= linux_sysent,
@@ -589,7 +630,6 @@ struct sysentvec elf_linux_sysvec = {
 	.sv_elf_core_osabi = ELFOSABI_NONE,
 	.sv_elf_core_abi_vendor = LINUX_ABI_VENDOR,
 	.sv_elf_core_prepare_notes = __linuxN(prepare_notes),
-	.sv_imgact_try	= linux_exec_imgact_try,
 	.sv_minsigstksz	= LINUX_MINSIGSTKSZ,
 	.sv_minuser	= VM_MIN_ADDRESS,
 	.sv_maxuser	= VM_MAXUSER_ADDRESS,
@@ -631,7 +671,7 @@ linux_on_exec_vmspace(struct proc *p, struct image_params *imgp)
 		error = linux_map_vdso(p, linux_vdso_obj,
 		    linux_vdso_base, LINUX_VDSOPAGE_SIZE, imgp);
 	if (error == 0)
-		linux_on_exec(p, imgp);
+		error = linux_on_exec(p, imgp);
 	return (error);
 }
 
@@ -770,7 +810,6 @@ static Elf32_Brandinfo linux_brand = {
 	.brand		= ELFOSABI_LINUX,
 	.machine	= EM_386,
 	.compat_3_brand	= "Linux",
-	.emul_path	= linux_emul_path,
 	.interp_path	= "/lib/ld-linux.so.1",
 	.sysvec		= &elf_linux_sysvec,
 	.interp_newpath	= NULL,
@@ -782,7 +821,6 @@ static Elf32_Brandinfo linux_glibc2brand = {
 	.brand		= ELFOSABI_LINUX,
 	.machine	= EM_386,
 	.compat_3_brand	= "Linux",
-	.emul_path	= linux_emul_path,
 	.interp_path	= "/lib/ld-linux.so.2",
 	.sysvec		= &elf_linux_sysvec,
 	.interp_newpath	= NULL,
@@ -794,7 +832,6 @@ static Elf32_Brandinfo linux_muslbrand = {
 	.brand		= ELFOSABI_LINUX,
 	.machine	= EM_386,
 	.compat_3_brand	= "Linux",
-	.emul_path	= linux_emul_path,
 	.interp_path	= "/lib/ld-musl-i386.so.1",
 	.sysvec		= &elf_linux_sysvec,
 	.interp_newpath	= NULL,
