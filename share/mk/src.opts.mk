@@ -148,11 +148,6 @@ __DEFAULT_YES_OPTIONS = \
     MLX5TOOL \
     NETCAT \
     NETGRAPH \
-<<<<<<< HEAD
-=======
-    NETLINK \
-    NETLINK_SUPPORT \
->>>>>>> freebsd/main
     NLS_CATALOGS \
     NS_CACHING \
     NTP \
@@ -214,6 +209,7 @@ __DEFAULT_NO_OPTIONS = \
     LOADER_VERBOSE \
     LOADER_VERIEXEC_PASS_MANIFEST \
     MALLOC_PRODUCTION \
+    NETLINK \
     NETLINK_SUPPORT \
     OFED \
     OFED_EXTRA \
