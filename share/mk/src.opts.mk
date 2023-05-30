@@ -148,6 +148,11 @@ __DEFAULT_YES_OPTIONS = \
     MLX5TOOL \
     NETCAT \
     NETGRAPH \
+<<<<<<< HEAD
+=======
+    NETLINK \
+    NETLINK_SUPPORT \
+>>>>>>> freebsd/main
     NLS_CATALOGS \
     NS_CACHING \
     NTP \
