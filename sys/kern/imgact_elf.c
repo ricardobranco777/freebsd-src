@@ -811,7 +811,7 @@ fail:
 
 static int
 __elfN(enforce_limits)(struct image_params *imgp, const Elf_Ehdr *hdr,
-    const Elf_Phdr *phdr, u_long et_dyn_addr)
+    const Elf_Phdr *phdr)
 {
 	struct vmspace *vmspace;
 	const char *err_str;
@@ -826,9 +826,9 @@ __elfN(enforce_limits)(struct image_params *imgp, const Elf_Ehdr *hdr,
 		if (phdr[i].p_type != PT_LOAD || phdr[i].p_memsz == 0)
 			continue;
 
-		seg_addr = trunc_page(phdr[i].p_vaddr + et_dyn_addr);
+		seg_addr = trunc_page(phdr[i].p_vaddr + imgp->et_dyn_addr);
 		seg_size = round_page(phdr[i].p_memsz +
-		    phdr[i].p_vaddr + et_dyn_addr - seg_addr);
+		    phdr[i].p_vaddr + imgp->et_dyn_addr - seg_addr);
 
 		/*
 		 * Make the largest executable segment the official
@@ -987,8 +987,13 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	char *interp;
 	Elf_Brandinfo *brand_info;
 	struct sysentvec *sv;
+<<<<<<< HEAD
 	u_long addr, baddr, et_dyn_addr, entry, proghdr;
 	u_long maxalign, maxsalign, mapsz, maxv;
+=======
+	u_long addr, baddr, entry, proghdr;
+	u_long maxalign, maxsalign, mapsz, maxv, maxv1, anon_loc;
+>>>>>>> freebsd/main
 	uint32_t fctl0;
 	int32_t osrel;
 	bool free_interp;
@@ -1117,7 +1122,6 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 		goto ret;
 	}
 	sv = brand_info->sysvec;
-	et_dyn_addr = 0;
 	if (hdr->e_type == ET_DYN) {
 		if ((brand_info->flags & BI_CAN_EXEC_DYN) == 0) {
 			uprintf("Cannot execute shared object\n");
@@ -1129,7 +1133,19 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 		 * non-zero for some reason.
 		 */
 		if (baddr == 0) {
+<<<<<<< HEAD
 			et_dyn_addr = ET_DYN_LOAD_ADDR;
+=======
+			if ((sv->sv_flags & SV_ASLR) == 0 ||
+			    (fctl0 & NT_FREEBSD_FCTL_ASLR_DISABLE) != 0)
+				imgp->et_dyn_addr = __elfN(pie_base);
+			else if ((__elfN(pie_aslr_enabled) &&
+			    (imgp->proc->p_flag2 & P2_ASLR_DISABLE) == 0) ||
+			    (imgp->proc->p_flag2 & P2_ASLR_ENABLE) != 0)
+				imgp->et_dyn_addr = ET_DYN_ADDR_RAND;
+			else
+				imgp->et_dyn_addr = __elfN(pie_base);
+>>>>>>> freebsd/main
 		}
 	}
 
@@ -1146,6 +1162,51 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	 */
 	VOP_UNLOCK(imgp->vp);
 
+<<<<<<< HEAD
+=======
+	/*
+	 * Decide whether to enable randomization of user mappings.
+	 * First, reset user preferences for the setid binaries.
+	 * Then, account for the support of the randomization by the
+	 * ABI, by user preferences, and make special treatment for
+	 * PIE binaries.
+	 */
+	if (imgp->credential_setid) {
+		PROC_LOCK(imgp->proc);
+		imgp->proc->p_flag2 &= ~(P2_ASLR_ENABLE | P2_ASLR_DISABLE |
+		    P2_WXORX_DISABLE | P2_WXORX_ENABLE_EXEC);
+		PROC_UNLOCK(imgp->proc);
+	}
+	if ((sv->sv_flags & SV_ASLR) == 0 ||
+	    (imgp->proc->p_flag2 & P2_ASLR_DISABLE) != 0 ||
+	    (fctl0 & NT_FREEBSD_FCTL_ASLR_DISABLE) != 0) {
+		KASSERT(imgp->et_dyn_addr != ET_DYN_ADDR_RAND,
+		    ("imgp->et_dyn_addr == RAND and !ASLR"));
+	} else if ((imgp->proc->p_flag2 & P2_ASLR_ENABLE) != 0 ||
+	    (__elfN(aslr_enabled) && hdr->e_type == ET_EXEC) ||
+	    imgp->et_dyn_addr == ET_DYN_ADDR_RAND) {
+		imgp->map_flags |= MAP_ASLR;
+		/*
+		 * If user does not care about sbrk, utilize the bss
+		 * grow region for mappings as well.  We can select
+		 * the base for the image anywere and still not suffer
+		 * from the fragmentation.
+		 */
+		if (!__elfN(aslr_honor_sbrk) ||
+		    (imgp->proc->p_flag2 & P2_ASLR_IGNSTART) != 0)
+			imgp->map_flags |= MAP_ASLR_IGNSTART;
+		if (__elfN(aslr_stack))
+			imgp->map_flags |= MAP_ASLR_STACK;
+		if (__elfN(aslr_shared_page))
+			imgp->imgp_flags |= IMGP_ASLR_SHARED_PAGE;
+	}
+
+	if ((!__elfN(allow_wx) && (fctl0 & NT_FREEBSD_FCTL_WXNEEDED) == 0 &&
+	    (imgp->proc->p_flag2 & P2_WXORX_DISABLE) == 0) ||
+	    (imgp->proc->p_flag2 & P2_WXORX_ENABLE_EXEC) != 0)
+		imgp->map_flags |= MAP_WXORX;
+
+>>>>>>> freebsd/main
 	error = exec_new_vmspace(imgp, sv);
 	vmspace = imgp->proc->p_vmspace;
 	map = &(vmspace->vm_map);
@@ -1166,15 +1227,27 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 		error = ENOEXEC;
 	}
 
+<<<<<<< HEAD
+=======
+	if (error == 0 && imgp->et_dyn_addr == ET_DYN_ADDR_RAND) {
+		KASSERT((map->flags & MAP_ASLR) != 0,
+		    ("ET_DYN_ADDR_RAND but !MAP_ASLR"));
+		error = __CONCAT(rnd_, __elfN(base))(map,
+		    vm_map_min(map) + mapsz + lim_max(td, RLIMIT_DATA),
+		    /* reserve half of the address space to interpreter */
+		    maxv / 2, maxalign, &imgp->et_dyn_addr);
+	}
+
+>>>>>>> freebsd/main
 	vn_lock(imgp->vp, LK_SHARED | LK_RETRY);
 	if (error != 0)
 		goto ret;
 
-	error = __elfN(load_sections)(imgp, hdr, phdr, et_dyn_addr, NULL);
+	error = __elfN(load_sections)(imgp, hdr, phdr, imgp->et_dyn_addr, NULL);
 	if (error != 0)
 		goto ret;
 
-	error = __elfN(enforce_limits)(imgp, hdr, phdr, et_dyn_addr);
+	error = __elfN(enforce_limits)(imgp, hdr, phdr);
 	if (error != 0)
 		goto ret;
 
@@ -1193,6 +1266,10 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 	map->anon_loc = addr;
 	PROC_UNLOCK(imgp->proc);
 
+<<<<<<< HEAD
+=======
+	entry = (u_long)hdr->e_entry + imgp->et_dyn_addr;
+>>>>>>> freebsd/main
 	imgp->entry_addr = entry;
 
 	if (interp != NULL) {
@@ -1207,9 +1284,14 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 		vn_lock(imgp->vp, LK_SHARED | LK_RETRY);
 		if (error != 0)
 			goto ret;
+<<<<<<< HEAD
 	} else {
 		addr = et_dyn_addr;
 	}
+=======
+	} else
+		addr = imgp->et_dyn_addr;
+>>>>>>> freebsd/main
 
 	error = exec_map_stack(imgp);
 	if (error != 0)
@@ -1225,7 +1307,7 @@ __CONCAT(exec_, __elfN(imgact))(struct image_params *imgp)
 		vn_lock(imgp->vp, LK_SHARED | LK_RETRY);
 	}
 	elf_auxargs->execfd = -1;
-	elf_auxargs->phdr = proghdr + et_dyn_addr;
+	elf_auxargs->phdr = proghdr + imgp->et_dyn_addr;
 	elf_auxargs->phent = hdr->e_phentsize;
 	elf_auxargs->phnum = hdr->e_phnum;
 	elf_auxargs->pagesz = PAGE_SIZE;
