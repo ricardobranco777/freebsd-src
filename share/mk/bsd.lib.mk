@@ -178,13 +178,8 @@ PO_FLAG=-pg
 	${FC} ${PICFLAG} -DPIC ${FFLAGS:C/^-fstack-protector.*$//} -o ${.TARGET} -c ${.IMPSRC}
 	${CTFCONVERT_CMD}
 
-<<<<<<< HEAD
 .s.po .s.pico .s.nossppico:
-	${AS} ${AFLAGS} -o ${.TARGET} ${.IMPSRC}
-=======
-.s.po .s.pico .s.nossppico .s.pieo:
 	${CC:N${CCACHE_BIN}} -x assembler ${ACFLAGS} -c ${.IMPSRC} -o ${.TARGET}
->>>>>>> freebsd/main
 	${CTFCONVERT_CMD}
 
 .asm.po:
