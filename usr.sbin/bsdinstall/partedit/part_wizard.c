@@ -68,12 +68,7 @@ startwizard:
 	if (error != 0)
 		return (1);
 
-<<<<<<< HEAD
 	bsddialog_backtitle(&conf, "HardenedBSD Installer");
-	error = geom_gettree(&mesh);
-=======
-	bsddialog_backtitle(&conf, "FreeBSD Installer");
->>>>>>> freebsd/main
 	disk = boot_disk_select(&mesh);
 	if (disk == NULL) {
 		geom_deletetree(&mesh);
