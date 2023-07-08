@@ -372,12 +372,7 @@ udom_open(const char *path, int flags)
 	 */
 	bzero(&hints, sizeof(hints));
 	hints.ai_family = AF_LOCAL;
-<<<<<<< HEAD
 	if (realpath(path, rpath) == NULL)
-=======
-
-	if (fileargs_realpath(fa, path, rpath) == NULL)
->>>>>>> freebsd/main
 		return (-1);
 	error = getaddrinfo(rpath, NULL, &hints, &res0);
 	if (error) {
@@ -385,15 +380,6 @@ udom_open(const char *path, int flags)
 		errno = EINVAL;
 		return (-1);
 	}
-<<<<<<< HEAD
-=======
-	cap_rights_init(&rights, CAP_CONNECT, CAP_READ, CAP_WRITE,
-	    CAP_SHUTDOWN, CAP_FSTAT, CAP_FCNTL);
-
-	/* Default error if something goes wrong. */
-	serrno = EINVAL;
-
->>>>>>> freebsd/main
 	for (res = res0; res != NULL; res = res->ai_next) {
 		fd = socket(res->ai_family, res->ai_socktype,
 		    res->ai_protocol);
@@ -406,19 +392,14 @@ udom_open(const char *path, int flags)
 			break;
 		else {
 			close(fd);
+			fd = -1;
 		}
 	}
 	freeaddrinfo(res0);
 
-	if (res == NULL) {
-		errno = serrno;
-		return (-1);
-	}
-
 	/*
 	 * handle the open flags by shutting down appropriate directions
 	 */
-<<<<<<< HEAD
 	if (fd >= 0) {
 		switch(flags & O_ACCMODE) {
 		case O_RDONLY:
@@ -432,30 +413,6 @@ udom_open(const char *path, int flags)
 		default:
 			break;
 		}
-=======
-
-	switch (flags & O_ACCMODE) {
-	case O_RDONLY:
-		cap_rights_clear(&rights, CAP_WRITE);
-		if (shutdown(fd, SHUT_WR) == -1)
-			warn(NULL);
-		break;
-	case O_WRONLY:
-		cap_rights_clear(&rights, CAP_READ);
-		if (shutdown(fd, SHUT_RD) == -1)
-			warn(NULL);
-		break;
-	default:
-		break;
-	}
-
-	cap_rights_clear(&rights, CAP_CONNECT, CAP_SHUTDOWN);
-	if (caph_rights_limit(fd, &rights) < 0) {
-		serrno = errno;
-		close(fd);
-		errno = serrno;
-		return (-1);
->>>>>>> freebsd/main
 	}
 	return (fd);
 }

@@ -32,7 +32,6 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 
-<<<<<<< HEAD
 #include <stdlib.h>
 
 #include "libc_private.h"
@@ -72,6 +71,3 @@ __asm__("eprol:");
 	handle_static_init(argc, argv, env);
 	exit(main(argc, argv, env));
 }
-=======
-#include "csu_common.h"
->>>>>>> freebsd/main
