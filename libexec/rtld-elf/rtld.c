@@ -869,7 +869,15 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     dbg("obj_main path %s", obj_main->path);
     obj_main->mainprog = true;
 
+<<<<<<< HEAD
 #ifndef COMPAT_32BIT
+=======
+    if (aux_info[AT_STACKPROT] != NULL &&
+      aux_info[AT_STACKPROT]->a_un.a_val != 0)
+	    stack_prot = aux_info[AT_STACKPROT]->a_un.a_val;
+
+#ifndef COMPAT_libcompat
+>>>>>>> freebsd/main
     /*
      * Get the actual dynamic linker pathname from the executable if
      * possible.  (It should always be possible.)  That ensures that
