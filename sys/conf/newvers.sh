@@ -58,13 +58,28 @@ BRANCH="CURRENT"
 if [ -n "${BRANCH_OVERRIDE}" ]; then
 	BRANCH=${BRANCH_OVERRIDE}
 fi
+<<<<<<< HEAD
 BRANCH="${BRANCH}-HBSD"
 RELEASE="${REVISION}-${BRANCH}"
 VERSION="${TYPE} ${RELEASE}"
+=======
+>>>>>>> freebsd/main
 
 if [ -z "${SYSDIR}" ]; then
-    SYSDIR=$(dirname $0)/..
+	SYSDIR=$(dirname $0)/..
 fi
+
+# allow random overrides
+while :
+do
+	case "$1" in
+	*=*) eval "$1"; shift;;
+	*) break;;
+	esac
+done
+
+RELEASE="${RELEASE:-${REVISION}-${BRANCH}}"
+VERSION="${VERSION:-${TYPE} ${RELEASE}}"
 
 RELDATE=$(awk '/^#define[[:space:]]*__FreeBSD_version/ {print $3}' ${PARAMFILE:-${SYSDIR}/sys/param.h})
 
