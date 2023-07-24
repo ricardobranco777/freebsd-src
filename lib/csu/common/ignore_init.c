@@ -79,9 +79,13 @@ process_irelocs(void)
 #error "Define platform reloc type"
 #endif
 
+<<<<<<< HEAD:lib/csu/common/ignore_init.c
 char **environ;
 const char *__progname = "";
 
+=======
+#ifndef PIC
+>>>>>>> freebsd/main:lib/libc/csu/libc_start1.c
 static void
 finalizer(void)
 {
@@ -96,6 +100,7 @@ finalizer(void)
 	}
 	_fini();
 }
+#endif
 
 static inline void
 handle_static_init(int argc, char **argv, char **env)
