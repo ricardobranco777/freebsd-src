@@ -31,10 +31,7 @@ LIBADD+=	ncursesw
 LIBADD+=	pthread
 LIBADD+=	z
 LIBADD+=	zstd
-<<<<<<< HEAD
 
 NOCFI=		yes
-=======
->>>>>>> freebsd/main
 
 .include <bsd.prog.mk>

@@ -29,7 +29,6 @@ LIBADD+=	tinfow
 LIBADD+=	pthread
 LIBADD+=	z
 LIBADD+=	zstd
-<<<<<<< HEAD
 
 NOCFI=		yes
 
@@ -38,7 +37,5 @@ CFLAGS+=	-flto
 CXXFLAGS+=	-flto
 LDFLAGS+=	-flto
 .endif
-=======
->>>>>>> freebsd/main
 
 .include <bsd.prog.mk>
