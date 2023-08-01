@@ -1,7 +1,5 @@
 # $FreeBSD$
 
-.include <src.opts.mk>
-
 .PATH: ${SRCTOP}/cddl/contrib/opensolaris/lib/libdtrace/common
 .PATH: ${SRCTOP}/cddl/contrib/opensolaris/lib/libgen/common
 
@@ -139,11 +137,6 @@ DSRCS+=		regs_aarch64.d
 .endif
 
 YFLAGS+=-d
-
-.if ${MK_DTRACE_ASAN} != "no"
-CFLAGS+=	-fsanitize=address -fsanitize=undefined
-LDFLAGS+=	-fsanitize=address -fsanitize=undefined
-.endif
 
 LIBADD=	ctf elf proc pthread rtld_db
 
