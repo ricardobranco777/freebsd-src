@@ -12,6 +12,7 @@ NO_WMISSING_VARIABLE_DECLARATIONS=
 
 CFLAGS+=-I. -I${.CURDIR}
 
+<<<<<<< HEAD
 .if ${MK_SHARED_TOOLCHAIN} == "no"
 NO_SHARED?=	yes
 .endif
@@ -23,6 +24,9 @@ SYMLINKS=	${BINDIR}/elftc-ar ${BINDIR}/ranlib \
 SYMLINKS=	${BINDIR}/elftc-ar ${BINDIR}/elftc-ranlib
 .endif
 
+=======
+LINKS=	${BINDIR}/ar ${BINDIR}/ranlib
+>>>>>>> internal/freebsd/current/main
 MLINKS= ar.1 ranlib.1
 
 .include <bsd.prog.mk>
