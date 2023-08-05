@@ -139,16 +139,10 @@ main() {
 
 	cp "${uclsource}" "${uclfile}"
 	if [ ! -z "${pkgdeps}" ]; then
-<<<<<<< HEAD
-		cat <<EOF >> ${uclfile}
-deps: {
-	%PKG_NAME_PREFIX%-${pkgdeps}: {
-=======
 		echo 'deps: {' >> ${uclfile}
 		for dep in ${pkgdeps}; do
 			cat <<EOF >> ${uclfile}
-	FreeBSD-${dep}: {
->>>>>>> internal/freebsd/current/main
+	%PKG_NAME_PREFIX%-${dep}: {
 		origin: "base",
 		version: "${PKG_VERSION}"
 	}
