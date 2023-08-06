@@ -3649,21 +3649,16 @@ sigexit(struct thread *td, int sig)
 			coreinfo = " (no core dump - other error)";
 			break;
 		}
+#ifdef PAX_SEGVGUARD
+		pax_segvguard_segfault(curthread, p->p_comm);
+#endif
 		if (kern_logsigexit)
 			pax_log_internal(p, PAX_LOG_DEFAULT,
 			    "%s (jid %d, uid %d) exited on "
 			    "signal %d%s", p->p_comm,
 			    p->p_ucred->cr_prison->pr_id,
 			    td->td_ucred->cr_uid,
-<<<<<<< HEAD
-			    sig &~ WCOREFLAG,
-			    sig & WCOREFLAG ? " (core dumped)" : "");
-#ifdef PAX_SEGVGUARD
-		pax_segvguard_segfault(curthread, p->p_comm);
-#endif
-=======
 			    sig &~ WCOREFLAG, coreinfo);
->>>>>>> internal/freebsd/current/main
 	} else
 		PROC_UNLOCK(p);
 	exit1(td, 0, sig);
