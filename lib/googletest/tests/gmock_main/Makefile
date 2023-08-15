@@ -31,15 +31,11 @@ SRCS.gmock_link_test=		\
 
 LIBADD=		gmock_main
 
-<<<<<<< HEAD
-# The next release will resolve a number of build warnings issues.
-MK_WERROR=	no
-MK_CFI=		no
-=======
 CXXFLAGS.clang+=	-Wno-error=inconsistent-missing-override
 CXXFLAGS.clang+=	-Wno-error=missing-variable-declarations
 CXXFLAGS.clang+=	-Wno-error=sign-compare
 CXXFLAGS.clang+=	-Wno-error=unused-parameter
->>>>>>> internal/freebsd/current/main
+
+MK_CFI=		no
 
 .include <bsd.test.mk>
