@@ -42,12 +42,8 @@
  */
 
 #include <sys/cdefs.h>
-<<<<<<< HEAD
-__FBSDID("$FreeBSD$");
 
 #include <stdlib.h>
-=======
->>>>>>> internal/freebsd/current/main
 #include <stdint.h>
 #include <sys/elf.h>
 

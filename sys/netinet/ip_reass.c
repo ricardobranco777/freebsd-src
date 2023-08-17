@@ -32,12 +32,8 @@
  */
 
 #include <sys/cdefs.h>
-<<<<<<< HEAD
-__FBSDID("$FreeBSD$");
 
 #include "opt_pax.h"
-=======
->>>>>>> internal/freebsd/current/main
 #include "opt_rss.h"
 
 #include <sys/param.h>

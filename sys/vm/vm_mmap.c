@@ -343,7 +343,6 @@ kern_mmap(struct thread *td, const struct mmap_req *mrp)
 		 */
 		if (addr + size > MAP_32BIT_MAX_ADDR)
 			addr = 0;
-<<<<<<< HEAD
 #ifdef PAX_ASLR
 		PROC_LOCK(td->td_proc);
 		if (!(td->td_proc->p_flag2 & P2_ASLR_ENABLE))
@@ -351,9 +350,6 @@ kern_mmap(struct thread *td, const struct mmap_req *mrp)
 		PROC_UNLOCK(td->td_proc);
 		pax_aslr_done = 1;
 #endif /* PAX_ASLR */
-#endif /* MAP_32BIT */
-=======
->>>>>>> internal/freebsd/current/main
 	} else {
 		/*
 		 * XXX for non-fixed mappings where no hint is provided or

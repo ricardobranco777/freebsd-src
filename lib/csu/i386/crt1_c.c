@@ -25,13 +25,8 @@
  */
 
 #include <sys/cdefs.h>
-<<<<<<< HEAD
-__FBSDID("$FreeBSD$");
 
 #include <stdlib.h>
-=======
-#include "csu_common.h"
->>>>>>> internal/freebsd/current/main
 
 #include "libc_private.h"
 #include "ignore_init.c"
