@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 # $FreeBSD$
 #
+=======
+>>>>>>> internal/freebsd/current/main
 
 RPCDIR=	${DESTDIR}/usr/include/rpcsvc
 

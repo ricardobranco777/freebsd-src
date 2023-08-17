@@ -32,10 +32,13 @@
  */
 
 #include <sys/cdefs.h>
+<<<<<<< HEAD
 __FBSDID("$FreeBSD$");
 
 #include "opt_pax.h"
 
+=======
+>>>>>>> internal/freebsd/current/main
 #define	__ELF_WORD_SIZE	64
 
 #include <sys/param.h>

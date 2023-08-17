@@ -32,10 +32,13 @@
  */
 
 #include <sys/cdefs.h>
+<<<<<<< HEAD
 __FBSDID("$FreeBSD$");
 
 #include "opt_pax.h"
 
+=======
+>>>>>>> internal/freebsd/current/main
 #include <sys/param.h>
 #include <sys/jail.h>
 #include <sys/kernel.h>
