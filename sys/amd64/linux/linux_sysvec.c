@@ -31,10 +31,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+<<<<<<< HEAD
 #include <sys/cdefs.h>
 
 #include "opt_pax.h"
 
+=======
+>>>>>>> internal/freebsd/current/main
 #define	__ELF_WORD_SIZE	64
 
 #include <sys/param.h>
