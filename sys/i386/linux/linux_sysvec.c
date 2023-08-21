@@ -26,13 +26,8 @@
  * SUCH DAMAGE.
  */
 
-<<<<<<< HEAD
-#include <sys/cdefs.h>
-
 #include "opt_pax.h"
 
-=======
->>>>>>> internal/freebsd/current/main
 #define __ELF_WORD_SIZE	32
 
 #include <sys/param.h>

@@ -26,14 +26,8 @@
  * SUCH DAMAGE.
  */
 
-<<<<<<< HEAD
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 #include "opt_pax.h"
 
-=======
->>>>>>> internal/freebsd/current/main
 #define	__ELF_WORD_SIZE	64
 
 #include <sys/param.h>
