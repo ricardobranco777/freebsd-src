@@ -128,8 +128,11 @@ __DEFAULT_YES_OPTIONS = \
     LLD \
     LLD_BOOTSTRAP \
     LLD_IS_LD \
+<<<<<<< HEAD
     LLVM_ASSERTIONS \
     LLVM_BINUTILS \
+=======
+>>>>>>> freebsd/stable/14
     LLVM_COV \
     LLVM_CXXFILT \
     LOADER_GELI \
@@ -162,7 +165,11 @@ __DEFAULT_YES_OPTIONS = \
     QUOTAS \
     RADIUS_SUPPORT \
     RBOOTD \
+<<<<<<< HEAD
     RELRO \
+=======
+    REPRODUCIBLE_BUILD \
+>>>>>>> freebsd/stable/14
     RESCUE \
     ROUTED \
     SENDMAIL \
@@ -209,14 +216,22 @@ __DEFAULT_NO_OPTIONS = \
     LIB32 \
     LOADER_VERBOSE \
     LOADER_VERIEXEC_PASS_MANIFEST \
+<<<<<<< HEAD
+=======
+    LLVM_ASSERTIONS \
+    LLVM_BINUTILS \
+>>>>>>> freebsd/stable/14
     MALLOC_PRODUCTION \
     NETLINK \
     NETLINK_SUPPORT \
     OFED \
     OFED_EXTRA \
     OPENLDAP \
+<<<<<<< HEAD
     PORTSNAP \
     REPRODUCIBLE_BUILD \
+=======
+>>>>>>> freebsd/stable/14
     RPCBIND_WARMSTART_SUPPORT \
     SORT_THREADS \
     SPECTREV1_FIX \
