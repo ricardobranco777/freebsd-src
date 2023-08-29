@@ -1,3 +1,8 @@
+[20230828] HardenedBSD 14-STABLE
+__HardenedBSD_version = 1400006
+
+	Record the creation of the hardened/14-stable/master branch.
+
 [20230621] Further restrict ptrace access to capsicumized processes
 __HardenedBSD_version = 1400005
 
