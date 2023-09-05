@@ -51,6 +51,15 @@
 #   xargs -n1 | sort | uniq -d;
 # done
 
+# 20230906: caroot bundle updated
+OLD_FILES+=usr/share/certs/trusted/E-Tugra_Certification_Authority.pem
+OLD_FILES+=usr/share/certs/trusted/E-Tugra_Global_Root_CA_ECC_v3.pem
+OLD_FILES+=usr/share/certs/trusted/E-Tugra_Global_Root_CA_RSA_v3.pem
+OLD_FILES+=usr/share/certs/trusted/Hongkong_Post_Root_CA_1.pem
+
+# 20230902: libzfs now requires librt, moved to /lib
+MOVED_LIBS+=usr/lib/librt.so.1
+
 # 20230807: GoogleTest 1.14.0 upgrade.
 OLD_FILES+=usr/include/private/gmock/gmock-generated-actions.h
 OLD_FILES+=usr/include/private/gmock/gmock-generated-function-mockers.h

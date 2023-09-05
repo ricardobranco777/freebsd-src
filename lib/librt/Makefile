@@ -1,3 +1,4 @@
+SHLIBDIR?=/lib
 
 SHLIBDIR?=	/lib
 
