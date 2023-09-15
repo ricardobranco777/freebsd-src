@@ -57,12 +57,10 @@ BRANCH="STABLE"
 if [ -n "${BRANCH_OVERRIDE}" ]; then
 	BRANCH=${BRANCH_OVERRIDE}
 fi
-<<<<<<< HEAD
 BRANCH="${BRANCH}-HBSD"
-=======
+
 unset RELEASE
 unset VERSION
->>>>>>> origin/freebsd/14-stable/main
 
 if [ -z "${SYSDIR}" ]; then
 	SYSDIR=$(dirname $0)/..
