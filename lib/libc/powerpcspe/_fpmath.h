@@ -1,5 +1,8 @@
 /*-
- * Copyright 2016-2023 Microchip Technology, Inc. and/or its subsidiaries.
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
+ * Copyright (c) 2003 David Schultz <das@FreeBSD.ORG>
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,44 +26,31 @@
  * SUCH DAMAGE.
  */
 
-
-#ifndef _PQI_HELPER_H
-#define _PQI_HELPER_H
-
-
-static inline uint64_t
-pqisrc_increment_device_active_io(pqisrc_softstate_t *softs, pqi_scsi_dev_t *device)
-{
-#if PQISRC_DEVICE_IO_COUNTER
-	/*Increment device active io count by one*/
-	return OS_ATOMIC64_INC(&device->active_requests);
+union IEEEl2bits {
+	long double	e;
+	struct {
+#if _BYTE_ORDER == _LITTLE_ENDIAN
+		unsigned int	manl	:32;
+		unsigned int	manh	:20;
+		unsigned int	exp	:11;
+		unsigned int	sign	:1;
+#else	/* _BYTE_ORDER == _LITTLE_ENDIAN */
+		unsigned int		sign	:1;
+		unsigned int		exp	:11;
+		unsigned int		manh	:20;
+		unsigned int		manl	:32;
 #endif
-}
+	} bits;
+};
 
-static inline uint64_t
-pqisrc_decrement_device_active_io(pqisrc_softstate_t *softs,  pqi_scsi_dev_t *device)
-{
-#if PQISRC_DEVICE_IO_COUNTER
-	/*Decrement device active io count by one*/
-	return OS_ATOMIC64_DEC(&device->active_requests);
-#endif
-}
+#define	mask_nbit_l(u)	((void)0)
+#define	LDBL_IMPLICIT_NBIT
+#define	LDBL_NBIT	0
 
-static inline void
-pqisrc_init_device_active_io(pqisrc_softstate_t *softs, pqi_scsi_dev_t *device)
-{
-#if PQISRC_DEVICE_IO_COUNTER
-	/* Reset device count to Zero */
-	OS_ATOMIC64_INIT(&device->active_requests, 0);
-#endif
-}
+#define	LDBL_MANH_SIZE	20
+#define	LDBL_MANL_SIZE	32
 
-static inline uint64_t
-pqisrc_read_device_active_io(pqisrc_softstate_t *softs, pqi_scsi_dev_t *device)
-{
-#if PQISRC_DEVICE_IO_COUNTER
-	/* read device active count*/
-	return OS_ATOMIC64_READ(&device->active_requests);
-#endif
-}
-#endif  /* _PQI_HELPER_H */
+#define	LDBL_TO_ARRAY32(u, a) do {			\
+	(a)[0] = (uint32_t)(u).bits.manl;		\
+	(a)[1] = (uint32_t)(u).bits.manh;		\
+} while(0)
