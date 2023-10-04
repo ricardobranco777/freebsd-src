@@ -116,7 +116,8 @@ const uint8_t rfc1042_header[6] = { 0xaa, 0xaa, 0x03, 0x00, 0x00, 0x00 };
 /* IEEE 802.11-05/0257r1 */
 const uint8_t bridge_tunnel_header[6] = { 0xaa, 0xaa, 0x03, 0x00, 0x00, 0xf8 };
 
-const uint8_t tid_to_mac80211_ac[] = {
+/* IEEE 802.11e Table 20i-UP-to-AC mappings. */
+static const uint8_t ieee80211e_up_to_ac[] = {
 	IEEE80211_AC_BE,
 	IEEE80211_AC_BK,
 	IEEE80211_AC_BK,
@@ -242,7 +243,7 @@ lkpi_lsta_alloc(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN],
 			IMPROVE("AP/if we support non-STA here too");
 			ltxq->txq.ac = IEEE80211_AC_VO;
 		} else {
-			ltxq->txq.ac = tid_to_mac80211_ac[tid & 7];
+			ltxq->txq.ac = ieee80211e_up_to_ac[tid & 7];
 		}
 		ltxq->seen_dequeue = false;
 		ltxq->stopped = false;
@@ -2424,10 +2425,17 @@ lkpi_ic_vap_delete(struct ieee80211vap *vap)
 	LKPI_80211_LHW_LVIF_LOCK(lhw);
 	TAILQ_REMOVE(&lhw->lvif_head, lvif, lvif_entry);
 	LKPI_80211_LHW_LVIF_UNLOCK(lhw);
-	lkpi_80211_mo_remove_interface(hw, vif);
 
 	ieee80211_ratectl_deinit(vap);
 	ieee80211_vap_detach(vap);
+
+	IMPROVE("clear up other bits in this state");
+
+	lkpi_80211_mo_remove_interface(hw, vif);
+
+	/* Single VAP, so we can do this here. */
+	lkpi_80211_mo_stop(hw);
+
 	mtx_destroy(&lvif->mtx);
 	free(lvif, M_80211_VAP);
 }
@@ -2728,6 +2736,7 @@ sw_scan:
 		memcpy(hw_req->req.mac_addr, xxx, IEEE80211_ADDR_LEN);
 		memset(hw_req->req.mac_addr_mask, 0xxx, IEEE80211_ADDR_LEN);
 #endif
+		eth_broadcast_addr(hw_req->req.bssid);
 
 		hw_req->req.n_channels = nchan;
 		cpp = (struct linuxkpi_ieee80211_channel **)(hw_req + 1);
@@ -3235,7 +3244,7 @@ lkpi_80211_txq_tx_one(struct lkpi_sta *lsta, struct mbuf *m)
 		ac = IEEE80211_AC_BE;
 	} else {
 		skb->priority = tid & IEEE80211_QOS_CTL_TID_MASK;
-		ac = tid_to_mac80211_ac[tid & 7];
+		ac = ieee80211e_up_to_ac[tid & 7];
 	}
 	skb_set_queue_mapping(skb, ac);
 
@@ -3759,8 +3768,7 @@ linuxkpi_ieee80211_ifattach(struct ieee80211_hw *hw)
 	 * in any band so we can scale [(ext) sup rates] IE(s) accordingly.
 	 */
 	lhw->supbands = lhw->max_rates = 0;
-	for (band = 0; band < NUM_NL80211_BANDS &&
-	    hw->conf.chandef.chan == NULL; band++) {
+	for (band = 0; band < NUM_NL80211_BANDS; band++) {
 		struct ieee80211_supported_band *supband;
 		struct linuxkpi_ieee80211_channel *channels;
 
@@ -3770,6 +3778,10 @@ linuxkpi_ieee80211_ifattach(struct ieee80211_hw *hw)
 
 		lhw->supbands++;
 		lhw->max_rates = max(lhw->max_rates, supband->n_bitrates);
+
+		/* If we have a channel, we need to keep counting supbands. */
+		if (hw->conf.chandef.chan != NULL)
+			continue;
 
 		channels = supband->channels;
 		for (i = 0; i < supband->n_channels; i++) {
@@ -3940,6 +3952,16 @@ linuxkpi_ieee80211_iterate_stations_atomic(struct ieee80211_hw *hw,
 		LKPI_80211_LVIF_UNLOCK(lvif);
 	}
 	LKPI_80211_LHW_LVIF_UNLOCK(lhw);
+}
+
+struct linuxkpi_ieee80211_regdomain *
+lkpi_get_linuxkpi_ieee80211_regdomain(size_t n)
+{
+	struct linuxkpi_ieee80211_regdomain *regd;
+
+	regd = kzalloc(sizeof(*regd) + n * sizeof(struct ieee80211_reg_rule),
+	    GFP_KERNEL);
+	return (regd);
 }
 
 int
