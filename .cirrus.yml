@@ -81,7 +81,7 @@ task:
       TOOLCHAIN_PKG: ${TOOLCHAIN}
       EXTRA_MAKE_FLAGS: -s
   - name: amd64-gcc12 World and kernel build and boot smoke test (FreeBSD repo)
-    only_if: $CIRRUS_REPO_FULL_NAME == 'freebsd/freebsd-src'
+    only_if: $CIRRUS_REPO_FULL_NAME == 'freebsd/freebsd-src' && $CIRRUS_BRANCH =~ 'pull/.*'
     env:
       TARGET: amd64
       TARGET_ARCH: amd64
@@ -97,9 +97,10 @@ task:
   - gpart show
   - df -m
   - pkg --version
-  - pw useradd user
+  - pw useradd -n user -m
   - mkdir -p /usr/obj/$(pwd -P)
   - chown user:user /usr/obj/$(pwd -P)
+  - su user -c "git config --global --add safe.directory $(pwd -P)"
 
   build_world_script:
   - su user -c "make -j$(sysctl -n hw.ncpu) ${EXTRA_MAKE_FLAGS} CROSS_TOOLCHAIN=${TOOLCHAIN} WITHOUT_TOOLCHAIN=yes buildworld"
