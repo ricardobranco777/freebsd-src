@@ -56,7 +56,12 @@ __DEFAULT_YES_OPTIONS = \
 
 __DEFAULT_NO_OPTIONS = \
     BHYVE_SNAPSHOT \
+<<<<<<< HEAD
     EXTRA_TCP_STACKS \
+=======
+    INIT_ALL_PATTERN \
+    INIT_ALL_ZERO \
+>>>>>>> origin/freebsd/14-stable/main
     KERNEL_RETPOLINE \
     RATELIMIT \
     REPRODUCIBLE_BUILD \
