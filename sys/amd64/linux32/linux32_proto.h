@@ -944,7 +944,7 @@ struct linux_mq_timedreceive_args {
 };
 struct linux_mq_notify_args {
 	char mqd_l_[PADL_(l_mqd_t)]; l_mqd_t mqd; char mqd_r_[PADR_(l_mqd_t)];
-	char abs_timeout_l_[PADL_(const struct l_timespec *)]; const struct l_timespec * abs_timeout; char abs_timeout_r_[PADR_(const struct l_timespec *)];
+	char sevp_l_[PADL_(const struct l_sigevent *)]; const struct l_sigevent * sevp; char sevp_r_[PADR_(const struct l_sigevent *)];
 };
 struct linux_mq_getsetattr_args {
 	char mqd_l_[PADL_(l_mqd_t)]; l_mqd_t mqd; char mqd_r_[PADR_(l_mqd_t)];

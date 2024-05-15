@@ -1967,7 +1967,7 @@ systrace_args(int sysnum, void *params, uint64_t *uarg, int *n_args)
 	case 281: {
 		struct linux_mq_notify_args *p = params;
 		iarg[a++] = p->mqd; /* l_mqd_t */
-		uarg[a++] = (intptr_t)p->abs_timeout; /* const struct l_timespec * */
+		uarg[a++] = (intptr_t)p->sevp; /* const struct l_sigevent * */
 		*n_args = 2;
 		break;
 	}
@@ -6445,7 +6445,7 @@ systrace_entry_setargdesc(int sysnum, int ndx, char *desc, size_t descsz)
 			p = "l_mqd_t";
 			break;
 		case 1:
-			p = "userland const struct l_timespec *";
+			p = "userland const struct l_sigevent *";
 			break;
 		default:
 			break;

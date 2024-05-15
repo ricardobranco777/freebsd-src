@@ -1538,7 +1538,7 @@
 281	AUE_NULL	STD {
 		int linux_mq_notify(
 		    l_mqd_t mqd,
-		    const struct l_timespec *abs_timeout
+		    const struct l_sigevent *sevp
 		);
 	}
 282	AUE_NULL	STD {
