@@ -2012,7 +2012,7 @@ kern_kmq_open(struct thread *td, const char *upath, int flags, mode_t mode,
 	struct pwddesc *pdp;
 	struct file *fp;
 	struct mqueue *mq;
-	int fd, error, len, cmode;
+	int fd, error, len, cmode, slash;
 
 	AUDIT_ARG_FFLAGS(flags);
 	AUDIT_ARG_MODE(mode);
@@ -2032,18 +2032,19 @@ kern_kmq_open(struct thread *td, const char *upath, int flags, mode_t mode,
 		return (error);
 
 	/*
-	 * The first character of name must be a slash  (/) character
+	 * The first character of name may be a slash (/) character
 	 * and the remaining characters of name cannot include any slash
 	 * characters. 
 	 */
 	len = strlen(path);
-	if (len < 2 || path[0] != '/' || strchr(path + 1, '/') != NULL)
+	if (len < 2 || strchr(path + 1, '/') != NULL)
 		return (EINVAL);
+	slash = (path[0] == '/') ? 1 : 0;
 	/*
 	 * "." and ".." are magic directories, populated on the fly, and cannot
 	 * be opened as queues.
 	 */
-	if (strcmp(path, "/.") == 0 || strcmp(path, "/..") == 0)
+	if (strcmp(path + slash, ".") == 0 || strcmp(path + slash, "..") == 0)
 		return (EINVAL);
 	AUDIT_ARG_UPATH1_CANON(path);
 
@@ -2052,7 +2053,7 @@ kern_kmq_open(struct thread *td, const char *upath, int flags, mode_t mode,
 		return (error);
 
 	sx_xlock(&mqfs_data.mi_lock);
-	pn = mqfs_search(mqfs_data.mi_root, path + 1, len - 1, td->td_ucred);
+	pn = mqfs_search(mqfs_data.mi_root, path + slash, len - slash, td->td_ucred);
 	if (pn == NULL) {
 		if (!(flags & O_CREAT)) {
 			error = ENOENT;
@@ -2062,7 +2063,7 @@ kern_kmq_open(struct thread *td, const char *upath, int flags, mode_t mode,
 				error = ENFILE;
 			} else {
 				pn = mqfs_create_file(mqfs_data.mi_root,
-				         path + 1, len - 1, td->td_ucred,
+				         path + slash, len - slash, td->td_ucred,
 					 cmode);
 				if (pn == NULL) {
 					error = ENOSPC;
@@ -2136,21 +2137,22 @@ sys_kmq_unlink(struct thread *td, struct kmq_unlink_args *uap)
 {
 	char path[MQFS_NAMELEN+1];
 	struct mqfs_node *pn;
-	int error, len;
+	int error, len, slash;
 
 	error = copyinstr(uap->path, path, MQFS_NAMELEN + 1, NULL);
         if (error)
 		return (error);
 
 	len = strlen(path);
-	if (len < 2 || path[0] != '/' || strchr(path + 1, '/') != NULL)
+	if (len < 2 || strchr(path + 1, '/') != NULL)
 		return (EINVAL);
-	if (strcmp(path, "/.") == 0 || strcmp(path, "/..") == 0)
+	slash = (path[0] == '/') ? 1 : 0;
+	if (strcmp(path + slash, ".") == 0 || strcmp(path + slash, "..") == 0)
 		return (EINVAL);
 	AUDIT_ARG_UPATH1_CANON(path);
 
 	sx_xlock(&mqfs_data.mi_lock);
-	pn = mqfs_search(mqfs_data.mi_root, path + 1, len - 1, td->td_ucred);
+	pn = mqfs_search(mqfs_data.mi_root, path + slash, len - slash, td->td_ucred);
 	if (pn != NULL)
 		error = do_unlink(pn, td->td_ucred);
 	else
