@@ -129,7 +129,7 @@ linux_to_bsd_ip_sockopt(int opt)
 		LINUX_RATELIMIT_MSG_NOTTESTED("IPv4 socket option IP_RECVOPTS");
 		return (IP_RECVOPTS);
 	case LINUX_IP_RETOPTS:
-		LINUX_RATELIMIT_MSG_NOTTESTED("IPv4 socket option IP_REETOPTS");
+		LINUX_RATELIMIT_MSG_NOTTESTED("IPv4 socket option IP_RETOPTS");
 		return (IP_RETOPTS);
 	case LINUX_IP_RECVTTL:
 		LINUX_RATELIMIT_MSG_NOTTESTED("IPv4 socket option IP_RECVTTL");
@@ -594,6 +594,16 @@ linux_to_bsd_tcp_sockopt(int opt)
 		return (-2);
 	case LINUX_TCP_MD5SIG:
 		return (TCP_MD5SIG);
+	}
+	return (-1);
+}
+
+static int
+linux_to_bsd_icmp6_sockopt(int opt) {
+
+	switch (opt) {
+	case LINUX_ICMP6_FILTER:
+		return (ICMP6_FILTER);
 	}
 	return (-1);
 }
@@ -2058,7 +2068,7 @@ linux_setsockopt(struct thread *td, struct linux_setsockopt_args *args)
 	struct sockaddr *sa;
 	struct timeval tv;
 	socklen_t len;
-	int error, level, name, val;
+	int error, level, name, val, proto;
 
 	level = linux_to_bsd_sockopt_level(args->level);
 	switch (level) {
@@ -2128,6 +2138,33 @@ linux_setsockopt(struct thread *td, struct linux_setsockopt_args *args)
 		break;
 	case IPPROTO_TCP:
 		name = linux_to_bsd_tcp_sockopt(args->optname);
+		break;
+	case IPPROTO_ICMPV6:
+		name = linux_to_bsd_icmp6_sockopt(args->optname);
+		break;
+	case IPPROTO_RAW:
+		len = sizeof(proto);
+		error = kern_getsockopt(td, args->s, SOL_SOCKET, SO_PROTOCOL,
+		    &proto, UIO_SYSSPACE, &len);
+		if (error != 0)
+			return (error);
+		switch (proto) {
+		case IPPROTO_IP:
+			name = linux_to_bsd_ip_sockopt(args->optname);
+			break;
+		case IPPROTO_IPV6:
+			name = linux_to_bsd_ip6_sockopt(args->optname);
+			break;
+		case IPPROTO_TCP:
+			name = linux_to_bsd_tcp_sockopt(args->optname);
+			break;
+		case IPPROTO_ICMPV6:
+			name = linux_to_bsd_icmp6_sockopt(args->optname);
+			break;
+		default:
+			name = -1;
+			break;
+		}
 		break;
 	case SOL_NETLINK:
 		level = SOL_SOCKET;
@@ -2256,7 +2293,7 @@ linux_getsockopt(struct thread *td, struct linux_getsockopt_args *args)
 	struct sockaddr *sa;
 	struct xucred xu;
 	struct l_ucred lxu;
-	int error, level, name, newval;
+	int error, level, name, newval, proto;
 
 	level = linux_to_bsd_sockopt_level(args->level);
 	switch (level) {
@@ -2344,6 +2381,33 @@ linux_getsockopt(struct thread *td, struct linux_getsockopt_args *args)
 		break;
 	case IPPROTO_TCP:
 		name = linux_to_bsd_tcp_sockopt(args->optname);
+		break;
+	case IPPROTO_ICMPV6:
+		name = linux_to_bsd_icmp6_sockopt(args->optname);
+		break;
+	case IPPROTO_RAW:
+		len = sizeof(proto);
+		error = kern_getsockopt(td, args->s, SOL_SOCKET, SO_PROTOCOL,
+		    &proto, UIO_SYSSPACE, &len);
+		if (error != 0)
+			return (error);
+		switch (proto) {
+		case IPPROTO_IP:
+			name = linux_to_bsd_ip_sockopt(args->optname);
+			break;
+		case IPPROTO_IPV6:
+			name = linux_to_bsd_ip6_sockopt(args->optname);
+			break;
+		case IPPROTO_TCP:
+			name = linux_to_bsd_tcp_sockopt(args->optname);
+			break;
+		case IPPROTO_ICMPV6:
+			name = linux_to_bsd_icmp6_sockopt(args->optname);
+			break;
+		default:
+			name = -1;
+			break;
+		}
 		break;
 	default:
 		name = -1;
