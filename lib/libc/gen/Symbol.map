@@ -210,6 +210,7 @@ FBSD_1.0 {
 	posix_madvise;
 	popen;
 	pclose;
+	psiginfo;
 	psignal;
 	raise;
 	readpassphrase;
