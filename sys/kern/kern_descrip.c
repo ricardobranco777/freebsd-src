@@ -510,6 +510,11 @@ kern_fcntl(struct thread *td, int fd, int cmd, intptr_t arg)
 		error = kern_dup(td, FDDUP_FCNTL, FDDUP_FLAG_CLOEXEC, fd, tmp);
 		break;
 
+	case F_DUPFD_CLOFORK:
+		tmp = arg;
+		error = kern_dup(td, FDDUP_FCNTL, FDDUP_FLAG_CLOFORK, fd, tmp);
+		break;
+
 	case F_DUP2FD:
 		tmp = arg;
 		error = kern_dup(td, FDDUP_FIXED, 0, fd, tmp);
@@ -520,13 +525,19 @@ kern_fcntl(struct thread *td, int fd, int cmd, intptr_t arg)
 		error = kern_dup(td, FDDUP_FIXED, FDDUP_FLAG_CLOEXEC, fd, tmp);
 		break;
 
+	case F_DUP2FD_CLOFORK:
+		tmp = arg;
+		error = kern_dup(td, FDDUP_FIXED, FDDUP_FLAG_CLOFORK, fd, tmp);
+		break;
+
 	case F_GETFD:
 		error = EBADF;
 		FILEDESC_SLOCK(fdp);
 		fde = fdeget_noref(fdp, fd);
 		if (fde != NULL) {
 			td->td_retval[0] =
-			    (fde->fde_flags & UF_EXCLOSE) ? FD_CLOEXEC : 0;
+			    (((fde->fde_flags & UF_EXCLOSE) ? FD_CLOEXEC : 0) |
+			    ((fde->fde_flags & UF_FOCLOSE) ? FD_CLOFORK : 0));
 			error = 0;
 		}
 		FILEDESC_SUNLOCK(fdp);
@@ -537,8 +548,9 @@ kern_fcntl(struct thread *td, int fd, int cmd, intptr_t arg)
 		FILEDESC_XLOCK(fdp);
 		fde = fdeget_noref(fdp, fd);
 		if (fde != NULL) {
-			fde->fde_flags = (fde->fde_flags & ~UF_EXCLOSE) |
-			    (arg & FD_CLOEXEC ? UF_EXCLOSE : 0);
+			fde->fde_flags = (fde->fde_flags & ~(UF_EXCLOSE|UF_FOCLOSE) |
+			    (arg & FD_CLOEXEC ? UF_EXCLOSE : 0) |
+			    (arg & FD_CLOFORK ? UF_FOCLOSE : 0));
 			error = 0;
 		}
 		FILEDESC_XUNLOCK(fdp);
@@ -965,6 +977,8 @@ kern_dup(struct thread *td, u_int mode, int flags, int old, int new)
 		td->td_retval[0] = new;
 		if (flags & FDDUP_FLAG_CLOEXEC)
 			fdp->fd_ofiles[new].fde_flags |= UF_EXCLOSE;
+		if (flags & FDDUP_FLAG_CLOFORK)
+			fdp->fd_ofiles[new].fde_flags |= UF_FOCLOSE;
 		error = 0;
 		goto unlock;
 	}
@@ -1043,6 +1057,10 @@ kern_dup(struct thread *td, u_int mode, int flags, int old, int new)
 		newfde->fde_flags = oldfde->fde_flags | UF_EXCLOSE;
 	else
 		newfde->fde_flags = oldfde->fde_flags & ~UF_EXCLOSE;
+	if ((flags & FDDUP_FLAG_CLOFORK) != 0)
+		newfde->fde_flags = oldfde->fde_flags | UF_FOCLOSE;
+	else
+		newfde->fde_flags = oldfde->fde_flags & ~UF_FOCLOSE;
 #ifdef CAPABILITIES
 	seqc_write_end(&newfde->fde_seqc);
 #endif
