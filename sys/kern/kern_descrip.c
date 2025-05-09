@@ -2725,6 +2725,31 @@ fdcloseexec(struct thread *td)
 }
 
 /*
+ * Close any files on fork?
+ */
+void
+fdclosefork(struct thread *td)
+{
+	struct filedesc *fdp;
+	struct filedescent *fde;
+	struct file *fp;
+	int i;
+
+	fdp = td->td_proc->p_fd;
+	KASSERT(refcount_load(&fdp->fd_refcnt) == 1,
+	    ("the fdtable should not be shared"));
+	FILEDESC_FOREACH_FDE(fdp, i, fde) {
+		fp = fde->fde_file;
+		if (fde->fde_flags & UF_FOCLOSE) {
+			FILEDESC_XLOCK(fdp);
+			fdfree(fdp, i);
+			(void) closefp(fdp, i, fp, td, false, false);
+			FILEDESC_UNLOCK_ASSERT(fdp);
+		}
+	}
+}
+
+/*
  * It is unsafe for set[ug]id processes to be started with file
  * descriptors 0..2 closed, as these descriptors are given implicit
  * significance in the Standard C library.  fdcheckstd() will create a

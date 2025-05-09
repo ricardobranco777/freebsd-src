@@ -148,6 +148,7 @@ struct filedesc_to_leader {
  * Per-process open flags.
  */
 #define	UF_EXCLOSE	0x01		/* auto-close on exec */
+#define	UF_FOCLOSE	0x02		/* auto-close on fork */
 
 #ifdef _KERNEL
 
@@ -261,6 +262,7 @@ int	fdallocn(struct thread *td, int minfd, int *fds, int n);
 int	fdcheckstd(struct thread *td);
 void	fdclose(struct thread *td, struct file *fp, int idx);
 void	fdcloseexec(struct thread *td);
+void	fdclosefork(struct thread *td);
 void	fdsetugidsafety(struct thread *td);
 struct	filedesc *fdcopy(struct filedesc *fdp);
 void	fdunshare(struct thread *td);
