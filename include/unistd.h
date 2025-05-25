@@ -36,6 +36,7 @@
 #include <sys/unistd.h>
 #include <sys/_null.h>
 #include <sys/_types.h>
+#include <sys/_sigset.h>
 
 #if !defined(_STANDALONE) && defined(_FORTIFY_SOURCE) && _FORTIFY_SOURCE > 0
 #include <ssp/unistd.h>
@@ -292,6 +293,10 @@ typedef	__useconds_t	useconds_t;
 #define	_SC_NPROCESSORS_CONF	57
 #define	_SC_NPROCESSORS_ONLN	58
 #define	_SC_CPUSET_SIZE		122
+#endif
+
+#if __POSIX_VISIBLE >= 202405
+#define	_SC_NSIG		123
 #endif
 
 /* Extensions found in Solaris and Linux. */
