@@ -294,6 +294,10 @@ typedef	__useconds_t	useconds_t;
 #define	_SC_CPUSET_SIZE		122
 #endif
 
+#if __POSIX_VISIBLE >= 202405
+#define	_SC_NSIG		123
+#endif
+
 /* Extensions found in Solaris and Linux. */
 #define	_SC_PHYS_PAGES		121
 
