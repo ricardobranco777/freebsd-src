@@ -1,3 +1,4 @@
+.include <src.opts.mk>
 
 PACKAGE= tests
 
@@ -12,6 +13,9 @@ SUBDIR+= examples
 SUBDIR+= include
 SUBDIR+= sys
 SUBDIR+= atf_python
+.if ${MK_CDDL} != "no"
+SUBDIR+= oclo
+.endif
 
 SUBDIR_PARALLEL=
 
