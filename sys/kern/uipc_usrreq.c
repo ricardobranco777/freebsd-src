@@ -65,6 +65,7 @@
 #include <sys/fcntl.h>
 #include <sys/file.h>
 #include <sys/filedesc.h>
+#include <sys/hash.h>
 #include <sys/jail.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
@@ -114,6 +115,85 @@ static struct unp_head	unp_shead;	/* (l) List of stream sockets. */
 static struct unp_head	unp_dhead;	/* (l) List of datagram sockets. */
 static struct unp_head	unp_sphead;	/* (l) List of seqpacket sockets. */
 static struct mtx_pool	*unp_vp_mtxpool;
+
+/*
+ * Abstract (Linux-style) namespace.
+ *
+ * Sockets bound with a leading NUL byte in sun_path live in a kernel-only
+ * hash table keyed by (cr_prison identity, raw bytes of sun_path).  No
+ * filesystem objects are created.
+ *
+ * Names are length-delimited, never NUL-terminated: byte zero is the
+ * abstract marker and the remainder of sun_path may contain arbitrary
+ * bytes including embedded NULs.  Always treat the name as a byte
+ * sequence; never use string functions on it.
+ *
+ * Namespace scope.  A bind in prison P only collides with other binds in
+ * that same prison (pointer identity).  This deliberately differs from
+ * prison_check() visibility semantics: a parent prison cannot see jailed
+ * sockets, sibling jails do not collide.  The result is jail-local
+ * namespace identity, similar in spirit to Linux's namespace-identity
+ * model for abstract AF_UNIX sockets, though Linux keys those to the
+ * network namespace rather than to a jail.
+ *
+ * Lifetimes.  Each binding owns a heap-allocated struct unp_absent which
+ * is on the hash table while the socket is alive and abstract-bound.  The
+ * entry holds a prison reference (prison_hold).  The unpcb has a back-
+ * pointer to its entry; both pointer and table linkage are protected by
+ * unp_abstract_mtx.
+ *
+ * Lock order.  unp_abstract_mtx is acquired before any per-pcb mutex.
+ * This is deliberate: lookup acquires the hash mtx, validates unp_socket
+ * under the pcb mtx, takes refs, then drops both.  Bind and detach follow
+ * the same nesting.  No code path should ever take the pcb mtx and then
+ * unp_abstract_mtx.
+ *
+ * Lookup conditionally acquires a socket reference while holding both
+ * unp_abstract_mtx and the per-pcb mutex.  The acquire uses
+ * refcount_acquire_if_not_zero() so lookup cannot resurrect a socket
+ * already on the final-release path.  The primitive takes no locks; if
+ * that changes, this site needs revisiting to avoid violating the
+ * established lock order.
+ */
+struct unp_absent {
+	LIST_ENTRY(unp_absent) abs_link;	/* (h) hash bucket linkage */
+	struct unpcb	*abs_unp;	/* (c) owning unpcb */
+	struct prison	*abs_pr;	/* (c) prison; refcount held */
+	int		 abs_sunpathlen; /* (c) bytes, incl. leading NUL */
+	char		 abs_sunpath[];	/* (c) raw sun_path bytes,
+					     including the leading NUL */
+};
+LIST_HEAD(unp_abshead, unp_absent);
+
+static struct unp_abshead	*unp_abstract_hashtbl;
+static u_long			 unp_abstract_hashmask;
+static struct mtx		 unp_abstract_mtx;
+MTX_SYSINIT(unp_abstract, &unp_abstract_mtx, "unp_abstract", MTX_DEF);
+static MALLOC_DEFINE(M_UNPABS, "unpabs", "abstract Unix socket entries");
+
+/*
+ * The leading byte of an abstract socket name is a NUL marker; the rest of
+ * sun_path (out to sun_len) is treated as opaque bytes, never as a string.
+ * The argument is the byte count from sun_path[] supplied by userspace
+ * (i.e. sun_len - offsetof(struct sockaddr_un, sun_path)), not a string
+ * length.
+ */
+static inline bool
+unp_addr_is_abstract(const struct sockaddr_un *soun, int sunpathlen)
+{
+	return (sunpathlen >= 1 && soun->sun_path[0] == '\0');
+}
+
+/*
+ * Hash an abstract socket name to a bucket index.  Keyed on the raw name
+ * bytes only; per-prison isolation is enforced at lookup/bind time by
+ * comparing abs_pr against the calling thread's prison while walking the
+ * bucket.  Different jails binding the same name will share a bucket but
+ * produce no false collisions.
+ */
+#define	UNP_ABS_BUCKET(sunpath, sunpathlen)				\
+	(&unp_abstract_hashtbl[hash32_buf((sunpath), (sunpathlen),	\
+	    HASHINIT) & unp_abstract_hashmask])
 
 struct unp_defer {
 	SLIST_ENTRY(unp_defer) ud_link;
@@ -291,8 +371,23 @@ static int	uipc_connect2(struct socket *, struct socket *);
 static int	uipc_ctloutput(struct socket *, struct sockopt *);
 static int	unp_connect(struct socket *, struct sockaddr *,
 		    struct thread *);
+/*
+ * Optional output from unp_connectat() for the abstract-namespace
+ * return_locked datagram send path.  Lookup takes a temporary socket
+ * reference and unpcb hold on the listener; on the return_locked success
+ * path those refs cannot be released inside unp_connectat() because the
+ * caller continues using the peer after we return with the pair locked.
+ * Hand the refs to the caller via this struct; the caller drops them
+ * after the send completes and the pair is unlocked.
+ *
+ * For all other paths the caller may pass NULL.
+ */
+struct unp_connect_refs {
+	struct socket *so;
+	struct unpcb *unp;
+};
 static int	unp_connectat(int, struct socket *, struct sockaddr *,
-		    struct thread *, bool);
+		    struct thread *, bool, struct unp_connect_refs *);
 static void	unp_connect2(struct socket *, struct socket *, bool);
 static void	unp_disconnect(struct unpcb *unp, struct unpcb *unp2);
 static void	unp_dispose(struct socket *so);
@@ -558,6 +653,190 @@ common:
 	return (0);
 }
 
+/*
+ * Look up an abstract binding in pr's namespace.  On hit, returns true with
+ * (*unpp, *sop) populated; the caller owns one unp_pcb_hold() reference and
+ * one socket reference, acquired with refcount_acquire_if_not_zero().  Both
+ * refs are released by unp_connectat() on every exit path EXCEPT the
+ * abstract return_locked datagram success path: there they are transferred
+ * to the caller via the abs_refs out-param and the caller drops them after
+ * unlocking the returned pair.  See uipc_sosend_dgram() and the bad2:
+ * block in unp_connectat().
+ *
+ * Lifetime guarantee.  We take UNP_PCB_LOCK, verify that unp_socket is
+ * still non-NULL, and then conditionally acquire a socket reference before
+ * dropping the PCB lock.  Once the socket reference is held, the (so, unp)
+ * association remains valid until the caller drops the reference.
+ *
+ * The conditional acquire is intentionally used instead of plain soref():
+ * the abstract hash entry can outlive the moment at which the listener's
+ * socket refcount reaches zero, until uipc_detach() removes the entry and
+ * clears unp_socket.  A failed conditional acquire is treated as a race
+ * with close and the lookup continues/misses.
+ */
+static bool
+unp_abstract_lookup(struct prison *pr, const char *sunpath, int sunpathlen,
+    struct unpcb **unpp, struct socket **sop)
+{
+	struct unp_absent *abs;
+	struct unp_abshead *bucket;
+	struct unpcb *unp;
+	struct socket *so;
+
+	bucket = UNP_ABS_BUCKET(sunpath, sunpathlen);
+	mtx_lock(&unp_abstract_mtx);
+	LIST_FOREACH(abs, bucket, abs_link) {
+		if (abs->abs_pr != pr)
+			continue;
+		if (abs->abs_sunpathlen != sunpathlen)
+			continue;
+		if (memcmp(abs->abs_sunpath, sunpath, sunpathlen) != 0)
+			continue;
+
+		unp = abs->abs_unp;
+		UNP_PCB_LOCK(unp);
+		so = unp->unp_socket;
+		if (so == NULL) {
+			/* Detach is in flight; skip and keep searching. */
+			UNP_PCB_UNLOCK(unp);
+			continue;
+		}
+		/*
+		 * Acquire a socket reference only if so_count is still nonzero.
+		 * unp_socket is cleared by uipc_detach(), but final socket
+		 * release begins before detach reaches that assignment.  A
+		 * concurrent close can therefore leave a non-NULL unp_socket
+		 * briefly visible while the socket is already on the final-
+		 * release path.  The conditional acquire prevents lookup from
+		 * resurrecting such a socket.
+		 */
+		if (!refcount_acquire_if_not_zero(&so->so_count)) {
+			UNP_PCB_UNLOCK(unp);
+			continue;
+		}
+		unp_pcb_hold(unp);
+		UNP_PCB_UNLOCK(unp);
+		mtx_unlock(&unp_abstract_mtx);
+		*unpp = unp;
+		*sop = so;
+		return (true);
+	}
+	mtx_unlock(&unp_abstract_mtx);
+	return (false);
+}
+
+/*
+ * Bind unp into the abstract namespace.  Caller has validated sunpathlen
+ * >= 1 and sun_path[0] == '\0'.
+ *
+ * An explicit empty abstract name (sunpathlen == 1, just the leading NUL)
+ * is permitted for compatibility with Linux's length-delimited abstract
+ * namespace.  Note this is not the same as Linux autobind, which generates
+ * a kernel-chosen abstract name when bind(2) is called with a zero-length
+ * sockaddr; this implementation does not provide autobind.
+ *
+ * Lock acquisition order is hash -> pcb across the commit critical
+ * section.  The collision scan and insert happen under the hash lock; the
+ * pcb lock is taken inside it to publish the binding atomically.
+ */
+static int
+unp_bind_abstract(struct socket *so, struct sockaddr *nam, int sunpathlen,
+    struct thread *td)
+{
+	struct sockaddr_un *soun = (struct sockaddr_un *)nam;
+	struct sockaddr_un *new_addr;
+	struct unp_absent *abs, *cur;
+	struct unp_abshead *bucket;
+	struct unpcb *unp;
+	struct prison *pr;
+
+	unp = sotounpcb(so);
+
+	UNP_PCB_LOCK(unp);
+	if (unp->unp_vnode != NULL || unp->unp_addr != NULL ||
+	    unp->unp_absent != NULL ||
+	    (unp->unp_flags & UNP_BINDING) != 0) {
+		UNP_PCB_UNLOCK(unp);
+		return (EINVAL);
+	}
+	unp->unp_flags |= UNP_BINDING;
+	UNP_PCB_UNLOCK(unp);
+
+	pr = td->td_ucred->cr_prison;
+	prison_hold(pr);
+
+	abs = malloc(sizeof(*abs) + sunpathlen, M_UNPABS,
+	    M_WAITOK | M_ZERO);
+	abs->abs_unp = unp;
+	abs->abs_pr = pr;
+	abs->abs_sunpathlen = sunpathlen;
+	memcpy(abs->abs_sunpath, soun->sun_path, sunpathlen);
+
+	new_addr = (struct sockaddr_un *)sodupsockaddr(nam, M_WAITOK);
+
+	bucket = UNP_ABS_BUCKET(soun->sun_path, sunpathlen);
+	mtx_lock(&unp_abstract_mtx);
+	LIST_FOREACH(cur, bucket, abs_link) {
+		if (cur->abs_pr != pr)
+			continue;
+		if (cur->abs_sunpathlen != sunpathlen)
+			continue;
+		if (memcmp(cur->abs_sunpath, soun->sun_path, sunpathlen) != 0)
+			continue;
+
+		mtx_unlock(&unp_abstract_mtx);
+		free(new_addr, M_SONAME);
+		free(abs, M_UNPABS);
+		prison_free(pr);
+		UNP_PCB_LOCK(unp);
+		unp->unp_flags &= ~UNP_BINDING;
+		UNP_PCB_UNLOCK(unp);
+		return (EADDRINUSE);
+	}
+	LIST_INSERT_HEAD(bucket, abs, abs_link);
+	UNP_PCB_LOCK(unp);
+	unp->unp_absent = abs;
+	unp->unp_addr = new_addr;
+	unp->unp_flags &= ~UNP_BINDING;
+	UNP_PCB_UNLOCK(unp);
+	mtx_unlock(&unp_abstract_mtx);
+	return (0);
+}
+
+/*
+ * Remove unp from the abstract namespace.  Called unconditionally from
+ * uipc_detach; if unp is not abstract-bound (unp_absent == NULL) it is a
+ * cheap no-op.
+ *
+ * A racing lookup either misses the entry after removal or has already
+ * acquired its temporary socket reference and PCB hold.  The socket
+ * reference is acquired conditionally (refcount_acquire_if_not_zero), so
+ * lookup cannot resurrect a socket already on the final-release path.
+ * See unp_abstract_lookup() for the lifetime argument.
+ */
+static void
+unp_abstract_detach(struct unpcb *unp)
+{
+	struct unp_absent *abs;
+
+	UNP_PCB_UNLOCK_ASSERT(unp);
+
+	mtx_lock(&unp_abstract_mtx);
+	UNP_PCB_LOCK(unp);
+	abs = unp->unp_absent;
+	if (abs != NULL) {
+		LIST_REMOVE(abs, abs_link);
+		unp->unp_absent = NULL;
+	}
+	UNP_PCB_UNLOCK(unp);
+	mtx_unlock(&unp_abstract_mtx);
+
+	if (abs != NULL) {
+		prison_free(abs->abs_pr);
+		free(abs, M_UNPABS);
+	}
+}
+
 static int
 uipc_bindat(int fd, struct socket *so, struct sockaddr *nam, struct thread *td)
 {
@@ -583,6 +862,16 @@ uipc_bindat(int fd, struct socket *so, struct sockaddr *nam, struct thread *td)
 	namelen = soun->sun_len - offsetof(struct sockaddr_un, sun_path);
 	if (namelen <= 0)
 		return (EINVAL);
+
+	/*
+	 * At this point sun_len >= offsetof(sun_path) + 1 and the sockaddr
+	 * buffer is at least sun_len bytes (allocated and bounds-checked by
+	 * getsockaddr() in the socket layer), so sun_path[0] is safe to
+	 * dereference.  sa_family is not validated here; this matches the
+	 * existing pathname path and is out of scope for this change.
+	 */
+	if (unp_addr_is_abstract(soun, namelen))
+		return (unp_bind_abstract(so, nam, namelen, td));
 
 	/*
 	 * We don't allow simultaneous bind() calls on a single UNIX domain
@@ -710,7 +999,7 @@ uipc_connectat(int fd, struct socket *so, struct sockaddr *nam,
 	int error;
 
 	KASSERT(td == curthread, ("uipc_connectat: td != curthread"));
-	error = unp_connectat(fd, so, nam, td, false);
+	error = unp_connectat(fd, so, nam, td, false, NULL);
 	return (error);
 }
 
@@ -761,7 +1050,8 @@ uipc_chmod(struct socket *so, mode_t mode, struct ucred *cred __unused,
 	error = 0;
 	unp = sotounpcb(so);
 	UNP_PCB_LOCK(unp);
-	if (unp->unp_vnode != NULL || (unp->unp_flags & UNP_BINDING) != 0)
+	if (unp->unp_vnode != NULL || unp->unp_absent != NULL ||
+	    (unp->unp_flags & UNP_BINDING) != 0)
 		error = EINVAL;
 	else
 		unp->unp_mode = mode;
@@ -818,6 +1108,8 @@ uipc_detach(struct socket *so)
 	unp->unp_gencnt = ++unp_gencnt;
 	--unp_count;
 	UNP_LINK_WUNLOCK();
+
+	unp_abstract_detach(unp);
 
 	UNP_PCB_UNLOCK_ASSERT(unp);
  restart:
@@ -933,7 +1225,7 @@ uipc_listen(struct socket *so, int backlog, struct thread *td)
 	UNP_PCB_LOCK(unp);
 	if (unp->unp_conn != NULL || (unp->unp_flags & UNP_CONNECTING) != 0)
 		error = EINVAL;
-	else if (unp->unp_vnode == NULL)
+	else if (unp->unp_vnode == NULL && unp->unp_absent == NULL)
 		error = EDESTADDRREQ;
 	if (error != 0) {
 		UNP_PCB_UNLOCK(unp);
@@ -1956,6 +2248,7 @@ uipc_sosend_dgram(struct socket *so, struct sockaddr *addr, struct uio *uio,
 	struct sockbuf *sb;
 	struct mchain cmc = MCHAIN_INITIALIZER(&cmc);
 	struct mbuf *f;
+	struct unp_connect_refs abs_refs = { NULL, NULL };
 	u_int cc, ctl, mbcnt;
 	u_int dcc __diagused, dctl __diagused, dmbcnt __diagused;
 	int error;
@@ -2033,7 +2326,8 @@ uipc_sosend_dgram(struct socket *so, struct sockaddr *addr, struct uio *uio,
 	SOCK_SENDBUF_UNLOCK(so);
 
 	if (addr != NULL) {
-		if ((error = unp_connectat(AT_FDCWD, so, addr, td, true)))
+		if ((error = unp_connectat(AT_FDCWD, so, addr, td, true,
+		    &abs_refs)))
 			goto out3;
 		UNP_PCB_LOCK_ASSERT(unp);
 		unp2 = unp->unp_conn;
@@ -2146,6 +2440,27 @@ uipc_sosend_dgram(struct socket *so, struct sockaddr *addr, struct uio *uio,
 		unp_disconnect(unp, unp2);
 	else
 		unp_pcb_unlock_pair(unp, unp2);
+
+	/*
+	 * Pair is unlocked.  Release the temporary listener references
+	 * handed back by unp_connectat() for the abstract namespace
+	 * return_locked path.  These must be released after pair unlock
+	 * because sorele() can synchronously enter sofree() -> uipc_detach(),
+	 * which acquires UNP_LINK_WLOCK and the peer PCB lock.
+	 *
+	 * Invariant: abs_refs is populated only after a successful
+	 * unp_connectat() with return_locked = true.  Every path between
+	 * that point and here unlocks the pair before reaching this site,
+	 * so this drop is guaranteed pair-lock-free.  Both fields are NULL
+	 * for non-abstract sends or when unp_connectat() failed.
+	 */
+	if (abs_refs.so != NULL)
+		sorele(abs_refs.so);
+	if (abs_refs.unp != NULL) {
+		UNP_PCB_LOCK(abs_refs.unp);
+		if (unp_pcb_rele(abs_refs.unp) == false)
+			UNP_PCB_UNLOCK(abs_refs.unp);
+	}
 
 	td->td_ru.ru_msgsnd++;
 
@@ -2828,24 +3143,26 @@ static int
 unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 
-	return (unp_connectat(AT_FDCWD, so, nam, td, false));
+	return (unp_connectat(AT_FDCWD, so, nam, td, false, NULL));
 }
 
 static int
 unp_connectat(int fd, struct socket *so, struct sockaddr *nam,
-    struct thread *td, bool return_locked)
+    struct thread *td, bool return_locked, struct unp_connect_refs *abs_refs)
 {
 	struct mtx *vplock;
 	struct sockaddr_un *soun;
 	struct vnode *vp;
 	struct socket *so2;
+	struct socket *so2_abs_ref;	/* abstract: socket reference held */
 	struct unpcb *unp, *unp2, *unp3;
+	struct unpcb *unp2_abs_ref;	/* abstract: unpcb reference held */
 	struct nameidata nd;
 	char buf[SOCK_MAXADDRLEN];
 	struct sockaddr *sa;
 	cap_rights_t rights;
 	int error, len;
-	bool connreq;
+	bool connreq, abstract;
 
 	CURVNET_ASSERT_SET();
 
@@ -2857,8 +3174,12 @@ unp_connectat(int fd, struct socket *so, struct sockaddr *nam,
 	if (len <= 0)
 		return (EINVAL);
 	soun = (struct sockaddr_un *)nam;
-	bcopy(soun->sun_path, buf, len);
-	buf[len] = 0;
+	abstract = unp_addr_is_abstract(soun, len);
+
+	if (!abstract) {
+		bcopy(soun->sun_path, buf, len);
+		buf[len] = 0;
+	}
 
 	error = 0;
 	unp = sotounpcb(so);
@@ -2902,42 +3223,64 @@ unp_connectat(int fd, struct socket *so, struct sockaddr *nam,
 		sa = malloc(sizeof(struct sockaddr_un), M_SONAME, M_WAITOK);
 	else
 		sa = NULL;
-	NDINIT_ATRIGHTS(&nd, LOOKUP, FOLLOW | LOCKSHARED | LOCKLEAF,
-	    UIO_SYSSPACE, buf, fd, cap_rights_init_one(&rights, CAP_CONNECTAT));
-	error = namei(&nd);
-	if (error)
-		vp = NULL;
-	else
-		vp = nd.ni_vp;
-	ASSERT_VOP_LOCKED(vp, "unp_connect");
-	if (error)
-		goto bad;
-	NDFREE_PNBUF(&nd);
 
-	if (vp->v_type != VSOCK) {
-		error = ENOTSOCK;
-		goto bad;
-	}
+	vp = NULL;
+	if (abstract) {
+		/*
+		 * Abstract namespace: skip the filesystem lookup.  On hit, we
+		 * receive both an unpcb reference (unp2_abs_ref) and a socket
+		 * reference (so2_abs_ref), which together guarantee that
+		 * neither unp2 nor so2 are freed while we hold them.
+		 *
+		 * Both refs are released by unp_connectat(), except for the
+		 * abstract return_locked datagram success path where they are
+		 * handed to the caller via abs_refs and dropped after the
+		 * returned pair lock is released.
+		 */
+		if (!unp_abstract_lookup(td->td_ucred->cr_prison,
+		    soun->sun_path, len, &unp2, &so2)) {
+			error = ECONNREFUSED;
+			goto bad;
+		}
+		unp2_abs_ref = unp2;
+		so2_abs_ref = so2;
+	} else {
+		NDINIT_ATRIGHTS(&nd, LOOKUP, FOLLOW | LOCKSHARED | LOCKLEAF,
+		    UIO_SYSSPACE, buf, fd,
+		    cap_rights_init_one(&rights, CAP_CONNECTAT));
+		error = namei(&nd);
+		if (error)
+			vp = NULL;
+		else
+			vp = nd.ni_vp;
+		ASSERT_VOP_LOCKED(vp, "unp_connect");
+		if (error)
+			goto bad;
+		NDFREE_PNBUF(&nd);
+
+		if (vp->v_type != VSOCK) {
+			error = ENOTSOCK;
+			goto bad;
+		}
 #ifdef MAC
-	error = mac_vnode_check_open(td->td_ucred, vp, VWRITE | VREAD);
-	if (error)
-		goto bad;
+		error = mac_vnode_check_open(td->td_ucred, vp, VWRITE | VREAD);
+		if (error)
+			goto bad;
 #endif
-	error = VOP_ACCESS(vp, VWRITE, td->td_ucred, td);
-	if (error)
-		goto bad;
+		error = VOP_ACCESS(vp, VWRITE, td->td_ucred, td);
+		if (error)
+			goto bad;
 
-	unp = sotounpcb(so);
-	KASSERT(unp != NULL, ("unp_connect: unp == NULL"));
-
-	vplock = mtx_pool_find(unp_vp_mtxpool, vp);
-	mtx_lock(vplock);
-	VOP_UNP_CONNECT(vp, &unp2);
-	if (unp2 == NULL) {
-		error = ECONNREFUSED;
-		goto bad2;
+		vplock = mtx_pool_find(unp_vp_mtxpool, vp);
+		mtx_lock(vplock);
+		VOP_UNP_CONNECT(vp, &unp2);
+		if (unp2 == NULL) {
+			error = ECONNREFUSED;
+			goto bad2;
+		}
+		so2 = unp2->unp_socket;
 	}
-	so2 = unp2->unp_socket;
+
 	if (so->so_type != so2->so_type) {
 		error = EPROTOTYPE;
 		goto bad2;
@@ -2992,7 +3335,45 @@ unp_connectat(int fd, struct socket *so, struct sockaddr *nam,
 	if (!return_locked)
 		unp_pcb_unlock_pair(unp, unp2);
 bad2:
-	mtx_unlock(vplock);
+	/*
+	 * Branch-aware cleanup.  The abstract and pathname paths are
+	 * mutually exclusive, set distinct local state (so2_abs_ref /
+	 * unp2_abs_ref vs vplock), and any path that reaches bad2 with
+	 * abstract == true has populated the abstract refs at lookup time.
+	 *
+	 * For abstract return_locked datagram success, the caller continues
+	 * to use the peer after unp_connectat() returns with the pair
+	 * locked.  Transfer the refs to the caller via abs_refs;
+	 * uipc_sosend_dgram() drops them after unlocking the pair.
+	 * Releasing them here would allow a concurrent close to enter
+	 * uipc_detach() while the caller is still using the peer under the
+	 * returned pair lock.
+	 *
+	 * In all other abstract exits (errors, non-return_locked, connreq),
+	 * release the refs here.  These paths reach bad2 with the pair NOT
+	 * locked (success non-return_locked unlocks above; errors unlock at
+	 * the bail site or never took the lock; connreq's listener unp_pcb
+	 * is unlocked when connreq reassigns unp2 = unp3).
+	 */
+	if (abstract) {
+		if (error == 0 && return_locked && !connreq) {
+			KASSERT(abs_refs != NULL,
+			    ("%s: abstract return_locked without ref handoff",
+			    __func__));
+			abs_refs->so = so2_abs_ref;
+			abs_refs->unp = unp2_abs_ref;
+			so2_abs_ref = NULL;
+			unp2_abs_ref = NULL;
+		}
+		if (so2_abs_ref != NULL)
+			sorele(so2_abs_ref);
+		if (unp2_abs_ref != NULL) {
+			UNP_PCB_LOCK(unp2_abs_ref);
+			if (unp_pcb_rele(unp2_abs_ref) == false)
+				UNP_PCB_UNLOCK(unp2_abs_ref);
+		}
+	} else
+		mtx_unlock(vplock);
 bad:
 	if (vp != NULL) {
 		/*
@@ -3622,6 +4003,13 @@ unp_init(void *arg __unused)
 	LIST_INIT(&unp_dhead);
 	LIST_INIT(&unp_shead);
 	LIST_INIT(&unp_sphead);
+	{
+		u_long abs_hashsize = maxsockets / 16;
+		if (abs_hashsize < 16)
+			abs_hashsize = 16;
+		unp_abstract_hashtbl = hashinit(abs_hashsize, M_UNPABS,
+		    &unp_abstract_hashmask);
+	}
 	SLIST_INIT(&unp_defers);
 	TIMEOUT_TASK_INIT(taskqueue_thread, &unp_gc_task, 0, unp_gc, NULL);
 	TASK_INIT(&unp_defer_task, 0, unp_process_defers, NULL);
