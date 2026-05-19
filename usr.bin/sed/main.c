@@ -46,6 +46,7 @@
 #include <limits.h>
 #include <locale.h>
 #include <regex.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -108,6 +109,7 @@ u_long linenum;
 
 static void add_compunit(enum e_cut, char *);
 static void add_file(char *);
+static bool inplace_is_suffix(const char *);
 static void usage(void) __dead2;
 
 int
@@ -129,7 +131,12 @@ main(int argc, char *argv[])
 			rflags = REG_EXTENDED;
 			break;
 		case 'I':
-			inplace = optarg;
+			if (inplace_is_suffix(optarg)) {
+				inplace = optarg;
+			} else {
+				inplace = "";
+				optind--;
+			}
 			ispan = 1;	/* span across input files */
 			break;
 		case 'a':
@@ -148,7 +155,12 @@ main(int argc, char *argv[])
 			add_compunit(CU_FILE, optarg);
 			break;
 		case 'i':
-			inplace = optarg;
+			if (inplace_is_suffix(optarg)) {
+				inplace = optarg;
+			} else {
+				inplace = "";
+				optind--;
+			}
 			ispan = 0;	/* don't span across input files */
 			break;
 		case 'l':
@@ -541,4 +553,10 @@ lastline(void)
 	}
 	ungetc(ch, infile);
 	return (0);
+}
+
+static bool
+inplace_is_suffix(const char *s)
+{
+	return (s[0] == '\0' || (s[0] != '-' && strchr(s, '/') == NULL));
 }
