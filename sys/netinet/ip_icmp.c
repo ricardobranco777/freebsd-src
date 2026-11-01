@@ -905,8 +905,9 @@ match:
 			    /*
 			     * Should check for overflow, but it "can't happen"
 			     */
-			    if (opt == IPOPT_RR || opt == IPOPT_TS ||
-				opt == IPOPT_SECURITY) {
+			    if (V_ip_doopts == 1 &&
+				(opt == IPOPT_RR || opt == IPOPT_TS ||
+				opt == IPOPT_SECURITY)) {
 					bcopy(cp, mtod(opts, char *) +
 					    opts->m_len, len);
 					opts->m_len += len;
