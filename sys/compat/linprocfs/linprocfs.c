@@ -937,16 +937,59 @@ linprocfs_get_tty_nr(struct proc *p)
 }
 
 /*
- * Filler function for proc/pid/stat
+ * Return the number under which a thread is listed in proc/pid/task/.
+ * This is the Linux tid: the process id for the main thread, and the
+ * kernel thread id for the others.  Called with the process locked.
+ */
+static lwpid_t
+linprocfs_tidname(struct thread *td)
+{
+	struct linux_emuldata *em;
+	struct proc *p;
+
+	p = td->td_proc;
+	em = em_find(td);
+	if (em != NULL)
+		return (em->em_tid);
+	return (td == FIRST_THREAD_IN_PROC(p) ? p->p_pid : td->td_tid);
+}
+
+/*
+ * Find the thread a filler was invoked for.  A tid of PFS_NO_TID
+ * designates the process as a whole, represented by its first thread.
+ * The process must be locked.  Returns NULL if the thread has exited.
+ */
+static struct thread *
+linprocfs_find_thread(struct proc *p, lwpid_t tid)
+{
+	struct thread *td;
+
+	PROC_LOCK_ASSERT(p, MA_OWNED);
+
+	if (tid == PFS_NO_TID)
+		return (FIRST_THREAD_IN_PROC(p));
+	FOREACH_THREAD_IN_PROC(p, td) {
+		if (td->td_tid == tid)
+			return (td);
+	}
+	return (NULL);
+}
+
+/*
+ * Filler function for proc/pid/stat and proc/pid/task/tid/stat
  */
 static int
 linprocfs_doprocstat(PFS_FILL_ARGS)
 {
 	struct kinfo_proc kp;
+	char tdname[MAXCOMLEN + 1];
 	struct timeval boottime;
+	const char *comm;
+	struct thread *td2;
 	char state;
 	static int ratelimit = 0;
 	int tty_nr;
+	pid_t id;
 	vm_offset_t startcode, startdata;
 
 	getboottime(&boottime);
@@ -955,6 +998,40 @@ linprocfs_doprocstat(PFS_FILL_ARGS)
 	fill_kinfo_proc(p, &kp);
 	tty_nr = linprocfs_get_tty_nr(p);
 	sx_sunlock(&proctree_lock);
+	comm = p->p_comm;
+	id = p->p_pid;
+	if (tid != PFS_NO_TID) {
+		td2 = linprocfs_find_thread(p, tid);
+		if (td2 == NULL) {
+			PROC_UNLOCK(p);
+			return (ENOENT);
+		}
+		/* Replace the process-wide, first thread values. */
+		id = linprocfs_tidname(td2);
+		PROC_STATLOCK(p);
+		thread_lock(td2);
+		rufetchtd(td2, &kp.ki_rusage);
+		strlcpy(tdname, td2->td_name, sizeof(tdname));
+		kp.ki_pri.pri_class = td2->td_pri_class;
+		kp.ki_pri.pri_user = td2->td_user_pri;
+		kp.ki_lastcpu = td2->td_lastcpu;
+		if (p->p_state == PRS_ZOMBIE)
+			kp.ki_stat = SZOMB;
+		else if (TD_ON_RUNQ(td2) || TD_CAN_RUN(td2) ||
+		    TD_IS_RUNNING(td2))
+			kp.ki_stat = SRUN;
+		else if (P_SHOULDSTOP(p))
+			kp.ki_stat = SSTOP;
+		else if (TD_IS_SLEEPING(td2))
+			kp.ki_stat = SSLEEP;
+		else if (TD_ON_LOCK(td2))
+			kp.ki_stat = SLOCK;
+		else
+			kp.ki_stat = SWAIT;
+		thread_unlock(td2);
+		PROC_STATUNLOCK(p);
+		comm = tdname;
+	}
 	if (p->p_vmspace) {
 	   startcode = (vm_offset_t)p->p_vmspace->vm_taddr;
 	   startdata = (vm_offset_t)p->p_vmspace->vm_daddr;
@@ -962,9 +1039,9 @@ linprocfs_doprocstat(PFS_FILL_ARGS)
 	   startcode = 0;
 	   startdata = 0;
 	}
-	sbuf_printf(sb, "%d", p->p_pid);
+	sbuf_printf(sb, "%d", id);
 #define PS_ADD(name, fmt, arg) sbuf_printf(sb, " " fmt, arg)
-	PS_ADD("comm",		"(%s)",	p->p_comm);
+	PS_ADD("comm",		"(%s)",	comm);
 	if (kp.ki_stat > sizeof(linux_state)) {
 		state = 'R';
 
@@ -1061,16 +1138,31 @@ static int
 linprocfs_doprocstatus(PFS_FILL_ARGS)
 {
 	struct kinfo_proc kp;
+	char tdname[MAXCOMLEN + 1];
 	char *state;
 	segsz_t lsize;
 	struct thread *td2;
 	struct sigacts *ps;
-	l_sigset_t siglist, sigignore, sigcatch;
+	l_sigset_t shdlist, sigblk, siglist, sigignore, sigcatch;
 	int i;
 
 	sx_slock(&proctree_lock);
 	PROC_LOCK(p);
-	td2 = FIRST_THREAD_IN_PROC(p);
+	td2 = linprocfs_find_thread(p, tid);
+	if (td2 == NULL) {
+		PROC_UNLOCK(p);
+		sx_sunlock(&proctree_lock);
+		return (ENOENT);
+	}
+	thread_lock(td2);
+	strlcpy(tdname, tid == PFS_NO_TID ? p->p_comm : td2->td_name,
+	    sizeof(tdname));
+	thread_unlock(td2);
+	bsd_to_linux_sigset(&td2->td_sigmask, &sigblk);
+	bsd_to_linux_sigset(&td2->td_siglist, &siglist);
+	bsd_to_linux_sigset(&p->p_siglist, &shdlist);
+	if (tid == PFS_NO_TID)
+		siglist = shdlist;	/* historical process-wide view */
 
 	if (P_SHOULDSTOP(p)) {
 		state = "T (stopped)";
@@ -1109,14 +1201,15 @@ linprocfs_doprocstatus(PFS_FILL_ARGS)
 	fill_kinfo_proc(p, &kp);
 	sx_sunlock(&proctree_lock);
 
-	sbuf_printf(sb, "Name:\t%s\n",		p->p_comm); /* XXX escape */
+	sbuf_printf(sb, "Name:\t%s\n",		tdname); /* XXX escape */
 	sbuf_printf(sb, "State:\t%s\n",		state);
 
 	/*
 	 * Credentials
 	 */
 	sbuf_printf(sb, "Tgid:\t%d\n",		p->p_pid);
-	sbuf_printf(sb, "Pid:\t%d\n",		p->p_pid);
+	sbuf_printf(sb, "Pid:\t%d\n",		tid == PFS_NO_TID ? p->p_pid :
+						    linprocfs_tidname(td2));
 	sbuf_printf(sb, "PPid:\t%d\n",		kp.ki_ppid );
 	sbuf_printf(sb, "TracerPid:\t%d\n",	kp.ki_tracer );
 	sbuf_printf(sb, "Uid:\t%d\t%d\t%d\t%d\n", p->p_ucred->cr_ruid,
@@ -1160,7 +1253,6 @@ linprocfs_doprocstatus(PFS_FILL_ARGS)
 	 * Signal masks
 	 */
 	PROC_LOCK(p);
-	bsd_to_linux_sigset(&p->p_siglist, &siglist);
 	ps = p->p_sigacts;
 	mtx_lock(&ps->ps_mtx);
 	bsd_to_linux_sigset(&ps->ps_sigignore, &sigignore);
@@ -1169,11 +1261,9 @@ linprocfs_doprocstatus(PFS_FILL_ARGS)
 	PROC_UNLOCK(p);
 
 	sbuf_printf(sb, "SigPnd:\t%016jx\n",	siglist.__mask);
-	/*
-	 * XXX. SigBlk - target thread's signal mask, td_sigmask.
-	 * To implement SigBlk pseudofs should support proc/tid dir entries.
-	 */
-	sbuf_printf(sb, "SigBlk:\t%016x\n",	0);
+	if (tid != PFS_NO_TID)
+		sbuf_printf(sb, "ShdPnd:\t%016jx\n", shdlist.__mask);
+	sbuf_printf(sb, "SigBlk:\t%016jx\n",	sigblk.__mask);
 	sbuf_printf(sb, "SigIgn:\t%016jx\n",	sigignore.__mask);
 	sbuf_printf(sb, "SigCgt:\t%016jx\n",	sigcatch.__mask);
 
@@ -1955,24 +2045,83 @@ linprocfs_doproclimits(PFS_FILL_ARGS)
 }
 
 /*
- * The point of the following two functions is to work around
- * an assertion in Chromium; see kern/240991 for details.
+ * Attribute function for proc/<pid>/task: like Linux, the link count is
+ * 2 plus the number of threads, which Chromium asserts on; see kern/240991.
  */
 static int
 linprocfs_dotaskattr(PFS_ATTR_ARGS)
 {
 
-	vap->va_nlink = 3;
+	vap->va_nlink = p != NULL ? 2 + p->p_numthreads : 3;
 	return (0);
 }
 
 /*
- * Filler function for proc/<pid>/task/.dummy
+ * Attribute function for proc/<pid>/comm and proc/<pid>/task/<tid>/comm:
+ * world-readable as on Linux, writable by the owner.
  */
 static int
-linprocfs_dotaskdummy(PFS_FILL_ARGS)
+linprocfs_attr_comm(PFS_ATTR_ARGS)
 {
+	int error;
 
+	error = procfs_attr_rw(td, p, pn, vap);
+	if (error == 0 && vap->va_mode != 0)
+		vap->va_mode = 0644;
+	return (error);
+}
+
+/*
+ * Filler function for proc/<pid>/comm and proc/<pid>/task/<tid>/comm
+ */
+static int
+linprocfs_doproccomm(PFS_FILL_ARGS)
+{
+	char name[MAXCOMLEN + 1];
+	struct thread *td2;
+	size_t len;
+
+	if (uio != NULL && uio->uio_rw == UIO_WRITE) {
+		/* As on Linux, only threads of the same process may rename. */
+		if (p != td->td_proc)
+			return (EACCES);
+		sbuf_trim(sb);
+		sbuf_finish(sb);
+		len = sbuf_len(sb);
+		while (len > 0 && sbuf_data(sb)[len - 1] == '\n')
+			len--;
+		strlcpy(name, sbuf_data(sb), MIN(len + 1, sizeof(name)));
+		PROC_LOCK(p);
+		td2 = linprocfs_find_thread(p, tid);
+		if (td2 == NULL) {
+			PROC_UNLOCK(p);
+			return (ENOENT);
+		}
+		thread_lock(td2);
+		strlcpy(td2->td_name, name, sizeof(td2->td_name));
+		thread_unlock(td2);
+		/* The main thread's name is the process name. */
+		if (tid == PFS_NO_TID || linprocfs_tidname(td2) == p->p_pid)
+			strlcpy(p->p_comm, name, sizeof(p->p_comm));
+		PROC_UNLOCK(p);
+		return (0);
+	}
+
+	PROC_LOCK(p);
+	td2 = linprocfs_find_thread(p, tid);
+	if (td2 == NULL) {
+		PROC_UNLOCK(p);
+		return (ENOENT);
+	}
+	if (tid == PFS_NO_TID) {
+		strlcpy(name, p->p_comm, sizeof(name));
+	} else {
+		thread_lock(td2);
+		strlcpy(name, td2->td_name, sizeof(name));
+		thread_unlock(td2);
+	}
+	PROC_UNLOCK(p);
+	sbuf_printf(sb, "%s\n", name);
 	return (0);
 }
 
@@ -2555,6 +2704,8 @@ linprocfs_init(PFS_INIT_ARGS)
 	    NULL, NULL, PFS_RD);
 	pfs_create_link(dir, NULL, "cwd", &linprocfs_doproccwd, NULL, NULL,
 	    NULL, 0);
+	pfs_create_file(dir, NULL, "comm", &linprocfs_doproccomm,
+	    linprocfs_attr_comm, NULL, NULL, PFS_RDWR);
 	pfs_create_file(dir, NULL, "environ", &linprocfs_doprocenviron, NULL,
 	    &procfs_candebug, NULL, PFS_RD);
 	pfs_create_link(dir, NULL, "exe", &procfs_doprocfile, NULL,
@@ -2586,8 +2737,42 @@ linprocfs_init(PFS_INIT_ARGS)
 
 	/* /proc/<pid>/task/... */
 	pfs_create_dir(dir, &dir, "task", linprocfs_dotaskattr, NULL, NULL, 0);
-	pfs_create_file(dir, NULL, ".dummy", &linprocfs_dotaskdummy, NULL, NULL,
+	pfs_create_threaddir(dir, &dir, "tid", linprocfs_tidname, NULL, NULL,
+	    NULL, 0);
+	pfs_create_file(dir, NULL, "cmdline", &linprocfs_doproccmdline, NULL,
+	    NULL, NULL, PFS_RD);
+	pfs_create_link(dir, NULL, "cwd", &linprocfs_doproccwd, NULL, NULL,
+	    NULL, 0);
+	pfs_create_file(dir, NULL, "comm", &linprocfs_doproccomm,
+	    linprocfs_attr_comm, NULL, NULL, PFS_RDWR);
+	pfs_create_file(dir, NULL, "environ", &linprocfs_doprocenviron, NULL,
+	    &procfs_candebug, NULL, PFS_RD);
+	pfs_create_link(dir, NULL, "exe", &procfs_doprocfile, NULL,
+	    &procfs_notsystem, NULL, 0);
+	pfs_create_file(dir, NULL, "maps", &linprocfs_doprocmaps, NULL, NULL,
+	    NULL, PFS_RD | PFS_AUTODRAIN);
+	pfs_create_link(dir, NULL, "root", &linprocfs_doprocroot, NULL, NULL,
+	    NULL, 0);
+	pfs_create_file(dir, NULL, "stat", &linprocfs_doprocstat, NULL, NULL,
 	    NULL, PFS_RD);
+	pfs_create_file(dir, NULL, "statm", &linprocfs_doprocstatm, NULL, NULL,
+	    NULL, PFS_RD);
+	pfs_create_file(dir, NULL, "status", &linprocfs_doprocstatus, NULL,
+	    NULL, NULL, PFS_RD);
+	pfs_create_link(dir, NULL, "fd", &linprocfs_dofdescfs, NULL, NULL, NULL,
+	    0);
+	pfs_create_file(dir, NULL, "auxv", &linprocfs_doauxv, NULL,
+	    &procfs_candebug, NULL, PFS_RD | PFS_RAWRD);
+	pfs_create_file(dir, NULL, "limits", &linprocfs_doproclimits, NULL,
+	    NULL, NULL, PFS_RD);
+	pfs_create_file(dir, NULL, "mem", &linprocfs_doprocmem, procfs_attr_rw,
+	    &procfs_candebug, NULL, PFS_RDWR | PFS_RAW);
+	pfs_create_file(dir, NULL, "mountinfo", &linprocfs_doprocmountinfo,
+	    NULL, NULL, NULL, PFS_RD);
+	pfs_create_file(dir, NULL, "mounts", &linprocfs_domtab, NULL, NULL,
+	    NULL, PFS_RD);
+	pfs_create_file(dir, NULL, "oom_score_adj", &linprocfs_do_oom_score_adj,
+	    procfs_attr_rw, &procfs_candebug, NULL, PFS_RDWR);
 
 	/* /proc/scsi/... */
 	pfs_create_dir(root, &dir, "scsi", NULL, NULL, NULL, 0);
