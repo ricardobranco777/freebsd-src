@@ -42,6 +42,7 @@ SYSCTL_DECL(_vfs_pfs);
 struct pfs_vdata {
 	struct pfs_node	*pvd_pn;
 	pid_t		 pvd_pid;
+	lwpid_t		 pvd_tid;
 	struct vnode	*pvd_vnode;
 	SLIST_ENTRY(pfs_vdata) pvd_hash;
 };
@@ -52,7 +53,7 @@ struct pfs_vdata {
 void	 pfs_vncache_load	(void);
 void	 pfs_vncache_unload	(void);
 int	 pfs_vncache_alloc	(struct mount *, struct vnode **,
-				 struct pfs_node *, pid_t pid);
+				 struct pfs_node *, pid_t pid, lwpid_t tid);
 int	 pfs_vncache_free	(struct vnode *);
 
 /*
