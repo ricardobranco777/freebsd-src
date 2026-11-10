@@ -111,6 +111,7 @@ pfs_add_node(struct pfs_node *parent, struct pfs_node *pn)
 	    ("%s(): parent has no pn_info", __func__));
 	KASSERT(parent->pn_type == pfstype_dir ||
 	    parent->pn_type == pfstype_procdir ||
+	    parent->pn_type == pfstype_threaddir ||
 	    parent->pn_type == pfstype_root,
 	    ("%s(): parent is not a directory", __func__));
 
@@ -120,10 +121,27 @@ pfs_add_node(struct pfs_node *parent, struct pfs_node *pn)
 		for (iter = parent; iter != NULL; iter = iter->pn_parent)
 			KASSERT(iter->pn_type != pfstype_procdir,
 			    ("%s(): nested process directories", __func__));
+	if (pn->pn_type == pfstype_threaddir) {
+		bool found_procdir = false;
+
+		for (iter = parent; iter != NULL; iter = iter->pn_parent) {
+			KASSERT(iter->pn_type != pfstype_threaddir,
+			    ("%s(): nested thread directories", __func__));
+			if (iter->pn_type == pfstype_procdir ||
+			    (iter->pn_flags & PFS_PROCDEP) != 0)
+				found_procdir = true;
+		}
+		KASSERT(found_procdir,
+		    ("%s(): thread directory outside process directory",
+		    __func__));
+	}
 	for (iter = parent->pn_nodes; iter != NULL; iter = iter->pn_next) {
 		if (pn->pn_type == pfstype_procdir)
 			KASSERT(iter->pn_type != pfstype_procdir,
 			    ("%s(): sibling process directories", __func__));
+		else if (pn->pn_type == pfstype_threaddir)
+			KASSERT(iter->pn_type != pfstype_threaddir,
+			    ("%s(): sibling thread directories", __func__));
 	}
 #endif
 
@@ -268,6 +286,45 @@ pfs_create_dir(struct pfs_node *parent, struct pfs_node **opn,
 }
 
 /*
+ * Create a thread directory.  Its entries are dynamic: one per thread of
+ * the target process, named by tidname() (or td_tid if tidname is NULL).
+ * It must be placed inside a process-dependent directory.
+ */
+int
+pfs_create_threaddir(struct pfs_node *parent, struct pfs_node **opn,
+    const char *name, pfs_tid_t tidname, pfs_attr_t attr, pfs_vis_t vis,
+    pfs_destroy_t destroy, int flags)
+{
+	struct pfs_node *pdir, *pn;
+	int rc;
+
+	/* Preserve in case the caller is reusing the one pointer for both. */
+	pdir = parent;
+	if (opn != NULL)
+		*opn = NULL;
+	pn = pfs_alloc_node_flags(pdir->pn_info, name, pfstype_threaddir,
+	    flags);
+	if (pn == NULL)
+		return (ENOMEM);
+	pn->pn_tidname = tidname;
+	pn->pn_attr = attr;
+	pn->pn_vis = vis;
+	pn->pn_destroy = destroy;
+	pn->pn_flags = flags;
+	rc = pfs_add_node(pdir, pn);
+	if (rc == 0)
+		rc = pfs_fixup_dir_flags(pn, flags);
+	if (rc != 0) {
+		pfs_destroy(pn);
+		pn = NULL;
+	} else if (opn != NULL) {
+		*opn = pn;
+	}
+
+	return (rc);
+}
+
+/*
  * Create a file
  */
 int
@@ -367,6 +424,7 @@ pfs_destroy(struct pfs_node *pn)
 	/* destroy children */
 	if (pn->pn_type == pfstype_dir ||
 	    pn->pn_type == pfstype_procdir ||
+	    pn->pn_type == pfstype_threaddir ||
 	    pn->pn_type == pfstype_root) {
 		pfs_lock(pn);
 		while (pn->pn_nodes != NULL) {
@@ -460,7 +518,7 @@ pfs_root(struct mount *mp, int flags, struct vnode **vpp)
 	struct pfs_info *pi;
 
 	pi = (struct pfs_info *)mp->mnt_data;
-	return (pfs_vncache_alloc(mp, vpp, pi->pi_root, NO_PID));
+	return (pfs_vncache_alloc(mp, vpp, pi->pi_root, NO_PID, PFS_NO_TID));
 }
 
 /*

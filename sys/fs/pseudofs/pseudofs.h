@@ -53,6 +53,7 @@ struct vnode;
 #define PFS_NAMELEN		128
 #define PFS_FSNAMELEN		16	/* equal to MFSNAMELEN */
 #define PFS_DELEN		(offsetof(struct dirent, d_name) + PFS_NAMELEN)
+#define PFS_NO_TID		((lwpid_t)-1)	/* node is not thread-specific */
 
 typedef enum {
 	pfstype_none = 0,
@@ -62,7 +63,8 @@ typedef enum {
 	pfstype_parent,
 	pfstype_file,
 	pfstype_symlink,
-	pfstype_procdir
+	pfstype_procdir,
+	pfstype_threaddir
 } pfs_type_t;
 
 /*
@@ -101,9 +103,9 @@ typedef int (*pfs_init_t)(PFS_INIT_ARGS);
  */
 #define PFS_FILL_ARGS \
 	struct thread *td, struct proc *p, struct pfs_node *pn, \
-	struct sbuf *sb, struct uio *uio
+	struct sbuf *sb, struct uio *uio, lwpid_t tid
 #define PFS_FILL_ARGNAMES \
-	td, p, pn, sb, uio
+	td, p, pn, sb, uio, tid
 #define PFS_FILL_PROTO(name) \
 	int name(PFS_FILL_ARGS);
 typedef int (*pfs_fill_t)(PFS_FILL_ARGS);
@@ -204,6 +206,12 @@ struct pfs_info {
 };
 
 /*
+ * Thread name callback: returns the number under which a thread is listed
+ * in a thread directory.  Called with the thread's process locked.
+ */
+typedef lwpid_t (*pfs_tid_t)(struct thread *);
+
+/*
  * pfs_node: describes a node (file or directory) within a pseudofs
  *
  * - Fields marked (o) are protected by the node's own mutex.
@@ -229,6 +237,7 @@ struct pfs_node {
 	pfs_vis_t		 pn_vis;
 	pfs_getextattr_t	 pn_getextattr;
 	pfs_destroy_t		 pn_destroy;
+	pfs_tid_t		 pn_tidname;
 
 	struct pfs_info		*pn_info;
 	u_int32_t		 pn_fileno;		/* (o) */
@@ -259,6 +268,10 @@ int pfs_create_dir		(struct pfs_node *parent, struct pfs_node **opn,
 				 const char *name, pfs_attr_t attr,
 				 pfs_vis_t vis, pfs_destroy_t destroy,
 				 int flags);
+int pfs_create_threaddir	(struct pfs_node *parent, struct pfs_node **opn,
+				 const char *name, pfs_tid_t tidname,
+				 pfs_attr_t attr, pfs_vis_t vis,
+				 pfs_destroy_t destroy, int flags);
 int pfs_create_file		(struct pfs_node *parent, struct pfs_node **opn,
 				 const char *name, pfs_fill_t fill,
 				 pfs_attr_t attr, pfs_vis_t vis,

@@ -114,7 +114,7 @@ pfs_vncache_unload(void)
  */
 int
 pfs_vncache_alloc(struct mount *mp, struct vnode **vpp,
-		  struct pfs_node *pn, pid_t pid)
+		  struct pfs_node *pn, pid_t pid, lwpid_t tid)
 {
 	struct pfs_vncache_head *hash;
 	struct pfs_vdata *pvd, *pvd2;
@@ -132,6 +132,7 @@ retry:
 	mtx_lock(&pfs_vncache_mutex);
 	SLIST_FOREACH(pvd, hash, pvd_hash) {
 		if (pvd->pvd_pn == pn && pvd->pvd_pid == pid &&
+		    pvd->pvd_tid == tid &&
 		    pvd->pvd_vnode->v_mount == mp) {
 			vp = pvd->pvd_vnode;
 			vs = vget_prep(vp);
@@ -165,6 +166,7 @@ alloc:
 	}
 	pvd->pvd_pn = pn;
 	pvd->pvd_pid = pid;
+	pvd->pvd_tid = tid;
 	(*vpp)->v_data = pvd;
 	switch (pn->pn_type) {
 	case pfstype_root:
@@ -177,6 +179,7 @@ alloc:
 	case pfstype_this:
 	case pfstype_parent:
 	case pfstype_procdir:
+	case pfstype_threaddir:
 		(*vpp)->v_type = VDIR;
 		break;
 	case pfstype_file:
@@ -215,6 +218,7 @@ retry2:
 	 */
 	SLIST_FOREACH(pvd2, hash, pvd_hash) {
 		if (pvd2->pvd_pn == pn && pvd2->pvd_pid == pid &&
+		    pvd2->pvd_tid == tid &&
 		    pvd2->pvd_vnode->v_mount == mp) {
 			vp = pvd2->pvd_vnode;
 			vs = vget_prep(vp);
